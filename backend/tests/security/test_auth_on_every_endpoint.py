@@ -28,7 +28,6 @@ from api.v1.routes import downloads_search as downloads_search_routes
 from api.v1.routes import following as following_routes
 from api.v1.routes import free_music as free_music_routes
 from api.v1.routes import import_drop as import_drop_routes
-from api.v1.routes import plugins as plugins_routes
 from api.v1.routes import library as library_routes
 from api.v1.routes import library_contributions as library_contribution_routes
 from api.v1.routes import library_management as library_management_routes
@@ -75,7 +74,6 @@ from core.dependencies import (
     get_local_files_service,
     get_drop_import_service,
     get_free_music_service,
-    get_plugin_host,
     get_lidarr_import_repository,
     get_lidarr_import_service,
     get_navidrome_playback_service,
@@ -141,7 +139,6 @@ _SERVICE_PROVIDERS = (
     get_local_files_service,
     get_drop_import_service,
     get_free_music_service,
-    get_plugin_host,
     get_lidarr_import_repository,
     get_lidarr_import_service,
     get_navidrome_playback_service,
@@ -441,12 +438,6 @@ _ADMIN_ENDPOINTS = [
     ("GET", "/api/v1/lidarr-import/config", None),
     ("PUT", "/api/v1/lidarr-import/config", {}),
     ("POST", "/api/v1/lidarr-import/test", {}),
-    # Plugin API (phase 01b): admin-only. No source surfaces exist (D22).
-    # (both reject a plain user with 403, so they live in the admin list).
-    ("GET", "/api/v1/plugins", None),
-    ("POST", "/api/v1/plugins/install", {"repository_url": "https://github.com/o/r"}),
-    ("PUT", "/api/v1/plugins/demo", {"enabled": False, "settings": {}}),
-    ("DELETE", "/api/v1/plugins/demo", None),
     # Drop importer (phase 01c): curator-gated (admin + trusted) - a plain user
     # must see 403. POST /import/uploads is multipart and can't be driven here;
     # its auth posture is covered in tests/routes/test_import_drop_routes.py.
@@ -921,7 +912,6 @@ def _client(scenario: str):
         lidarr_import_routes.router,
         import_drop_routes.router,
         free_music_routes.router,
-        plugins_routes.router,
         settings_routes.router,
         spotify_routes.router,
         stream_routes.router,

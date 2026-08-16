@@ -237,7 +237,6 @@ async def start_target_operational_runtime(
     )
     from core.dependencies.auth_providers import get_auth_store
     from core.dependencies.repo_providers import get_download_store
-    from core.dependencies.service_providers import get_plugin_host
     from core.tasks import (
         start_acquisition_cleanup_task,
         start_artist_discovery_cache_warming_task,
@@ -283,10 +282,6 @@ async def start_target_operational_runtime(
         await get_target_free_music_service().sweep_stale()
     except Exception as error:  # noqa: BLE001 - housekeeping cannot block startup
         logger.warning("startup.free_music_sweep_failed", extra={"error": str(error)})
-    try:
-        await asyncio.to_thread(get_plugin_host().load_all)
-    except Exception as error:  # noqa: BLE001 - one plugin cannot block startup
-        logger.warning("startup.plugin_load_failed", extra={"error": str(error)})
 
     staging = preferences.get_typed_library_settings().staging_path
     _register_task(

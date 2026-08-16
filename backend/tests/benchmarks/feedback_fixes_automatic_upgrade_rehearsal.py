@@ -75,7 +75,6 @@ def _compose_text(
     volumes:
       - {data_root / 'config'}:/app/config{mount_mode}
       - {data_root / 'cache'}:/app/cache{mount_mode}
-      - {data_root / 'plugins'}:/app/plugins
       - {scratch}:{scratch}
 """
 
@@ -97,15 +96,12 @@ def _named_volume_compose_text(
     volumes:
       - config:/app/config
       - cache:/app/cache
-      - plugins:/app/plugins
       - {scratch}:{scratch}
 volumes:
   config:
     name: {prefix}-config
   cache:
     name: {prefix}-cache
-  plugins:
-    name: {prefix}-plugins
 """
 
 
@@ -436,7 +432,7 @@ def run(output: Path) -> dict[str, Any]:
 
         fresh_root = scratch / "fresh"
         fresh_data = fresh_root / "data"
-        for name in ("config", "cache", "plugins"):
+        for name in ("config", "cache"):
             (fresh_data / name).mkdir(parents=True, exist_ok=True)
         fresh_compose = scratch / "fresh-compose.yml"
         fresh_port = _free_port()
@@ -723,7 +719,7 @@ def run(output: Path) -> dict[str, Any]:
 
             named_prefix = f"feedback-fixes-auto-named-{run_id}"
             named_seed_data, _named_seed_database = _seed_source(scratch / "named-seed")
-            for volume_name in ("config", "cache", "plugins"):
+            for volume_name in ("config", "cache"):
                 qualified_name = f"{named_prefix}-{volume_name}"
                 named_volumes.add(qualified_name)
                 _run(["docker", "volume", "create", qualified_name])
@@ -739,18 +735,13 @@ def run(output: Path) -> dict[str, Any]:
                     "-v",
                     f"{named_seed_data / 'cache'}:/source-cache:ro",
                     "-v",
-                    f"{named_seed_data / 'plugins'}:/source-plugins:ro",
-                    "-v",
                     f"{named_prefix}-config:/target-config",
                     "-v",
                     f"{named_prefix}-cache:/target-cache",
-                    "-v",
-                    f"{named_prefix}-plugins:/target-plugins",
                     image,
                     "-c",
                     "cp -a /source-config/. /target-config/ && "
-                    "cp -a /source-cache/. /target-cache/ && "
-                    "cp -a /source-plugins/. /target-plugins/",
+                    "cp -a /source-cache/. /target-cache/",
                 ]
             )
             named_compose = scratch / "named-compose.yml"

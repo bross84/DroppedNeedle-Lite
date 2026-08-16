@@ -1090,17 +1090,6 @@ def get_sse_publisher() -> "SSEPublisher":
     return SSEPublisher()
 
 
-@singleton
-def get_plugin_host() -> "PluginHost":
-    from core.config import get_settings
-    from infrastructure.plugins.host import PluginHost
-
-    return PluginHost(
-        plugins_dir=get_settings().root_app_dir / "plugins",
-        preferences_service=get_preferences_service(),
-    )
-
-
 def _build_free_music_service(drop_import, file_processor) -> "FreeMusicService":
     from services.native.free_music_service import FreeMusicService
 
@@ -1188,7 +1177,6 @@ def get_get_it_service() -> "GetItService":
         itunes_repo=get_itunes_repository(),
         preferences_service=get_preferences_service(),
         cache=get_cache(),
-        plugin_host=get_plugin_host(),
     )
 
 
@@ -2199,7 +2187,6 @@ def get_scrobble_service() -> "ScrobbleService":
         client_factory=get_per_user_client_factory(),
         listening_prefs_store=get_user_listening_prefs_store(),
         play_history_store=get_play_history_store(),
-        plugin_host=get_plugin_host(),
     )
 
 

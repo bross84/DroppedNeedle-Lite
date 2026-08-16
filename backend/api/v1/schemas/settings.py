@@ -431,16 +431,6 @@ TICKETMASTER_KEY_MASK = "ticketmaster****"
 SKIDDLE_KEY_MASK = "skiddle****"
 
 
-class PluginConfig(AppStruct):
-    """Per-plugin admin state (phase 01b). ``enabled`` defaults to False on
-    purpose: dropping a folder into the plugins directory must never run code
-    until an admin flips it on (the documented trust model). ``settings`` holds
-    the values for the fields the plugin's manifest declares."""
-
-    enabled: bool = False
-    settings: dict[str, str] = {}
-
-
 class FreeMusicSettings(AppStruct):
     """Free Music (D24): DroppedNeedle's own lawful download client. Downloads
     Creative Commons and public-domain music from the Internet Archive, filtered

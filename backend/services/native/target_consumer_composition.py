@@ -70,7 +70,6 @@ def build_target_consumer_composition(
     listening_prefs_store: Any,
     now_playing: Any,
     request_history: Any | None = None,
-    plugin_host: Any | None = None,
 ) -> TargetConsumerComposition:
     repository = TargetLibraryRepository(store, request_history)
     favorites = FavoritesService(TargetFavoritesStore(store))
@@ -78,9 +77,7 @@ def build_target_consumer_composition(
     view = TargetLibraryViewService(store, favorites, history)
     local_files = LocalFilesService(repository, preferences, cache)
     native_library = TargetNativeLibraryService(store)
-    scrobble_service = ScrobbleService(
-        client_factory, listening_prefs_store, history, plugin_host=plugin_host
-    )
+    scrobble_service = ScrobbleService(client_factory, listening_prefs_store, history)
     scrobble = CompatScrobbleAdapter(scrobble_service, view, now_playing)
     playlist_repository = TargetPlaylistRepository(store)
 

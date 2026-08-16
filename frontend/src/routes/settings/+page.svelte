@@ -30,7 +30,6 @@
 		Gift,
 		ShoppingBag,
 		Landmark,
-		Blocks,
 		PanelLeft
 	} from 'lucide-svelte';
 	import JellyfinIcon from '$lib/components/JellyfinIcon.svelte';
@@ -102,7 +101,6 @@
 			? [
 					{ id: 'users', label: 'Users', tier: 'system', icon: Users },
 					{ id: 'security', label: 'Security', tier: 'system', icon: ShieldCheck },
-					{ id: 'plugins', label: 'Plugins', tier: 'system', icon: Blocks },
 					{ id: 'wrapped', label: 'Wrapped API', tier: 'system', icon: Gift }
 				]
 			: []),

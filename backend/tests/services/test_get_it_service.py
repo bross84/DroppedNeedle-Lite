@@ -166,48 +166,6 @@ async def test_unknown_release_group_yields_empty_options():
     assert options.digital == [] and options.physical == [] and options.free == []
 
 
-@pytest.mark.asyncio
-async def test_plugin_purchase_links_merge_under_fairness_ordering():
-    """Plugin purchase links join the groups without changing store ordering."""
-    from unittest.mock import MagicMock
-
-    from infrastructure.plugins.protocols import PluginPurchaseLink
-
-    rg = _rg(
-        relations=[_rel("purchase for download", "https://artist.bandcamp.com/album/x")]
-    )
-    plugin_host = MagicMock()
-    plugin_host.purchase_providers = MagicMock(
-        return_value=[SimpleNamespace(manifest=SimpleNamespace(name="shop-plugin"))]
-    )
-    plugin_host.gather_purchase_links = AsyncMock(
-        return_value=[
-            PluginPurchaseLink(
-                label="Some Shop", url="https://someshop.example/a", kind="digital"
-            ),
-            PluginPurchaseLink(label="Bad", url="javascript:alert(1)", kind="digital"),
-        ]
-    )
-    mb = AsyncMock()
-    mb.get_release_group_by_id = AsyncMock(return_value=rg)
-    mb.get_release_by_id = AsyncMock(return_value=None)
-    service = GetItService(
-        mb_repo=mb,
-        itunes_repo=AsyncMock(find_album=AsyncMock(return_value=None)),
-        preferences_service=SimpleNamespace(
-            get_get_it_settings=lambda: GetItSettings()
-        ),
-        cache=FakeCache(),
-        plugin_host=plugin_host,
-    )
-
-    options = await service.get_purchase_options("rg-1")
-
-    assert [l.store for l in options.digital] == ["bandcamp", "other"]
-    assert options.digital[1].label == "Some Shop"
-    assert all(l.url.startswith("http") for l in options.digital)
-
-
 # -- artist-level storefronts --
 
 

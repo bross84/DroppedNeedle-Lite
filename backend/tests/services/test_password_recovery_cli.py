@@ -15,7 +15,7 @@ from core.exceptions import AuthenticationError
 def test_cli_help_does_not_load_runtime_config(tmp_path):
     config_dir = tmp_path / "config"
     config_dir.mkdir()
-    (config_dir / "config.json").write_text('{"plugins": {}}')
+    (config_dir / "config.json").write_text('{"not_a_real_section": {}}')
     environment = os.environ.copy()
     environment["ROOT_APP_DIR"] = str(tmp_path)
 
@@ -68,7 +68,7 @@ def test_cli_hides_unknown_runtime_config_keys(monkeypatch, caplog):
 
     def get_service():
         logger = logging.getLogger("core.config")
-        logger.warning("Unknown config key '%s', ignoring", "plugins")
+        logger.warning("Unknown config key '%s', ignoring", "not_a_real_section")
         logger.warning("A useful configuration warning")
         return service
 
@@ -78,5 +78,5 @@ def test_cli_hides_unknown_runtime_config_keys(monkeypatch, caplog):
         assert droppedneedle_cli._get_auth_service_for_cli() is service
 
     messages = [record.getMessage() for record in caplog.records]
-    assert "Unknown config key 'plugins', ignoring" not in messages
+    assert "Unknown config key 'not_a_real_section', ignoring" not in messages
     assert "A useful configuration warning" in messages

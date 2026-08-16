@@ -23,7 +23,6 @@ services:
     volumes:
       - ./config:/app/config       # config + database
       - ./cache:/app/cache         # cover art and metadata cache
-      - ./plugins:/app/plugins     # installed plugins; omit and they vanish on recreate
       # One common-parent mount keeps the library and completed downloads on one container
       # mount boundary, enabling fast atomic moves. Configure the library root as /data/music.
       # Avoid nested binds beneath /data: they create new mount boundaries even on one disk.

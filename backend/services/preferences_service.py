@@ -43,7 +43,6 @@ from api.v1.schemas.settings import (
     EventsSettings,
     FreeMusicSettings,
     GetItSettings,
-    PluginConfig,
     TICKETMASTER_KEY_MASK,
     SKIDDLE_KEY_MASK,
     DEFAULT_NAMING_TEMPLATE,
@@ -984,33 +983,6 @@ class PreferencesService:
         updated = config.copy()
         updated["get_it"] = normalized
         self._save_config(updated)
-
-    def get_plugin_config(self, plugin_name: str) -> PluginConfig:
-        """Per-plugin admin state (01b). Unknown plugins get the safe default:
-        disabled, no settings."""
-        section = self._load_config().get("plugins", {})
-        data = section.get(plugin_name, {}) if isinstance(section, dict) else {}
-        raw_settings = data.get("settings", {})
-        settings = (
-            {str(k): str(v) for k, v in raw_settings.items()}
-            if isinstance(raw_settings, dict)
-            else {}
-        )
-        return PluginConfig(enabled=bool(data.get("enabled", False)), settings=settings)
-
-    def save_plugin_config(self, plugin_name: str, plugin_config: PluginConfig) -> None:
-        try:
-            config = self._load_config().copy()
-            section = dict(config.get("plugins", {}))
-            section[plugin_name] = {
-                "enabled": plugin_config.enabled,
-                "settings": dict(plugin_config.settings),
-            }
-            config["plugins"] = section
-            self._save_config(config)
-        except Exception as e:  # noqa: BLE001
-            logger.error(f"Failed to save plugin config for {plugin_name}: {e}")
-            raise ConfigurationError("Failed to save plugin settings")
 
     def _events_section_raw(self) -> EventsSettings:
         config = self._load_config()

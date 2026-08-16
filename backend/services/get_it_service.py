@@ -116,31 +116,17 @@ class GetItService:
         itunes_repo,  # noqa: ANN001
         preferences_service,  # noqa: ANN001
         cache: CacheInterface,
-        plugin_host=None,  # noqa: ANN001 - PluginHost, optional (01b purchase_links capability)
     ) -> None:
         self._mb = mb_repo
         self._itunes = itunes_repo
         self._prefs = preferences_service
         self._cache = cache
-        self._plugins = plugin_host
-
-    def _plugins_token(self) -> str:
-        if self._plugins is None:
-            return ""
-        return ",".join(
-            sorted(p.manifest.name for p in self._plugins.purchase_providers())
-        )
 
     async def get_purchase_options(
         self, release_group_mbid: str
     ) -> PurchaseOptionsResponse:
         settings = self._prefs.get_get_it_settings()
-        # the plugins token keys the cache so enabling/disabling a purchase-link
-        # plugin misses to a fresh entry instead of serving week-old options
-        cache_key = (
-            getit_options_key(release_group_mbid, settings.store_region)
-            + f":{self._plugins_token()}"
-        )
+        cache_key = getit_options_key(release_group_mbid, settings.store_region)
         cached = await self._cache.get(cache_key)
         if cached is not None:
             return msgspec.convert(cached, PurchaseOptionsResponse)
@@ -216,30 +202,6 @@ class GetItService:
         digital = [l for l in links.values() if l.kind == "digital"]
         physical = [l for l in links.values() if l.kind == "physical"]
         free = [l for l in links.values() if l.kind == "free"]
-
-        if self._plugins is not None and (artist or title):
-            for plugin_link in await self._plugins.gather_purchase_links(
-                artist, title, release_group_mbid
-            ):
-                url = (plugin_link.url or "").strip()
-                if not url.startswith("http") or url in links:
-                    continue
-                kind = (
-                    plugin_link.kind
-                    if plugin_link.kind in ("digital", "physical", "free")
-                    else "digital"
-                )
-                store = _store_for(url)
-                link = PurchaseLink(
-                    store=store,
-                    label=plugin_link.label or _label_for(store, url),
-                    url=url,
-                    kind=kind,
-                )
-                links[url] = link
-                {"digital": digital, "physical": physical, "free": free}[kind].append(
-                    link
-                )
 
         if not digital and artist and title:
             found = await self._itunes.find_album(artist, title, country=region)
