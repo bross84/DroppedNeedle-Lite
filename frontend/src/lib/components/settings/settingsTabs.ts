@@ -12,7 +12,6 @@ const adminTabs = new Set([
 	'spotify',
 	'events',
 	'get-it',
-	'plugins',
 	'security',
 	'wrapped',
 	'users'
@@ -42,7 +41,6 @@ const settingsTabLoaders: Record<string, SettingsLoader> = {
 	musicbrainz: () => import('./SettingsMusicBrainz.svelte'),
 	users: () => import('./SettingsUsers.svelte'),
 	security: () => import('./SettingsSecurity.svelte'),
-	plugins: () => import('./SettingsPlugins.svelte'),
 	wrapped: () => import('./SettingsWrapped.svelte'),
 	advanced: () => import('./SettingsAdvanced.svelte'),
 	about: () => import('./SettingsAbout.svelte')

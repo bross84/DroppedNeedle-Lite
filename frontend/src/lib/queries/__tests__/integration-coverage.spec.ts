@@ -726,11 +726,6 @@ const COVERAGE: Array<[string, string, string]> = [
 	],
 	['get-it settings', API.settingsGetIt(), '/api/v1/settings/get-it'],
 	['free-music settings', API.settingsFreeMusic(), '/api/v1/settings/free-music'],
-	// Plugin API (phase 01b): admin roster + curator source surfaces
-	['plugins list', API.plugins.list(), '/api/v1/plugins'],
-	['plugin install', API.plugins.install(), '/api/v1/plugins/install'],
-	['plugin update', API.plugins.update('P1'), '/api/v1/plugins/P1'],
-	['plugin uninstall', API.plugins.uninstall('P1'), '/api/v1/plugins/P1'],
 	// Drop importer (Store Sync 01c): curator-gated upload/jobs/match/discard
 	['drop-import uploads', API.dropImport.uploads(), '/api/v1/import/uploads'],
 	['drop-import jobs', API.dropImport.jobs(), '/api/v1/import/jobs'],

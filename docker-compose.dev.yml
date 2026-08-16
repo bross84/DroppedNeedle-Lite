@@ -16,7 +16,6 @@ services:
     volumes:
       - config:/app/config
       - cache:/app/cache
-      - plugins:/app/plugins   # installed plugins; without this they vanish on recreate
       - imports:/app/imports   # drop-importer staging
     restart: unless-stopped
     healthcheck:
@@ -29,5 +28,4 @@ services:
 volumes:
   config:
   cache:
-  plugins:
   imports:

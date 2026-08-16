@@ -745,12 +745,6 @@ export const API = {
 		cancel: (id: string) => `/api/v1/free-music/tasks/${id}/cancel`,
 		retry: (id: string) => `/api/v1/free-music/tasks/${id}/retry`
 	},
-	plugins: {
-		list: () => '/api/v1/plugins',
-		install: () => '/api/v1/plugins/install',
-		update: (name: string) => `/api/v1/plugins/${name}`,
-		uninstall: (name: string) => `/api/v1/plugins/${name}`
-	},
 	dropImport: {
 		uploads: () => '/api/v1/import/uploads',
 		jobs: (all: boolean = false) => `/api/v1/import/jobs${all ? '?all=true' : ''}`,

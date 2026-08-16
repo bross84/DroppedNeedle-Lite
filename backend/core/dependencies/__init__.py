@@ -173,7 +173,6 @@ from .service_providers import (  # noqa: F401
     get_free_music_service,
     get_target_free_music_service,
     get_get_it_service,
-    get_plugin_host,
     get_new_release_service,
     get_target_new_release_service,
     get_personal_mix_service,

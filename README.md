@@ -61,7 +61,6 @@ services:
     volumes:
       - ./config:/app/config  # Persistent app configuration
       - ./cache:/app/cache    # Cover art and metadata cache
-      - ./plugins:/app/plugins  # Installed plugins (omit and they vanish on recreate)
       - /path/to/media/imports:/app/imports  # Optional persistent drop-import staging
       # One common-parent mount enables fast moves between /data/slskd/complete and
       # /data/music. Configure /data/music as the library root. Do not add nested binds
@@ -561,18 +560,6 @@ Set a display name and avatar, change your username/email/password, link your ow
 
 ---
 
-## Plugins
-
-Experimental: the plugin API may change until it stabilises.
-
-Third parties can extend DroppedNeedle with scrobblers and purchase-link providers. Install one by pasting a public GitHub repository URL in Settings, or by copying a folder into the plugins directory. No plugin capability downloads music, and DroppedNeedle never calls plugin code to acquire anything.
-
-A plugin is Python running in-process with your server's full privileges, and there is no sandbox. Installing downloads the code and nothing more; the plugin does nothing until an admin enables it. Read the code before you do. DroppedNeedle bundles no plugins and endorses none - a worked example ships in `examples/plugins`.
-
-The full API reference is in [PLUGINS.md](PLUGINS.md).
-
----
-
 ## Integrations
 
 | Service | What it does |
@@ -731,12 +718,11 @@ A note on reliability: YouTube playback depends on the embedded player, which ca
 |-|-|
 | `/app/config` | Application config (`config.json`) |
 | `/app/cache` | Cover art cache, metadata cache, SQLite databases |
-| `/app/plugins` | Installed plugins. Mount it, or plugins you install disappear when the container is recreated |
 | `/app/imports` | Persistent staging for the drop importer (optional) |
 | `/data/music` | Recommended music library root inside the common media mount |
 | `/data/slskd/complete` | Recommended slskd completed-downloads path inside the common media mount |
 
-Map `/app/config`, `/app/cache`, and `/app/plugins` to persistent host directories so they survive container restarts. For fast imports, expose the library and completed downloads through one common-parent mount such as `/data`; separate or nested binds use the safe copy-and-remove fallback and temporarily require room for both copies. Linux paths are case-sensitive, so host-path casing must match exactly. See [slskd Setup](#slskd-setup). `/app/imports` is optional, but leave it unmounted and large uploads land on the container's writable layer, while anything waiting for a manual match is lost when the container is recreated.
+Map `/app/config` and `/app/cache` to persistent host directories so they survive container restarts. For fast imports, expose the library and completed downloads through one common-parent mount such as `/data`; separate or nested binds use the safe copy-and-remove fallback and temporarily require room for both copies. Linux paths are case-sensitive, so host-path casing must match exactly. See [slskd Setup](#slskd-setup). `/app/imports` is optional, but leave it unmounted and large uploads land on the container's writable layer, while anything waiting for a manual match is lost when the container is recreated.
 
 ---
 

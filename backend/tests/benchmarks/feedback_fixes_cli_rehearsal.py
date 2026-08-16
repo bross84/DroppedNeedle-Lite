@@ -208,7 +208,6 @@ def _seed_source(scratch: Path) -> tuple[Path, Path]:
         ),
         encoding="utf-8",
     )
-    (data_root / "plugins").mkdir()
     return data_root, database_path
 
 
@@ -241,7 +240,6 @@ def _compose_text(
     volumes:
       - {data_root / 'config'}:/app/config
       - {data_root / 'cache'}:/app/cache
-      - {data_root / 'plugins'}:/app/plugins
       - {scratch}:{scratch}
 """
 

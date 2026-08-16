@@ -36,7 +36,6 @@ _PREFERENCES_OWNED_CONFIG_KEYS = frozenset(
         "navidrome_settings",
         "oidc_settings",
         "plex_settings",
-        "plugins",
         "primary_music_source",
         "scrobble_settings",
         "security_settings",
