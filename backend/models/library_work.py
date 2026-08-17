@@ -50,9 +50,7 @@ class ReviewDecision(AppStruct):
 
 
 ScanKind = Literal["incremental", "rescan_files", "policy_reconcile"]
-ScanTrigger = Literal[
-    "manual", "automatic", "subsonic", "startup_resume", "policy_apply"
-]
+ScanTrigger = Literal["manual", "automatic", "startup_resume", "policy_apply"]
 ScanPhase = Literal["queued", "discovering", "indexing", "reconciling"]
 ScanState = Literal[
     "queued",

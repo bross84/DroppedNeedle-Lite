@@ -908,7 +908,7 @@ async def test_automatic_scheduler_uses_terminal_history_and_coordinator() -> No
     coordinator.latest_filesystem_terminal.return_value = ScanRun(
         id="finished",
         kind="incremental",
-        trigger="subsonic",
+        trigger="manual",
         state="failed",
         phase="reconciling",
         terminal_at=1_800_000_000,

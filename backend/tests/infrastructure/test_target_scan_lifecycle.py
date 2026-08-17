@@ -200,14 +200,13 @@ async def test_every_target_trigger_uses_the_single_request_transaction(
     for trigger in (
         "manual",
         "automatic",
-        "subsonic",
         "startup_resume",
         "policy_apply",
     ):
         result = await coordinator.request_run(_request(resolver, trigger=trigger))
         assert result.disposition in {"started", "coalesced"}
     assert await target_store.row_count("library_scan_runs") == 1
-    assert await target_store.row_count("library_scan_run_triggers") == 5
+    assert await target_store.row_count("library_scan_run_triggers") == 4
 
 
 @pytest.mark.asyncio
