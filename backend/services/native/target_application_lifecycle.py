@@ -241,7 +241,6 @@ async def start_target_operational_runtime(
         start_acquisition_cleanup_task,
         start_artist_discovery_cache_warming_task,
         start_audiodb_sweep_task,
-        start_background_upgrade_scan_task,
         start_discover_home_warmer_task,
         start_download_auto_retry_task,
         start_download_resume_task,
@@ -377,9 +376,6 @@ async def start_target_operational_runtime(
         wanted_store=get_wanted_store(),
     )
     start_recycle_bin_prune_task(preferences)
-    start_background_upgrade_scan_task(
-        get_target_download_service, auth_store, preferences
-    )
     start_wanted_watcher_task(get_target_wanted_watcher_service)
 
     def events_poll_time() -> str:

@@ -472,7 +472,7 @@ Failed and incomplete download requests are re-searched automatically by a backg
 
 Set a quality floor per format (FLAC, MP3, AAC, and others) under Settings > Download Client. Downloads below the cutoff are rejected. When a better copy of an album you already own turns up, the engine replaces the old files and moves the originals to a recycle bin.
 
-A global storage cap and per-user quotas keep the library from filling the disk. Album edition pinning locks a request to a particular release: the engine fills missing tracks from that edition and upgrades individual files as better copies surface. An optional background scan re-checks your library against available sources and imports improvements.
+A global storage cap and per-user quotas keep the library from filling the disk. Album edition pinning locks a request to a particular release: the engine fills missing tracks from that edition and upgrades individual files as better copies surface. Upgrades run when you ask for them - from the Upgrades tab or an album's Acquire this edition action - not on a background timer.
 
 ### Built-in Player
 

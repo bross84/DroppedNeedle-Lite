@@ -219,12 +219,6 @@ class DownloadPolicySettings(AppStruct):
     default_request_quota_count: int = 0
     default_request_quota_days: int = 7
     default_storage_quota_gb: int = 0
-    # --- Background upgrade scan (CollectionManagement Phase 5; opt-in, default OFF).
-    # Runs only while upgrade_allowed is ALSO on; enqueues at most
-    # background_upgrade_max_per_run origin='upgrade' grabs per sweep.
-    background_upgrade_scan_enabled: bool = False
-    background_upgrade_scan_interval_hours: int = 12
-    background_upgrade_max_per_run: int = 3
 
     def __post_init__(self) -> None:
         _validate_range(
@@ -274,18 +268,6 @@ class DownloadPolicySettings(AppStruct):
         )
         _validate_range(
             self.default_storage_quota_gb, "default_storage_quota_gb", 0, 1_000_000
-        )
-        _validate_range(
-            self.background_upgrade_scan_interval_hours,
-            "background_upgrade_scan_interval_hours",
-            1,
-            720,
-        )
-        _validate_range(
-            self.background_upgrade_max_per_run,
-            "background_upgrade_max_per_run",
-            1,
-            100,
         )
         _rank = {
             k: r
