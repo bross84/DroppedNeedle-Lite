@@ -18,7 +18,6 @@
 	let qualityMax = $state('lossless');
 	let qualityCutoff = $state('lossless');
 	let upgradeAllowed = $state(false);
-	let backgroundScan = $state(false);
 	let flacMp3Only = $state(true);
 	let verifyDownloads = $state(true);
 	let autoAccept = $state(0.7);
@@ -38,7 +37,6 @@
 			qualityMax = d.quality_max;
 			qualityCutoff = d.quality_cutoff;
 			upgradeAllowed = d.upgrade_allowed;
-			backgroundScan = d.background_upgrade_scan_enabled;
 			flacMp3Only = d.flac_mp3_only;
 			verifyDownloads = d.verify_downloads;
 			autoAccept = d.preflight_score_auto_accept;
@@ -73,7 +71,6 @@
 			quality_max: qualityMax,
 			quality_cutoff: qualityCutoff,
 			upgrade_allowed: upgradeAllowed,
-			background_upgrade_scan_enabled: backgroundScan,
 			flac_mp3_only: flacMp3Only,
 			verify_downloads: verifyDownloads,
 			preflight_score_auto_accept: autoAccept,
@@ -115,23 +112,11 @@
 					class="toggle toggle-sm toggle-primary"
 					bind:checked={upgradeAllowed}
 				/>
-				<span class="label-text">Allow automatic upgrades</span>
+				<span class="label-text">Allow quality upgrades</span>
 			</label>
 			<p class="text-xs text-base-content/60">
-				When on, DroppedNeedle looks for better-quality copies of anything below your cutoff.
-			</p>
-			<label class="label cursor-pointer justify-start gap-3 p-0">
-				<input
-					type="checkbox"
-					class="toggle toggle-sm toggle-primary"
-					bind:checked={backgroundScan}
-					disabled={!upgradeAllowed}
-				/>
-				<span class="label-text">Scan for upgrades in the background</span>
-			</label>
-			<p class="text-xs text-base-content/60">
-				A slow periodic sweep that queues a few upgrades at a time. When off, upgrades run only when
-				you trigger them.
+				When on, a better copy of something below your cutoff replaces the file you have, and the
+				original moves to the recycle bin. Upgrades run when you trigger them.
 			</p>
 			<label class="form-control max-w-xs">
 				<span class="label-text">Upgrade until quality reaches</span>

@@ -2211,9 +2211,6 @@ export interface DownloadPolicySettings {
 	default_request_quota_count: number;
 	default_request_quota_days: number;
 	default_storage_quota_gb: number;
-	background_upgrade_scan_enabled: boolean;
-	background_upgrade_scan_interval_hours: number;
-	background_upgrade_max_per_run: number;
 }
 
 // Hand-mirrors backend WantedWatcherSettings (api/v1/schemas/settings.py).

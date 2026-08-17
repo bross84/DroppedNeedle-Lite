@@ -713,21 +713,9 @@ async def lifespan(app: FastAPI):
         wanted_store=get_wanted_store(),
     )
 
-    from core.tasks import (
-        start_background_upgrade_scan_task,
-        start_recycle_bin_prune_task,
-    )
+    from core.tasks import start_recycle_bin_prune_task
 
     start_recycle_bin_prune_task(preferences_service)
-
-    # NOTE: get_auth_store is already imported at module level - re-importing it here
-    # would shadow it as a function-local for ALL of lifespan and break the earlier
-    # use at startup (UnboundLocalError).
-    from core.dependencies import get_download_service
-
-    start_background_upgrade_scan_task(
-        get_download_service, get_auth_store(), preferences_service
-    )
 
     from core.tasks import start_wanted_watcher_task
     from core.dependencies import get_wanted_watcher_service

@@ -26,9 +26,6 @@ const basePolicy: DownloadPolicySettings = {
 	default_request_quota_count: 0,
 	default_request_quota_days: 7,
 	default_storage_quota_gb: 0,
-	background_upgrade_scan_enabled: false,
-	background_upgrade_scan_interval_hours: 12,
-	background_upgrade_max_per_run: 3
 };
 
 const h = vi.hoisted(() => ({
@@ -67,7 +64,7 @@ describe('SettingsDownloadPolicy upgrade controls', () => {
 		const { container } = render(SettingsDownloadPolicy);
 
 		await expect
-			.element(page.getByRole('checkbox', { name: 'Allow automatic upgrades' }))
+			.element(page.getByRole('checkbox', { name: 'Allow quality upgrades' }))
 			.toBeChecked();
 		expect(cutoffSelect(container).value).toBe('mp3_320');
 	});
@@ -76,7 +73,7 @@ describe('SettingsDownloadPolicy upgrade controls', () => {
 		h.policy = { ...basePolicy, quality_min: 'mp3_256', quality_max: 'mp3_320' };
 		const { container } = render(SettingsDownloadPolicy);
 		await expect
-			.element(page.getByRole('checkbox', { name: 'Allow automatic upgrades' }))
+			.element(page.getByRole('checkbox', { name: 'Allow quality upgrades' }))
 			.toBeVisible();
 
 		const disabledByKey = Object.fromEntries(
@@ -100,7 +97,7 @@ describe('SettingsDownloadPolicy upgrade controls', () => {
 		};
 		const { container } = render(SettingsDownloadPolicy);
 		await expect
-			.element(page.getByRole('checkbox', { name: 'Allow automatic upgrades' }))
+			.element(page.getByRole('checkbox', { name: 'Allow quality upgrades' }))
 			.toBeVisible();
 
 		expect(cutoffSelect(container).value).toBe('mp3_256');
@@ -109,7 +106,7 @@ describe('SettingsDownloadPolicy upgrade controls', () => {
 	it('saves the cutoff and toggle through the policy mutation', async () => {
 		render(SettingsDownloadPolicy);
 
-		await page.getByRole('checkbox', { name: 'Allow automatic upgrades' }).click();
+		await page.getByRole('checkbox', { name: 'Allow quality upgrades' }).click();
 		await page.getByRole('button', { name: 'Save' }).click();
 
 		expect(h.mutateAsync).toHaveBeenCalledTimes(1);
