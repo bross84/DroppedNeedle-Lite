@@ -24,7 +24,6 @@
 		Users,
 		ShieldCheck,
 		HardDriveDownload,
-		Waypoints,
 		CalendarClock,
 		DownloadCloud,
 		Gift,
@@ -75,7 +74,6 @@
 					{ id: 'lidarr-import', label: 'Lidarr Import', tier: 'setup', icon: DownloadCloud }
 				]
 			: []),
-		{ id: 'connect-apps', label: 'Connect Apps', tier: 'setup', icon: Waypoints },
 		{ id: 'jellyfin', label: 'Jellyfin', tier: 'setup', icon: JellyfinIcon },
 		{ id: 'navidrome', label: 'Navidrome', tier: 'setup', icon: NavidromeIcon },
 		{ id: 'plex', label: 'Plex', tier: 'setup', icon: PlexIcon },

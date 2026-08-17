@@ -23,7 +23,6 @@ const settingsTabLoaders: Record<string, SettingsLoader> = {
 	'download-client': () => import('./SettingsDownloadClients.svelte'),
 	indexers: () => import('./SettingsIndexers.svelte'),
 	'lidarr-import': () => import('./SettingsLidarrImport.svelte'),
-	'connect-apps': () => import('./SettingsConnectApps.svelte'),
 	jellyfin: () => import('./SettingsJellyfin.svelte'),
 	navidrome: () => import('./SettingsNavidrome.svelte'),
 	plex: () => import('./SettingsPlex.svelte'),

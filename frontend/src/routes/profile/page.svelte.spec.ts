@@ -37,29 +37,12 @@ vi.mock('$lib/queries/profile/ProfileMutations.svelte', () => ({
 }));
 
 // Sibling profile cards pull their own query graphs; stub them so the page renders in
-// isolation. ProfileConnectApps is left REAL (its queries are mocked below) so the
-// page↔section wiring is actually exercised.
+// isolation. The page↔section wiring is exercised through the navigation and anchor
+// assertions below rather than through any one card's internals.
 vi.mock('$lib/components/profile/MediaServerAccountsCard.svelte', emptyComponent);
 vi.mock('$lib/components/profile/NavidromeMusicFoldersCard.svelte', emptyComponent);
 vi.mock('$lib/components/profile/ScrobblingDiscoveryCard.svelte', emptyComponent);
 vi.mock('$lib/components/profile/SpotifyConnectionCard.svelte', emptyComponent);
-
-vi.mock('$lib/queries/connect-apps/ConnectAppsQueries.svelte', () => ({
-	getConnectAppsSettingsQuery: () => ({
-		data: { subsonic_enabled: true, jellyfin_enabled: true },
-		isLoading: false,
-		isError: false
-	}),
-	getAppPasswordsQuery: () => ({
-		data: { items: [], cap: 25, active_count: 0 },
-		isLoading: false,
-		isError: false
-	})
-}));
-vi.mock('$lib/queries/connect-apps/ConnectAppsMutations.svelte', () => ({
-	createAppPassword: mutationStub,
-	revokeAppPassword: mutationStub
-}));
 
 vi.mock('$lib/stores/authStore.svelte', () => ({
 	authStore: {
@@ -75,7 +58,7 @@ vi.mock('$lib/utils/logout', () => ({ logout: vi.fn() }));
 vi.mock('$lib/queries/QueryClient', () => ({ invalidateQueriesWithPersister: vi.fn() }));
 vi.mock('$lib/stores/toast', () => ({ toastStore: { show: vi.fn() } }));
 vi.mock('$app/environment', () => ({ browser: true }));
-vi.mock('$app/state', () => ({ page: { url: new URL('http://localhost/profile#connect-apps') } }));
+vi.mock('$app/state', () => ({ page: { url: new URL('http://localhost/profile#scrobbling') } }));
 
 import ProfilePage from './+page.svelte';
 
@@ -86,13 +69,6 @@ beforeEach(() => {
 afterEach(() => scrollSpy.mockRestore());
 
 describe('profile route page', () => {
-	it('wires the Connect Apps section into the profile', async () => {
-		render(ProfilePage);
-		await expect
-			.element(page.getByRole('heading', { name: 'Connect Apps', level: 2 }))
-			.toBeInTheDocument();
-	});
-
 	it('lists the visible profile sections in the page navigation', async () => {
 		render(ProfilePage);
 		const navigation = page.getByRole('navigation', { name: 'Page sections' });
@@ -100,17 +76,14 @@ describe('profile route page', () => {
 		await expect
 			.element(navigation.getByRole('link', { name: 'Connected Services' }))
 			.toBeInTheDocument();
-		await expect
-			.element(navigation.getByRole('link', { name: 'Connect Apps' }))
-			.toBeInTheDocument();
 		await expect.element(navigation.getByRole('link', { name: 'Scrobbling' })).toBeInTheDocument();
 		await expect.element(navigation.getByRole('link', { name: 'Spotify' })).toBeInTheDocument();
 	});
 
-	it('scrolls to the #connect-apps anchor on a cold deep-link once profile has rendered', async () => {
+	it('scrolls to the #scrobbling anchor on a cold deep-link once profile has rendered', async () => {
 		render(ProfilePage);
 		// the effect fires after profile resolves + one animation frame
 		await vi.waitFor(() => expect(scrollSpy).toHaveBeenCalled());
-		expect(document.getElementById('connect-apps')).not.toBeNull();
+		expect(document.getElementById('scrobbling')).not.toBeNull();
 	});
 });

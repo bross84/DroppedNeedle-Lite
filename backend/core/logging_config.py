@@ -30,7 +30,3 @@ def configure_logging() -> None:
     )
     logging.basicConfig(level=logging.INFO, handlers=[handler])
     logging.getLogger("httpx").setLevel(logging.WARNING)
-
-    from api.compat.common.redact import install_uvicorn_access_credential_filter
-
-    install_uvicorn_access_credential_filter()

@@ -44,7 +44,6 @@
 	import NavidromeMusicFoldersCard from '$lib/components/profile/NavidromeMusicFoldersCard.svelte';
 	import ScrobblingDiscoveryCard from '$lib/components/profile/ScrobblingDiscoveryCard.svelte';
 	import SpotifyConnectionCard from '$lib/components/profile/SpotifyConnectionCard.svelte';
-	import ProfileConnectApps from '$lib/components/profile/ProfileConnectApps.svelte';
 	import PageSectionToc from '$lib/components/PageSectionToc.svelte';
 	import { page } from '$app/state';
 	import { browser } from '$app/environment';
@@ -86,14 +85,13 @@
 			{ id: 'connected-services', label: 'Connected Services' },
 			...(mediaAccountsEnabled ? [{ id: 'media-accounts', label: 'Media Accounts' }] : []),
 			...(navidromeEnabled ? [{ id: 'navidrome-music-folders', label: 'Music Folders' }] : []),
-			{ id: 'connect-apps', label: 'Connect Apps' },
 			{ id: 'scrobbling', label: 'Scrobbling' },
 			{ id: 'spotify', label: 'Spotify' },
 			...(profile.library_stats.length > 0 ? [{ id: 'libraries', label: 'Your Libraries' }] : [])
 		];
 	});
 
-	// Scroll to a deep-link anchor (e.g. /profile#connect-apps) once the async
+	// Scroll to a deep-link anchor (e.g. /profile#scrobbling) once the async
 	// profile content has rendered. SvelteKit's built-in scroll fires before the
 	// {#if profile} body exists on a cold nav, so nothing scrolls without this.
 	let scrolledToHash: string | null = null;
@@ -769,10 +767,6 @@
 
 				<div id="navidrome-music-folders" class="scroll-mt-24 xl:ml-40">
 					<NavidromeMusicFoldersCard {userId} />
-				</div>
-
-				<div id="connect-apps" class="scroll-mt-24 xl:ml-40">
-					<ProfileConnectApps />
 				</div>
 
 				<div id="scrobbling" class="scroll-mt-24 xl:ml-40">

@@ -19,7 +19,7 @@
 
 ---
 
-DroppedNeedle is a self-hosted music request and discovery app with a **built-in native library and download engine** (no Lidarr required). Search the full MusicBrainz catalogue, request whole albums or single tracks, and let the engine index your library while it drives downloads through your own slskd or Usenet/SABnzbd. Its optional Library Management system can write tags and organize files after an administrator previews and enables it. Stream from Jellyfin, Navidrome, Plex, or your local files, get recommendations from your listening history, and scrobble to ListenBrainz and Last.fm. Play your library in third-party apps like Symfonium and Finamp over the OpenSubsonic and Jellyfin APIs. It all runs as a single Docker container, configured from the web UI.
+DroppedNeedle is a self-hosted music request and discovery app with a **built-in native library and download engine** (no Lidarr required). Search the full MusicBrainz catalogue, request whole albums or single tracks, and let the engine index your library while it drives downloads through your own slskd or Usenet/SABnzbd. Its optional Library Management system can write tags and organize files after an administrator previews and enables it. Stream from Jellyfin, Navidrome, Plex, or your local files, get recommendations from your listening history, and scrobble to ListenBrainz and Last.fm. It all runs as a single Docker container, configured from the web UI.
 
 ---
 
@@ -488,14 +488,6 @@ The player supports queue management, shuffle, seek, volume control, a 10-band e
 
 What you are playing is broadcast live over SSE. Other signed-in users see the current track in real time.
 
-### Connect Apps
-
-Third-party music apps can play your library straight from DroppedNeedle, which speaks both the OpenSubsonic and Jellyfin APIs. It is the inbound counterpart to the Jellyfin, Navidrome, and Plex sources: those let DroppedNeedle play from another server, while this lets other apps play from DroppedNeedle.
-
-Turn on either protocol in Settings > Connect Apps and create an app-password, a separate revocable secret for one app so your account password stays private. In the app, enter your server URL with `/subsonic` or `/jellyfin` on the end (for example `https://music.example.com/jellyfin`), your username, and the app-password. Each user manages their own.
-
-Tested with Symfonium, Feishin, and Amperfy over Subsonic, and Finamp, Jellify, Manet, and Symfonium's Jellyfin mode over Jellyfin. When a client asks for a codec the file isn't already in, DroppedNeedle transcodes on the fly if transcoding is enabled; otherwise it sends the original file.
-
 ### Discovery
 
 The home page shows trending artists, popular albums, recently added items, genre quick-links, weekly exploration playlists from ListenBrainz, and "Because You Listened To" carousels personalized to your history.
@@ -626,7 +618,6 @@ is not a way to override permissions supplied by a download client.
 | Library paths, naming template, scan schedule, AcoustID key | Settings > Library |
 | Library Management profiles, root assignments, automatic triggers, previews, recovery, and history | Library Management |
 | slskd URL and API key, SABnzbd/Usenet URL and API key, Newznab indexers, quality tiers, verification, wanted watcher | Settings > Download Client |
-| OpenSubsonic and Jellyfin APIs that let apps stream your library, app-passwords, transcoding | Settings > Connect Apps |
 | Jellyfin URL and API key | Settings > Jellyfin |
 | Navidrome URL and credentials | Settings > Navidrome |
 | Plex URL, token (OAuth or manual), music libraries, scrobble toggle | Settings > Plex |

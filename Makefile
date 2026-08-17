@@ -16,9 +16,6 @@ NPM    ?= pnpm
 .PHONY: \
 	help \
 	backend-venv backend-lint backend-test \
-	test-compat backend-test-compat \
-	backend-test-compat-subsonic backend-test-compat-jellyfin backend-test-compat-streaming \
-	frontend-test-connect-apps \
 	backend-test-album-refresh \
 	backend-test-artist-monitoring \
 	backend-test-artist-page \
@@ -91,8 +88,7 @@ NPM    ?= pnpm
 	backend-test-content-enrichment \
 	backend-test-username-login \
 	backend-test-user-import \
-	backend-test-subsonic-security backend-test-subsonic-hosted backend-test-navidrome-folders \
-	test-subsonic \
+	backend-test-navidrome-folders \
 	backend-test-peer-review-fixes \
 	backend-test-upgrade-path-reconciliation \
 	backend-test-feedback-fixes \
@@ -172,24 +168,6 @@ backend-test: $(BACKEND_VENV_STAMP) ## Run all backend tests
 				"$$((start + 1))" "$$end" "$${#test_files[@]}"; \
 			.venv/bin/python -m pytest "$${test_files[@]:start:batch_size}" || exit $$?; \
 		done
-
-backend-test-compat: $(BACKEND_VENV_STAMP) ## Connect Apps: all compat backend tests (auth, serializers, endpoints, streaming, mapping, errors)
-	$(PYTEST) tests/compat -v
-
-backend-test-compat-subsonic: $(BACKEND_VENV_STAMP) ## Connect Apps: Subsonic shim only
-	$(PYTEST) tests/compat/test_subsonic_*.py -v
-
-backend-test-compat-jellyfin: $(BACKEND_VENV_STAMP) ## Connect Apps: Jellyfin shim only
-	$(PYTEST) tests/compat/test_jellyfin_*.py -v
-
-backend-test-compat-streaming: $(BACKEND_VENV_STAMP) ## Connect Apps: streaming + transcode (ffprobe-gated)
-	$(PYTEST) tests/compat/test_subsonic_streaming.py tests/compat/test_jellyfin_stream.py tests/compat/test_transcode_service.py -v
-
-frontend-test-connect-apps: ## Connect Apps: SettingsConnectApps component + data-layer tests
-	cd "$(FRONTEND_DIR)" && $(NPM) exec vitest run --project client src/lib/components/settings/SettingsConnectApps.svelte.spec.ts
-	cd "$(FRONTEND_DIR)" && $(NPM) exec vitest run --project server src/lib/queries/connect-apps
-
-test-compat: backend-test-compat frontend-test-connect-apps ## Connect Apps: full backend + frontend suite
 
 backend-test-album-refresh: $(BACKEND_VENV_STAMP) ## Run album refresh endpoint tests
 	$(PYTEST) tests/routes/test_album_refresh.py tests/services/test_navidrome_cache_invalidation.py -v
@@ -300,20 +278,12 @@ backend-test-scrobble: $(BACKEND_VENV_STAMP) ## Run per-user scrobble service + 
 backend-test-connections: $(BACKEND_VENV_STAMP) ## Run per-user connection stores + factory + /me routes + D10 backfill tests
 	$(PYTEST) tests/infrastructure/test_user_connections_store.py tests/infrastructure/test_user_listening_prefs_store.py tests/infrastructure/test_play_history_store.py tests/services/test_per_user_client_factory.py tests/routes/test_me_connections.py tests/services/test_global_connection_backfill.py tests/services/test_media_server_auto_link.py -v
 
-backend-test-subsonic-security: $(BACKEND_VENV_STAMP) ## Hosted compat credential logging, limits, strict parameters, and stream resources
-	$(PYTEST) tests/compat/test_security.py tests/compat/test_subsonic_parameters.py tests/compat/test_stream_concurrency.py tests/compat/test_transcode_service.py tests/compat/test_subsonic_streaming.py -v
-
-backend-test-subsonic-hosted: $(BACKEND_VENV_STAMP) ## Hosted Subsonic/OpenSubsonic contracts and native capability stores/services
-	$(PYTEST) tests/compat tests/infrastructure/test_compat_playback_state_stores.py tests/infrastructure/test_library_rich_metadata_schema.py tests/services/test_native_lyrics_service.py tests/services/test_playback_report_service.py tests/services/test_advanced_transcode_service.py -v
-
 backend-test-navidrome-folders: $(BACKEND_VENV_STAMP) ## Issue #120 per-user Navidrome folder persistence, service, repository, and routes
 	$(PYTEST) tests/infrastructure/test_navidrome_folder_preferences_store.py tests/services/test_navidrome_folder_scope_service.py tests/services/test_navidrome_library_service.py tests/services/test_library_service.py tests/services/test_library_track_resolution.py tests/services/test_playlist_service.py tests/services/test_playlist_source_resolution.py tests/services/test_source_playlist_import.py tests/services/test_local_files_service.py tests/repositories/test_navidrome_repository.py tests/routes/test_navidrome_preferences_routes.py tests/routes/test_navidrome_routes.py -v
 
 frontend-test-navidrome-folders: frontend-install ## Issue #120 Profile query/UI and route integration coverage
 	cd "$(FRONTEND_DIR)" && $(NPM) exec vitest run --project server src/lib/queries/navidrome-folders src/lib/queries/__tests__/integration-coverage.spec.ts
 	cd "$(FRONTEND_DIR)" && $(NPM) exec vitest run --project client src/lib/components/profile/NavidromeMusicFoldersCard.svelte.spec.ts src/routes/profile/page.svelte.spec.ts
-
-test-subsonic: backend-test-subsonic-security backend-test-subsonic-hosted backend-test-navidrome-folders frontend-test-navidrome-folders ## Complete focused Subsonic and issue #120 verification
 
 backend-test-deep-discovery: $(BACKEND_VENV_STAMP) ## Run deep discovery and analytics tests
 	$(PYTEST) tests/services/test_deep_discovery.py -v
@@ -568,7 +538,6 @@ backend-test-upgrade-path-reconciliation: $(BACKEND_VENV_STAMP) ## Run automatic
 
 backend-test-feedback-fixes: $(BACKEND_VENV_STAMP) ## Feedback Fixes focused backend tests
 	$(PYTEST) tests/services/native tests/benchmarks \
-		tests/compat/test_feedback_fixes_contract.py \
 		tests/infrastructure/test_native_library_store.py \
 		tests/infrastructure/test_native_library_store_dependencies.py \
 		tests/infrastructure/test_legacy_catalog_importer.py \
@@ -618,7 +587,6 @@ backend-test-feedback-fixes: $(BACKEND_VENV_STAMP) ## Feedback Fixes focused bac
 		tests/routes/test_target_library_scan_routes.py \
 		tests/routes/test_target_library_routes.py \
 		tests/routes/test_target_application.py \
-		tests/compat/test_subsonic_scan.py \
 		tests/test_auto_scan_task.py \
 		tests/test_cache_cleanup.py \
 		tests/test_lastfm_cache_invalidation.py \
@@ -629,8 +597,6 @@ backend-test-local-only-mbsub-phase1: $(BACKEND_VENV_STAMP) ## Local-only catalo
 	$(PYTEST) tests/routes/test_target_library_routes.py \
 		tests/services/native/test_target_consumer_services.py \
 		tests/infrastructure/test_native_library_store.py \
-		tests/compat/test_subsonic_browsing.py \
-		tests/compat/test_jellyfin_browsing.py \
 		tests/security/test_auth_on_every_endpoint.py -v
 
 backend-test-local-only-mbsub-phase2: $(BACKEND_VENV_STAMP) ## Local-only contribution Phase 2 backend tests
@@ -671,8 +637,6 @@ backend-test-local-only-mbsub-phase6: $(BACKEND_VENV_STAMP) ## Local-only contri
 		tests/services/native/test_library_contribution_discogs.py \
 		tests/services/native/test_library_contribution_verification_worker.py \
 		tests/infrastructure/test_library_contribution_store.py \
-		tests/compat/test_subsonic_browsing.py \
-		tests/compat/test_jellyfin_browsing.py \
 		tests/routes/test_library_contribution_routes.py \
 		tests/security/test_auth_on_every_endpoint.py -v
 

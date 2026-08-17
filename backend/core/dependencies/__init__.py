@@ -343,29 +343,9 @@ from .type_aliases import (  # noqa: F401
 )
 
 from .compat_providers import (  # noqa: F401
-    get_app_password_store,
-    get_app_password_service,
-    get_favorites_store,
-    get_favorites_service,
-    get_compat_id_map_store,
-    get_compat_id_map_service,
-    get_library_view_service,
-    get_compat_scrobble_adapter,
-    get_compat_discover_service,
-    get_compat_play_queue_store,
-    get_compat_play_queue_service,
-    get_compat_bookmark_store,
-    get_compat_bookmark_service,
     get_native_lyrics_service,
     get_compat_avatar_service,
-    get_playback_report_service,
-    get_compat_scan_service,
-    get_advanced_transcode_service,
     get_target_consumer_composition,
-    get_target_compat_scan_service,
-    get_target_compat_services,
-    get_stream_concurrency_service,
-    get_transcode_service,
 )
 
 from .cleanup import (  # noqa: F401

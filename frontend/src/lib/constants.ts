@@ -759,13 +759,6 @@ export const API = {
 		sourcePriority: () => '/api/v1/download-clients/source-priority',
 		wanted: () => '/api/v1/download-clients/wanted'
 	},
-	connectApps: {
-		settings: () => '/api/v1/connect-apps/settings',
-		appPasswords: () => '/api/v1/connect-apps/app-passwords',
-		appPassword: (id: string) => `/api/v1/connect-apps/app-passwords/${id}`,
-		adminAppPasswords: () => '/api/v1/connect-apps/admin/app-passwords',
-		adminAppPassword: (id: string) => `/api/v1/connect-apps/admin/app-passwords/${id}`
-	},
 	downloads: {
 		activitySummary: () => '/api/v1/downloads/activity-summary',
 		searchAlbum: () => '/api/v1/downloads/search/album',

@@ -15,7 +15,6 @@ _PREFERENCES_OWNED_CONFIG_KEYS = frozenset(
         "_internal",
         "_legacy_lidarr",
         "advanced_settings",
-        "connect_apps",
         "download_client",
         "download_clients",
         "download_policy",

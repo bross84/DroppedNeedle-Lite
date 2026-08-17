@@ -44,22 +44,6 @@ describe('library route page', () => {
 			.toHaveAttribute('href', '/library/local');
 	});
 
-	it('points a non-admin to their own Profile for Connect Apps', async () => {
-		authStore.setUser(user('user'));
-		render(LibraryPage);
-		await expect
-			.element(page.getByRole('link', { name: 'Connect Apps' }))
-			.toHaveAttribute('href', '/profile#connect-apps');
-	});
-
-	it('points an admin to their Profile for Connect Apps', async () => {
-		authStore.setUser(user('admin'));
-		render(LibraryPage);
-		await expect
-			.element(page.getByRole('link', { name: 'Connect Apps' }))
-			.toHaveAttribute('href', '/profile#connect-apps');
-	});
-
 	it('links Controls to Library Management for administrators', async () => {
 		authStore.setUser(user('admin'));
 		render(LibraryPage);

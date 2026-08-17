@@ -19,7 +19,6 @@ from unittest.mock import AsyncMock
 
 from fastapi import APIRouter, FastAPI, HTTPException
 
-from api.v1.routes import connect_apps_routes
 from api.v1.routes import auth as auth_routes
 from api.v1.routes import download_client as download_client_routes
 from api.v1.routes import download_clients as download_clients_routes
@@ -50,7 +49,6 @@ from api.v1.routes import stream as stream_routes
 from api.v1.routes import system as system_routes
 from api.v1.routes import tracks as tracks_routes
 from core.dependencies import (
-    get_app_password_service,
     get_auth_service,
     get_auth_store,
     get_cache,
@@ -115,7 +113,6 @@ from middleware import _get_current_admin, _get_current_curator, _get_current_us
 from tests.helpers import build_test_client, mock_admin_user, mock_user
 
 _SERVICE_PROVIDERS = (
-    get_app_password_service,
     get_auth_service,
     get_auth_store,
     get_cache,
@@ -247,9 +244,6 @@ _ADMIN_ENDPOINTS = [
         {"expected_row_revision": 1},
     ),
     ("POST", "/api/v1/auth/admin/users/user-1/password-recovery", None),
-    # Connect Apps admin oversight: see/revoke every user's app-passwords.
-    ("GET", "/api/v1/connect-apps/admin/app-passwords", None),
-    ("DELETE", "/api/v1/connect-apps/admin/app-passwords/ap-1", None),
     ("POST", "/api/v1/library/scan/start", None),
     ("POST", "/api/v1/library/scan/cancel", None),
     ("GET", "/api/v1/library/scan/unmatched", None),
@@ -904,7 +898,6 @@ def _client(scenario: str):
         library_policy_routes.router,
         me_routes.router,
         navidrome_preferences_routes.router,
-        connect_apps_routes.router,
         discovery_batches_routes.router,
         system_routes.router,
         playlists_routes.router,
