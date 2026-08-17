@@ -1037,7 +1037,7 @@
 					</div>
 					<h2 class="text-lg font-semibold mb-1.5 text-base-content/50">Upgrades are off</h2>
 					<p class="text-base-content/30 text-sm max-w-xs">
-						Turn on "Allow automatic upgrades" in Settings → Download Clients to list albums below
+						Turn on "Allow quality upgrades" in Settings → Download Clients to list albums below
 						your quality cutoff.
 					</p>
 					{#if authStore.isAdmin}
