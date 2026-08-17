@@ -15,7 +15,6 @@ from core.task_registry import TaskRegistry
 from infrastructure.sse_publisher import KEEPALIVE, SSEPublisher
 from infrastructure.queue.durable_work_wakeup import DurableWorkWakeups
 from models.library_work import ScanRun, ScanRunSnapshot, ScanScope
-from services.compat.target_scan_service import TargetCompatScanService
 from services.native.library_scan_events import LibraryScanEventPublisher
 from services.native.library_inventory_scanner import LibraryInventoryScanner
 from services.native.library_operation_supervisor import LibraryOperationSupervisor
@@ -40,40 +39,6 @@ from services.native.background_workload_gate import BackgroundWorkloadGate
 
 
 @pytest.mark.asyncio
-async def test_subsonic_target_projection_uses_only_the_coordinator() -> None:
-    coordinator = AsyncMock()
-    coordinator.current.return_value = [
-        ScanRun(
-            id="run-1",
-            kind="incremental",
-            trigger="subsonic",
-            state="indexing",
-            phase="indexing",
-        )
-    ]
-    coordinator.snapshot.return_value = ScanRunSnapshot(
-        run=coordinator.current.return_value[0], counters={"inspected_count": 42}
-    )
-    resolver = SimpleNamespace(
-        policy_revision="policy-1",
-        settings=SimpleNamespace(
-            library_roots=[
-                SimpleNamespace(id="root-a", path="/music", policy="automatic")
-            ]
-        ),
-    )
-    service = TargetCompatScanService(coordinator, lambda: resolver)
-
-    await service.start()
-    scanning, count = await service.status()
-
-    request = coordinator.request_run.await_args.args[0]
-    assert request.trigger == "subsonic"
-    assert request.scopes[0].root_id == "root-a"
-    assert scanning is True
-    assert count == 42
-
-
 @pytest.mark.asyncio
 async def test_supervisor_fetches_the_current_coordinator_each_iteration() -> None:
     coordinators = [AsyncMock(), AsyncMock(), AsyncMock()]
@@ -479,12 +444,6 @@ async def test_scan_event_reconnect_gets_latest_and_idle_stream_heartbeats() -> 
     idle = bus.subscribe("unused", keepalive_interval=0.001)
     assert await anext(idle) == KEEPALIVE
     await idle.aclose()
-
-
-def test_target_compat_module_has_no_legacy_scanner_dependency() -> None:
-    module = __import__("services.compat.target_scan_service", fromlist=["unused"])
-    names = set(module.__dict__)
-    assert "LibraryScanner" not in names
 
 
 @pytest.mark.asyncio

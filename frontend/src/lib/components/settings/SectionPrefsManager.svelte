@@ -175,7 +175,7 @@
 									</div>
 									{#if !section.available && section.requires}
 										<a
-											href="/settings?tab=connect-apps"
+											href="/profile#scrobbling"
 											class="link flex shrink-0 items-center gap-1 text-xs text-primary/80"
 										>
 											Connect {section.requires === 'listenbrainz'

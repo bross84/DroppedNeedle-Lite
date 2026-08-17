@@ -387,32 +387,3 @@ class RegistrationError(DroppedNeedleException):
     pass
 
 
-class SubsonicError(DroppedNeedleException):
-    """Inbound OpenSubsonic failure -> rendered as a status=failed envelope.
-
-    Distinct from the outbound ``NavidromeSubsonicError`` (us-as-client): this is
-    us-as-server failing a compat client's request. Raised by the Subsonic shim
-    and ``AppPasswordService.verify_subsonic``; the per-shim error boundary reads
-    ``err.code``. ``code`` is the first positional so ``SubsonicError(43)`` works.
-    """
-
-    def __init__(self, code: int, message: str | None = None):
-        super().__init__(message or "", None)
-        self.code = code
-
-
-class JellyfinError(DroppedNeedleException):
-    """Inbound Jellyfin failure -> rendered as a real HTTP status code.
-
-    Distinct from the outbound Jellyfin client errors: this is us-as-server
-    failing a compat client's request. Raised by the Jellyfin shim and its auth
-    resolution; the per-shim error boundary reads ``err.status`` / ``err.body``.
-    ``status`` is the first positional so ``JellyfinError(401)`` works.
-    """
-
-    def __init__(
-        self, status: int, message: str | None = None, body: dict | None = None
-    ):
-        super().__init__(message or "", None)
-        self.status = status
-        self.body = body

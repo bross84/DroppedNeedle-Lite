@@ -34,7 +34,6 @@ from cryptography.fernet import Fernet
 import httpx
 
 from api.v1.schemas.library_policies import LibraryRootSettings, TypedLibrarySettings
-from infrastructure.persistence.app_password_store import AppPasswordStore
 from infrastructure.persistence.auth_store import AuthStore
 from infrastructure.crypto import init_crypto
 from infrastructure.persistence.maintenance_manifest import (
@@ -44,7 +43,6 @@ from infrastructure.persistence.maintenance_manifest import (
     validate_complete_manifest,
 )
 from infrastructure.persistence.native_library_store import NativeLibraryStore
-from services.compat.app_password_service import AppPasswordService
 from services.native.bounded_legacy_catalog_migrator import (
     BoundedLegacyCatalogMigrator,
 )
@@ -245,33 +243,17 @@ async def _seed_process_auth(database_path: Path) -> tuple[str, str]:
         token_hash=token_hash,
         user_agent="feedback-fixes-maintenance-rehearsal",
     )
-    app_passwords = AppPasswordService(AppPasswordStore(database_path, lock), auth)
-    _, app_secret = await app_passwords.create(
-        "alice", "Feedback Fixes maintenance rehearsal"
-    )
-    return raw_token, app_secret
+    return raw_token
 
 
 async def _http_smoke(
     *,
     base_url: str,
     bearer_token: str,
-    app_secret: str,
     database_path: Path,
     target: bool,
 ) -> dict[str, object]:
     bearer = {"Authorization": f"Bearer {bearer_token}"}
-    subsonic = {
-        "v": "1.16.1",
-        "c": "feedback-fixes-rehearsal",
-        "f": "json",
-        "apiKey": app_secret,
-    }
-    jellyfin = {
-        "Authorization": (
-            f'MediaBrowser Token="{app_secret}", ' 'Client="Feedback Fixes rehearsal"'
-        )
-    }
 
     async with httpx.AsyncClient(base_url=base_url, timeout=30) as client:
 
@@ -366,183 +348,7 @@ async def _http_smoke(
         provider_cover.raise_for_status()
         secret_status = await json_get("/api/v1/lidarr-import/status", headers=bearer)
 
-        subsonic_albums = await json_get(
-            "/subsonic/rest/getAlbumList2",
-            params={**subsonic, "type": "alphabeticalByName", "size": 100},
-        )
-        subsonic_album_items = (
-            subsonic_albums["subsonic-response"].get("albumList2", {}).get("album", [])
-        )
-        subsonic_local_results = await json_get(
-            "/subsonic/rest/search3",
-            params={
-                **subsonic,
-                "query": "Local Album",
-                "artistCount": 0,
-                "albumCount": 10,
-                "songCount": 0,
-            },
-        )
-        subsonic_compilation_results = await json_get(
-            "/subsonic/rest/search3",
-            params={
-                **subsonic,
-                "query": "Compilation",
-                "artistCount": 0,
-                "albumCount": 10,
-                "songCount": 0,
-            },
-        )
-        subsonic_local_items = (
-            subsonic_local_results["subsonic-response"]
-            .get("searchResult3", {})
-            .get("album", [])
-        )
-        subsonic_compilation_items = (
-            subsonic_compilation_results["subsonic-response"]
-            .get("searchResult3", {})
-            .get("album", [])
-        )
-        subsonic_local_album = next(
-            (
-                item
-                for item in subsonic_local_items
-                if item.get("name") == "Local Album"
-            ),
-            None,
-        )
-        subsonic_local_track = None
-        subsonic_playback = None
-        subsonic_play_album = (
-            subsonic_local_album
-            if target
-            else next(
-                (
-                    item
-                    for item in subsonic_compilation_items
-                    if item.get("name") == "Compilation"
-                ),
-                None,
-            )
-        )
-        if subsonic_play_album is not None:
-            subsonic_detail = await json_get(
-                "/subsonic/rest/getAlbum",
-                params={**subsonic, "id": subsonic_play_album["id"]},
-            )
-            songs = (
-                subsonic_detail["subsonic-response"].get("album", {}).get("song", [])
-            )
-            subsonic_local_track = songs[0] if songs else None
-            if subsonic_local_track is not None:
-                subsonic_playback = await client.get(
-                    "/subsonic/rest/stream",
-                    params={**subsonic, "id": subsonic_local_track["id"]},
-                    headers={"Range": "bytes=0-3"},
-                )
-                subsonic_playback.raise_for_status()
-        identified_subsonic = next(
-            item
-            for item in subsonic_compilation_items
-            if item.get("name") == "Compilation"
-        )
-        subsonic_cover = await client.get(
-            "/subsonic/rest/getCoverArt",
-            params={**subsonic, "id": identified_subsonic["coverArt"]},
-        )
-        subsonic_cover.raise_for_status()
 
-        jellyfin_albums = await json_get(
-            "/jellyfin/Items",
-            params={"IncludeItemTypes": "MusicAlbum", "Limit": 100},
-            headers=jellyfin,
-        )
-        await json_get(
-            "/jellyfin/Items",
-            params={"IncludeItemTypes": "Audio", "Limit": 200},
-            headers=jellyfin,
-        )
-        jellyfin_local_albums = await json_get(
-            "/jellyfin/Items",
-            params={
-                "IncludeItemTypes": "MusicAlbum",
-                "Limit": 10,
-                "SearchTerm": "Local Album",
-            },
-            headers=jellyfin,
-        )
-        jellyfin_local_tracks = await json_get(
-            "/jellyfin/Items",
-            params={
-                "IncludeItemTypes": "Audio",
-                "Limit": 10,
-                "SearchTerm": "Local Album",
-            },
-            headers=jellyfin,
-        )
-        jellyfin_compilation_albums = await json_get(
-            "/jellyfin/Items",
-            params={
-                "IncludeItemTypes": "MusicAlbum",
-                "Limit": 10,
-                "SearchTerm": "Compilation",
-            },
-            headers=jellyfin,
-        )
-        jellyfin_compilation_tracks = await json_get(
-            "/jellyfin/Items",
-            params={
-                "IncludeItemTypes": "Audio",
-                "Limit": 10,
-                "SearchTerm": "Compilation",
-            },
-            headers=jellyfin,
-        )
-        jellyfin_local_album = next(
-            (
-                item
-                for item in jellyfin_local_albums["Items"]
-                if item.get("Name") == "Local Album"
-            ),
-            None,
-        )
-        jellyfin_local_track = next(
-            (
-                item
-                for item in jellyfin_local_tracks["Items"]
-                if item.get("Album") == "Local Album"
-            ),
-            None,
-        )
-        jellyfin_play_track = (
-            jellyfin_local_track
-            if target
-            else next(
-                (
-                    item
-                    for item in jellyfin_compilation_tracks["Items"]
-                    if item.get("Album") == "Compilation"
-                ),
-                None,
-            )
-        )
-        jellyfin_playback = None
-        if jellyfin_play_track is not None:
-            jellyfin_playback = await client.get(
-                f"/jellyfin/Audio/{jellyfin_play_track['Id']}/stream",
-                params={"static": "true", "ApiKey": app_secret},
-                headers={"Range": "bytes=0-3"},
-            )
-            jellyfin_playback.raise_for_status()
-        identified_jellyfin = next(
-            item
-            for item in jellyfin_compilation_albums["Items"]
-            if item.get("Name") == "Compilation"
-        )
-        jellyfin_cover = await client.get(
-            f"/jellyfin/Items/{identified_jellyfin['Id']}/Images/Primary"
-        )
-        jellyfin_cover.raise_for_status()
 
         cached_native_cover_status = None
         if target:
@@ -573,50 +379,26 @@ async def _http_smoke(
         value is local_expected
         for value in (
             native_local_album is not None,
-            subsonic_local_album is not None,
-            jellyfin_local_album is not None,
         )
     )
     return {
         "authenticated_native_status": 200,
         "native_album_count": int(albums["total"]),
-        "subsonic_album_count": len(subsonic_album_items),
-        "jellyfin_album_count": int(jellyfin_albums["TotalRecordCount"]),
         "local_only_expected": local_expected,
         "local_only_native": native_local_album is not None,
-        "local_only_subsonic": subsonic_local_album is not None,
-        "local_only_jellyfin": jellyfin_local_album is not None,
         "local_only_browse_consistent": local_browse_consistent,
         "native_range_status": (
             native_playback.status_code if native_playback is not None else None
         ),
-        "subsonic_range_status": (
-            subsonic_playback.status_code if subsonic_playback is not None else None
-        ),
-        "jellyfin_range_status": (
-            jellyfin_playback.status_code if jellyfin_playback is not None else None
-        ),
         "native_playback_prefix_ok": (
             native_playback.content == b"fLaC" if native_playback is not None else None
         ),
-        "subsonic_playback_prefix_ok": (
-            subsonic_playback.content == b"fLaC"
-            if subsonic_playback is not None
-            else None
-        ),
-        "jellyfin_playback_prefix_ok": (
-            jellyfin_playback.content == b"fLaC"
-            if jellyfin_playback is not None
-            else None
-        ),
         "playlist_artwork_status": playlist_cover.status_code,
         "provider_artwork_status": provider_cover.status_code,
-        "subsonic_artwork_status": subsonic_cover.status_code,
-        "jellyfin_artwork_status": jellyfin_cover.status_code,
         "cached_native_artwork_status": cached_native_cover_status,
         "restored_artwork_bytes_match": all(
             response.content.startswith(b"\x89PNG\r\n\x1a\n")
-            for response in (provider_cover, subsonic_cover, jellyfin_cover)
+            for response in (provider_cover,)
         )
         and playlist_cover.content.startswith(b"\xff\xd8\xff"),
         "paired_secret_loaded_by_application": secret_status.get("configured") is True,
@@ -831,7 +613,6 @@ async def run(
             # production-shaped artifact. Non-zero mapping for both kinds is covered by
             # the focused importer suite.
             connection.execute("DELETE FROM album_release_pins")
-            connection.execute("DELETE FROM compat_bookmarks")
 
         key = Fernet.generate_key()
         environment_path = config_dir / ".env"
@@ -839,17 +620,13 @@ async def run(
         environment_path.chmod(0o600)
         os.environ["DATA_ENC_KEY"] = key.decode()
         init_crypto(config_dir)
-        bearer_token, app_secret = await _seed_process_auth(source_database)
+        bearer_token = await _seed_process_auth(source_database)
         encrypted_probe = Fernet(key).encrypt(b"paired-secret-probe").decode()
         config_path = config_dir / "config.json"
         config_path.write_text(
             json.dumps(
                 {
                     "schema_version": 1,
-                    "connect_apps": {
-                        "subsonic_enabled": True,
-                        "jellyfin_enabled": True,
-                    },
                     "library_scan_schedule": {"scan_frequency": "manual"},
                     "lidarr_import": {
                         "url": "http://127.0.0.1:9",
@@ -880,7 +657,6 @@ async def run(
             live_source_smoke = await _http_smoke(
                 base_url=source_url,
                 bearer_token=bearer_token,
-                app_secret=app_secret,
                 database_path=source_database,
                 target=False,
             )
@@ -969,7 +745,6 @@ async def run(
             source_smoke = await _http_smoke(
                 base_url=restored_url,
                 bearer_token=bearer_token,
-                app_secret=app_secret,
                 database_path=rollback_database,
                 target=False,
             )
@@ -1046,7 +821,6 @@ async def run(
             target_smoke = await _http_smoke(
                 base_url=target_url,
                 bearer_token=bearer_token,
-                app_secret=app_secret,
                 database_path=migration_database,
                 target=True,
             )
@@ -1083,7 +857,6 @@ async def run(
             final_source_smoke = await _http_smoke(
                 base_url=final_url,
                 bearer_token=bearer_token,
-                app_secret=app_secret,
                 database_path=final_rollback_database,
                 target=False,
             )

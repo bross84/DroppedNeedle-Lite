@@ -16,8 +16,6 @@ import msgspec
 from fastapi import FastAPI
 from mutagen.flac import FLAC, Picture
 
-from api.compat.jellyfin.builders import JellyfinBuilder
-from api.compat.subsonic.models import to_album_id3, to_child
 from api.v1.routes import library, library_target, local_library, requests
 from api.v1.schemas.library_policies import LibraryRootSettings, TypedLibrarySettings
 from api.v1.schemas.discover import RadioPlanRequest, RadioSeedItem
@@ -44,9 +42,6 @@ from models.local_catalog import (
     LocalTrack,
 )
 from services.album_service import AlbumService
-from services.compat.favorites_service import FavoritesService
-from services.compat.id_map_service import CompatIdMapService
-from services.compat.target_library_view_service import TargetLibraryViewService
 from services.compat.target_cover_art_service import TargetCoverArtService
 from services.home.cached_local_artwork_service import CachedLocalArtworkService
 from services.local_files_service import LocalFilesService
@@ -66,8 +61,6 @@ from repositories.coverart_disk_cache import get_cache_filename
 from models.audio import AudioTag
 from services.native.target_reference_adapters import (
     TargetAlbumReleasePinStore,
-    TargetCompatIdMapStore,
-    TargetFavoritesStore,
     TargetPlayHistoryStore,
     TargetPlaylistRepository,
     TargetGenreIndex,
@@ -223,35 +216,14 @@ async def target_services(tmp_path: Path):
             "VALUES (?, 'embedded', ?, 3)",
             (LOCAL_ALBUM_ID, LOCAL_TRACK_ID),
         )
-    favorites = FavoritesService(TargetFavoritesStore(store))
     history = TargetPlayHistoryStore(store)
-    view = TargetLibraryViewService(store, favorites, history)
-    return store, view, favorites, history, root
+    return store, history, root
 
 
 @pytest.mark.asyncio
-async def test_target_view_browses_identified_and_local_only_without_provider_leaks(
-    target_services,
-) -> None:
-    _store, view, _favorites, _history, _root = target_services
-
-    albums, total = await view.get_albums(page_size=10)
-    by_id = {album.rg_mbid: album for album in albums}
-
-    assert total == 2
-    assert by_id[IDENTIFIED_ALBUM_ID].musicbrainz_release_group_id == RELEASE_GROUP_MBID
-    assert by_id[LOCAL_ALBUM_ID].musicbrainz_release_group_id is None
-    assert to_album_id3(by_id[IDENTIFIED_ALBUM_ID]).musicBrainzId == RELEASE_GROUP_MBID
-    assert to_album_id3(by_id[LOCAL_ALBUM_ID]).musicBrainzId is None
-
-    local_tracks = await view.get_album_tracks(LOCAL_ALBUM_ID)
-    assert [track.file_id for track in local_tracks] == [LOCAL_TRACK_ID]
-    assert to_child(local_tracks[0]).musicBrainzId is None
-
-
 @pytest.mark.asyncio
 async def test_target_stats_count_local_only_albums(target_services) -> None:
-    store, _view, _favorites, _history, _root = target_services
+    store, _history, _root = target_services
     stats = await TargetNativeLibraryService(store).stats()
 
     assert stats.total_albums == 2
@@ -262,7 +234,7 @@ async def test_target_stats_count_local_only_albums(target_services) -> None:
 async def test_target_identity_states_remain_separate_from_review_status(
     target_services,
 ) -> None:
-    store, _view, _favorites, _history, _root = target_services
+    store, _history, _root = target_services
     service = TargetNativeLibraryService(store)
 
     albums, _ = await service.albums(
@@ -324,7 +296,7 @@ async def test_target_identity_states_remain_separate_from_review_status(
 async def test_album_lists_project_active_custom_edition_identity(
     target_services,
 ) -> None:
-    store, _view, _favorites, _history, _root = target_services
+    store, _history, _root = target_services
     with sqlite3.connect(store.db_path) as connection:
         connection.execute("PRAGMA foreign_keys=ON")
         connection.execute(
@@ -359,7 +331,7 @@ async def test_album_lists_project_active_custom_edition_identity(
 async def test_album_detail_projects_current_management_identity_readiness(
     target_services,
 ) -> None:
-    store, _view, _favorites, _history, _root = target_services
+    store, _history, _root = target_services
     service = TargetNativeLibraryService(store)
 
     detail = await service.album_detail(IDENTIFIED_ALBUM_ID)
@@ -427,7 +399,7 @@ def test_management_identity_readiness_rejects_duplicate_release_tracks() -> Non
 async def test_artist_album_projection_includes_active_contribution_state(
     target_services,
 ) -> None:
-    store, _view, _favorites, _history, _root = target_services
+    store, _history, _root = target_services
     with sqlite3.connect(store.db_path) as connection:
         connection.execute(
             "INSERT INTO library_contribution_drafts "
@@ -449,7 +421,7 @@ async def test_artist_album_projection_includes_active_contribution_state(
 async def test_identified_album_is_cover_available_without_stored_url(
     target_services,
 ) -> None:
-    store, _view, _favorites, _history, _root = target_services
+    store, _history, _root = target_services
     album = await TargetNativeLibraryService(store).album(IDENTIFIED_ALBUM_ID)
 
     assert album is not None
@@ -458,7 +430,7 @@ async def test_identified_album_is_cover_available_without_stored_url(
 
 @pytest.mark.asyncio
 async def test_provider_artwork_backfill_is_idempotent(target_services) -> None:
-    store, _view, _favorites, _history, _root = target_services
+    store, _history, _root = target_services
 
     assert await store.get_local_artwork(IDENTIFIED_ALBUM_ID) is None
     assert await store.backfill_identified_provider_artwork(updated_at=10) == 1
@@ -474,7 +446,7 @@ async def test_provider_artwork_backfill_is_idempotent(target_services) -> None:
 async def test_manual_identity_release_year_backfill_is_idempotent(
     target_services,
 ) -> None:
-    store, _view, _favorites, _history, _root = target_services
+    store, _history, _root = target_services
     release_mbid = "70000000-0000-4000-8000-000000000001"
     payload = '{"date":{"precision":"year","value":"1974"}}'
     payload_hash = hashlib.sha256(payload.encode()).hexdigest()
@@ -513,7 +485,7 @@ async def test_manual_identity_release_year_backfill_is_idempotent(
 async def test_target_media_matching_projection_uses_only_target_catalog(
     target_services,
 ) -> None:
-    store, _view, _favorites, _history, _root = target_services
+    store, _history, _root = target_services
     repository = TargetLibraryRepository(store)
 
     rows = await repository.get_all_albums_for_matching()
@@ -527,7 +499,7 @@ async def test_target_media_matching_projection_uses_only_target_catalog(
 async def test_target_repository_resolves_active_provider_and_local_album_ids(
     target_services,
 ) -> None:
-    store, _view, _favorites, _history, _root = target_services
+    store, _history, _root = target_services
     repository = TargetLibraryRepository(store)
 
     assert (
@@ -549,7 +521,7 @@ async def test_target_repository_resolves_active_provider_and_local_album_ids(
 async def test_album_service_selects_by_active_target_album_file_count(
     target_services,
 ) -> None:
-    store, _view, _favorites, _history, root = target_services
+    store, _history, root = target_services
     release_group_mbid = "70000000-0000-4000-8000-000000000001"
     release_11 = "71000000-0000-4000-8000-000000000001"
     release_20 = "72000000-0000-4000-8000-000000000001"
@@ -636,7 +608,7 @@ async def test_album_service_selects_by_active_target_album_file_count(
 async def test_target_repository_projects_durable_requested_state(
     target_services,
 ) -> None:
-    store, _view, _favorites, _history, _root = target_services
+    store, _history, _root = target_services
     requests = RequestHistoryStore(store.db_path, threading.Lock())
     await requests.async_record_request(
         "requested-release", "Requested Artist", "Requested Album"
@@ -652,7 +624,7 @@ async def test_target_repository_projects_durable_requested_state(
 async def test_shared_provider_identities_aggregate_active_local_copies(
     target_services,
 ) -> None:
-    store, _view, _favorites, _history, root = target_services
+    store, _history, root = target_services
     duplicate_album_id = "10000000-0000-4000-8000-000000000090"
     duplicate_track_id = "20000000-0000-4000-8000-000000000090"
     membership = _membership(
@@ -771,7 +743,7 @@ async def test_shared_provider_identities_aggregate_active_local_copies(
 async def test_target_cover_prefers_managed_local_bytes_for_identified_album(
     target_services, tmp_path: Path
 ) -> None:
-    store, _view, _favorites, _history, _root = target_services
+    store, _history, _root = target_services
     cache_dir = tmp_path / "covers"
     cache_dir.mkdir()
     content = b"\xff\xd8\xffmanaged-local-cover"
@@ -806,7 +778,7 @@ async def test_target_cover_prefers_managed_local_bytes_for_identified_album(
 async def test_target_cover_without_managed_art_uses_only_injected_provider(
     target_services, tmp_path: Path
 ) -> None:
-    store, _view, _favorites, _history, _root = target_services
+    store, _history, _root = target_services
     provider = AsyncMock()
     provider.get_release_group_cover.return_value = (
         b"\x89PNG\r\n\x1a\nprovider",
@@ -833,7 +805,7 @@ async def test_target_cover_without_managed_art_uses_only_injected_provider(
 async def test_target_cover_distinguishes_external_and_known_local_only_ids(
     target_services, tmp_path: Path
 ) -> None:
-    store, _view, _favorites, _history, _root = target_services
+    store, _history, _root = target_services
     with sqlite3.connect(store.db_path) as connection:
         connection.execute(
             "DELETE FROM local_album_artwork WHERE local_album_id = ?",
@@ -887,7 +859,7 @@ async def test_target_cover_distinguishes_external_and_known_local_only_ids(
 async def test_target_cover_projects_provider_warming_to_local_ids(
     target_services, tmp_path: Path
 ) -> None:
-    store, _view, _favorites, _history, _root = target_services
+    store, _history, _root = target_services
     provider = AsyncMock()
     provider.get_release_group_cover.return_value = None
     provider.get_artist_image.return_value = None
@@ -913,7 +885,7 @@ async def test_target_cover_projects_provider_warming_to_local_ids(
 async def test_target_cover_forwards_provider_only_cover_operations(
     target_services, tmp_path: Path
 ) -> None:
-    store, _view, _favorites, _history, _root = target_services
+    store, _history, _root = target_services
     provider = AsyncMock()
     provider.get_release_cover.return_value = (
         b"release-cover",
@@ -957,7 +929,7 @@ async def test_target_cover_forwards_provider_only_cover_operations(
 async def test_target_genre_and_radio_pool_use_target_membership_only(
     target_services,
 ) -> None:
-    store, _view, _favorites, _history, _root = target_services
+    store, _history, _root = target_services
     with sqlite3.connect(store.db_path) as connection:
         connection.execute(
             "UPDATE local_tracks SET genre = 'Ambient', genre_folded = 'ambient' "
@@ -1039,233 +1011,11 @@ async def test_target_genre_and_radio_pool_use_target_membership_only(
 
 
 @pytest.mark.asyncio
-async def test_album_artist_ownership_and_contributor_appearances_stay_distinct(
-    target_services,
-) -> None:
-    store, view, _favorites, _history, root = target_services
-    album_artist = LocalArtist(
-        id=COMPILATION_ARTIST_ID,
-        display_name="Various Artists",
-        folded_name="various artists",
-        kind="various_artists",
-        created_at=4,
-        updated_at=4,
-    )
-    track_artist = LocalArtist(
-        id=TRACK_ARTIST_ID,
-        display_name="Compilation Guest",
-        folded_name="compilation guest",
-        kind="person",
-        created_at=4,
-        updated_at=4,
-    )
-    path = root / f"{COMPILATION_TRACK_ID}.flac"
-    path.write_bytes(b"fLaC" + b"\0" * 64)
-    album = LocalAlbum(
-        id=COMPILATION_ALBUM_ID,
-        root_id="root-1",
-        grouping_key="compilation:guest",
-        title="Compilation",
-        album_artist_id=COMPILATION_ARTIST_ID,
-        album_artist_name="Various Artists",
-        is_compilation=True,
-        created_at=4,
-        updated_at=4,
-    )
-    track = LocalTrack(
-        id=COMPILATION_TRACK_ID,
-        local_album_id=COMPILATION_ALBUM_ID,
-        root_id="root-1",
-        file_path=str(path),
-        relative_path=path.name,
-        path_hash="hash:compilation-guest",
-        file_size_bytes=path.stat().st_size,
-        file_mtime_ns=path.stat().st_mtime_ns,
-        stat_revision="stat:compilation-guest",
-        title="Guest Track",
-        artist_name="Compilation Guest",
-        album_title="Compilation",
-        album_artist_name="Various Artists",
-        file_format="flac",
-        imported_at=4,
-    )
-    other_path = root / f"{COMPILATION_OTHER_TRACK_ID}.flac"
-    other_path.write_bytes(b"fLaC" + b"\0" * 64)
-    other_track = LocalTrack(
-        id=COMPILATION_OTHER_TRACK_ID,
-        local_album_id=COMPILATION_ALBUM_ID,
-        root_id="root-1",
-        file_path=str(other_path),
-        relative_path=other_path.name,
-        path_hash="hash:compilation-other",
-        file_size_bytes=other_path.stat().st_size,
-        file_mtime_ns=other_path.stat().st_mtime_ns,
-        stat_revision="stat:compilation-other",
-        title="Other Track",
-        artist_name="Various Artists",
-        album_title="Compilation",
-        album_artist_name="Various Artists",
-        file_format="flac",
-        imported_at=4,
-    )
-    await store.create_catalog_membership(
-        CatalogMembership(
-            album=album,
-            artists=[album_artist, track_artist],
-            tracks=[track, other_track],
-            album_credits=[
-                LocalArtistCredit(local_artist_id=COMPILATION_ARTIST_ID, position=0)
-            ],
-            track_credits={
-                COMPILATION_TRACK_ID: [
-                    LocalArtistCredit(local_artist_id=TRACK_ARTIST_ID, position=0),
-                    LocalArtistCredit(local_artist_id=IDENTIFIED_ARTIST_ID, position=1),
-                ],
-                COMPILATION_OTHER_TRACK_ID: [
-                    LocalArtistCredit(local_artist_id=COMPILATION_ARTIST_ID, position=0)
-                ],
-            },
-        )
-    )
-    with sqlite3.connect(store.db_path) as connection:
-        connection.execute(
-            "INSERT INTO local_artist_external_identities "
-            "(local_artist_id, provider, provider_artist_id, decision_source, selected_at) "
-            "VALUES (?, 'musicbrainz', ?, 'manual', 4)",
-            (TRACK_ARTIST_ID, TRACK_ARTIST_MBID),
-        )
-
-    album_artists, album_artist_total = await view.get_artists(limit=50)
-    contributors, contributor_total = await view.get_artists(
-        limit=50, scope="contributors"
-    )
-    guest_detail = await view.get_artist_with_albums(TRACK_ARTIST_ID)
-    native = TargetNativeLibraryService(store)
-    guest = await native.artist(TRACK_ARTIST_ID)
-    identified = await native.artist(IDENTIFIED_ARTIST_ID)
-    guest_albums = await native.artist_albums(TRACK_ARTIST_ID)
-    (
-        appearances,
-        appearance_total,
-        appearance_track_total,
-    ) = await native.artist_appearances(TRACK_ARTIST_ID, limit=20, offset=0)
-    album_scope_count, contributor_scope_count = await native.artist_scope_counts()
-    repository = TargetLibraryRepository(store)
-    provider_artist_ids = await repository.get_artist_mbids()
-    stats = await native.stats()
-
-    assert album_artist_total == 3
-    assert {artist.artist_mbid for artist in album_artists} == {
-        IDENTIFIED_ARTIST_ID,
-        LOCAL_ARTIST_ID,
-        COMPILATION_ARTIST_ID,
-    }
-    assert contributor_total == 2
-    assert {artist.artist_mbid for artist in contributors} == {
-        IDENTIFIED_ARTIST_ID,
-        TRACK_ARTIST_ID,
-    }
-    assert guest_detail is not None
-    guest_view, owned_albums = guest_detail
-    assert guest_view.artist_mbid == TRACK_ARTIST_ID
-    assert owned_albums == []
-    assert guest is not None
-    assert guest.album_count == 0
-    assert guest.track_count == 0
-    assert guest.appearance_release_count == 1
-    assert guest.appearance_track_count == 1
-    assert guest.library_relationship == "contributor"
-    assert identified is not None
-    assert identified.library_relationship == "both"
-    assert identified.album_count == 1
-    assert identified.appearance_release_count == 1
-    assert guest_albums == []
-    assert appearance_total == 1
-    assert appearance_track_total == 1
-    assert len(appearances) == 1
-    assert appearances[0].album.id == COMPILATION_ALBUM_ID
-    assert appearances[0].album.track_count == 2
-    assert [item.id for item in appearances[0].tracks] == [COMPILATION_TRACK_ID]
-    assert (album_scope_count, contributor_scope_count) == (3, 2)
-    assert await store.target_provider_artist_relationship(ARTIST_MBID) == (True, True)
-    assert await store.target_provider_artist_relationship(TRACK_ARTIST_MBID) == (
-        False,
-        True,
-    )
-    assert provider_artist_ids == {ARTIST_MBID}
-    assert await repository.get_all_artist_mbids() == provider_artist_ids
-    assert stats.total_artists == 3
-
-    await store.mark_target_tracks_missing(
-        [COMPILATION_TRACK_ID, COMPILATION_OTHER_TRACK_ID],
-        actor_user_id=None,
-        reason_code="test_missing",
-        missing_at=5,
-    )
-    assert await repository.get_artist_mbids() == {ARTIST_MBID}
-
-
 @pytest.mark.asyncio
-async def test_target_jellyfin_provider_ids_are_optional_and_local_ids_stay_stable(
-    target_services,
-) -> None:
-    store, view, _favorites, _history, _root = target_services
-    ids = CompatIdMapService(TargetCompatIdMapStore(store))
-    covers = SimpleNamespace(
-        get_release_group_cover_etag=AsyncMock(return_value=None),
-        get_artist_image_etag=AsyncMock(return_value=None),
-    )
-    builder = JellyfinBuilder(ids, covers, "server")
-    identified = await view.get_album(IDENTIFIED_ALBUM_ID)
-    local_only = await view.get_album(LOCAL_ALBUM_ID)
-
-    identified_item = await builder.album(identified)
-    local_item = await builder.album(local_only)
-
-    assert identified_item.ProviderIds == {
-        "MusicBrainzReleaseGroup": RELEASE_GROUP_MBID
-    }
-    assert local_item.ProviderIds is None
-    assert await ids.from_jf(local_item.Id) == ("album", LOCAL_ALBUM_ID)
-
-
 @pytest.mark.asyncio
-async def test_target_references_use_local_ids_and_share_one_projection(
-    target_services,
-) -> None:
-    store, view, favorites, history, _root = target_services
-    await favorites.add("user-1", "album", LOCAL_ALBUM_ID)
-    await history.insert(
-        "user-1",
-        track_name="Local Only Track",
-        artist_name="Local Only Artist",
-        album_name="Local Only",
-        release_group_mbid=LOCAL_ALBUM_ID,
-        played_at="2026-07-14T12:00:00+00:00",
-    )
-    user = SimpleNamespace(id="user-1")
-
-    album = await view.get_album(LOCAL_ALBUM_ID, user=user)
-    track = await view.get_track(LOCAL_TRACK_ID, user=user)
-
-    assert album.starred_at is not None
-    assert album.play_count == 1
-    assert track.play_count == 1
-    with sqlite3.connect(store.db_path) as connection:
-        favorite = connection.execute(
-            "SELECT item_id FROM library_user_favorites"
-        ).fetchone()
-        played = connection.execute(
-            "SELECT local_track_id, local_album_id, local_artist_id "
-            "FROM library_play_history"
-        ).fetchone()
-    assert favorite == (LOCAL_ALBUM_ID,)
-    assert played == (LOCAL_TRACK_ID, LOCAL_ALBUM_ID, LOCAL_ARTIST_ID)
-
-
 @pytest.mark.asyncio
 async def test_target_local_file_stream_supports_ranges(target_services) -> None:
-    store, _view, _favorites, _history, root = target_services
+    store, _history, root = target_services
     preferences = SimpleNamespace(
         get_typed_library_settings=lambda: SimpleNamespace(
             library_roots=[SimpleNamespace(path=str(root))]
@@ -1287,7 +1037,7 @@ async def test_target_local_file_stream_supports_ranges(target_services) -> None
 async def test_target_local_routes_cover_full_catalog_read_surface(
     target_services,
 ) -> None:
-    store, _view, _favorites, _history, root = target_services
+    store, _history, root = target_services
     preferences = SimpleNamespace(
         get_typed_library_settings=lambda: SimpleNamespace(
             library_roots=[SimpleNamespace(path=str(root))]
@@ -1336,7 +1086,7 @@ async def test_target_local_routes_cover_full_catalog_read_surface(
 async def test_target_home_projects_identified_and_local_only_catalog_rows(
     target_services,
 ) -> None:
-    store, _view, _favorites, _history, _root = target_services
+    store, _history, _root = target_services
     repository = TargetLibraryRepository(store)
     disabled = SimpleNamespace(
         enabled=False,
@@ -1389,7 +1139,7 @@ async def test_target_home_projects_identified_and_local_only_catalog_rows(
 async def test_target_personal_mix_resolves_provider_recording_to_local_file(
     target_services,
 ) -> None:
-    store, _view, _favorites, _history, _root = target_services
+    store, _history, _root = target_services
     service = object.__new__(PersonalMixService)
     service._library_repo = TargetLibraryRepository(store)
 
@@ -1415,7 +1165,7 @@ async def test_target_personal_mix_resolves_provider_recording_to_local_file(
 async def test_target_album_archive_uses_target_rows_for_local_only_album(
     target_services,
 ) -> None:
-    store, _view, _favorites, _history, root = target_services
+    store, _history, root = target_services
     service = LocalFilesService(
         TargetLibraryRepository(store),
         SimpleNamespace(
@@ -1439,7 +1189,7 @@ async def test_target_album_archive_uses_target_rows_for_local_only_album(
 async def test_target_playlist_writes_and_legacy_track_ids_resolve_to_local_references(
     target_services, tmp_path: Path
 ) -> None:
-    store, _view, _favorites, _history, _root = target_services
+    store, _history, _root = target_services
     repository = TargetPlaylistRepository(store)
     service = PlaylistService(
         None,
@@ -1500,7 +1250,7 @@ async def test_target_playlist_writes_and_legacy_track_ids_resolve_to_local_refe
 async def test_spotify_and_personal_mix_write_only_target_playlists(
     target_services, tmp_path: Path
 ) -> None:
-    store, _view, _favorites, _history, _root = target_services
+    store, _history, _root = target_services
     repository = TargetPlaylistRepository(store)
     playlists = PlaylistService(
         None,
@@ -1579,7 +1329,7 @@ async def test_spotify_and_personal_mix_write_only_target_playlists(
 async def test_target_removal_writer_audits_without_deleting_stable_rows(
     target_services, tmp_path: Path
 ) -> None:
-    store, _view, _favorites, _history, root = target_services
+    store, _history, root = target_services
     track_id = "20000000-0000-4000-8000-000000000099"
     album_id = "10000000-0000-4000-8000-000000000099"
     artist_id = "30000000-0000-4000-8000-000000000099"
@@ -1634,7 +1384,7 @@ async def test_target_removal_writer_audits_without_deleting_stable_rows(
 async def test_target_ownership_projection_is_conservative_and_provider_independent(
     target_services,
 ) -> None:
-    store, _view, _favorites, _history, _root = target_services
+    store, _history, _root = target_services
     ownership = LibraryOwnershipService(store)
     with sqlite3.connect(store.db_path) as connection:
         connection.execute(
@@ -1738,7 +1488,7 @@ async def test_target_discover_top_picks_use_shared_local_ownership_without_call
     from api.v1.schemas.home import HomeAlbum, HomeSection
     from services.discover.facade import DiscoverService
 
-    store, _view, _favorites, _history, _root = target_services
+    store, _history, _root = target_services
     service = object.__new__(DiscoverService)
     service._ownership = LibraryOwnershipService(store)
     local_top_pick = HomeAlbum(name="Local Only", artist_name="Local Only Artist")
@@ -1764,7 +1514,7 @@ async def test_target_discover_top_picks_use_shared_local_ownership_without_call
 async def test_local_only_request_boundary_returns_typed_4xx_without_upstream_call(
     target_services,
 ) -> None:
-    store, _view, _favorites, _history, _root = target_services
+    store, _history, _root = target_services
     history = AsyncMock()
     acquisition = AsyncMock()
     service = RequestService(
@@ -1801,7 +1551,7 @@ async def test_local_only_album_track_and_artist_never_cross_provider_boundaries
 ) -> None:
     from services.album_service import AlbumService
 
-    store, _view, _favorites, _history, _root = target_services
+    store, _history, _root = target_services
     ownership = LibraryOwnershipService(store)
     download = object.__new__(DownloadService)
     download._ownership = ownership
@@ -1837,7 +1587,7 @@ async def test_local_only_album_track_and_artist_never_cross_provider_boundaries
 async def test_native_library_routes_browse_target_catalog_with_local_ids(
     target_services,
 ) -> None:
-    store, _view, _favorites, _history, _root = target_services
+    store, _history, _root = target_services
     manager = LibraryManager(TargetLibraryRepository(store))
     app = FastAPI()
     app.include_router(library.router)
@@ -1870,7 +1620,7 @@ async def test_native_library_routes_browse_target_catalog_with_local_ids(
 async def test_target_artist_browse_sorts_by_aggregate_album_count(
     target_services,
 ) -> None:
-    store, _view, _favorites, _history, root = target_services
+    store, _history, root = target_services
     membership = _membership(
         album_id="10000000-0000-4000-8000-000000000003",
         track_id="20000000-0000-4000-8000-000000000003",
@@ -1899,7 +1649,7 @@ async def test_target_artist_browse_sorts_by_aggregate_album_count(
 async def test_album_status_resolves_unique_provider_identity_without_alias(
     target_services,
 ) -> None:
-    store, _view, _favorites, _history, _root = target_services
+    store, _history, _root = target_services
     service = TargetNativeLibraryService(store)
 
     assert (
@@ -1920,7 +1670,7 @@ async def test_album_status_resolves_unique_provider_identity_without_alias(
 
 @pytest.mark.asyncio
 async def test_album_rescan_scope_freezes_its_root_path(target_services) -> None:
-    store, _view, _favorites, _history, root = target_services
+    store, _history, root = target_services
     resolver = LibraryPolicyResolver(
         TypedLibrarySettings(
             library_roots=[
@@ -1942,7 +1692,7 @@ async def test_album_rescan_scope_freezes_its_root_path(target_services) -> None
 async def test_target_native_contract_separates_local_and_provider_ids_and_redirects_aliases(
     target_services,
 ) -> None:
-    store, _view, _favorites, _history, _root = target_services
+    store, _history, _root = target_services
     await store.add_album_aliases(
         IDENTIFIED_ALBUM_ID,
         [
@@ -2035,318 +1785,3 @@ async def test_target_native_contract_separates_local_and_provider_ids_and_redir
     assert artist_redirect.headers["location"].endswith(
         f"/library/artists/{IDENTIFIED_ARTIST_ID}"
     )
-
-
-@pytest.mark.asyncio
-async def test_isolated_target_compat_routes_browse_play_and_write_stable_references(
-    target_services, tmp_path: Path
-) -> None:
-    from api.compat.common.deps import CompatServices, get_compat_services
-    from api.compat.common.path_case import CompatPathCaseMiddleware
-    from api.compat.jellyfin.router import router as jellyfin_router
-    from api.compat.subsonic.router import router as subsonic_router
-    from api.v1.schemas.settings import ConnectAppsSettings, LibrarySettings
-    from core.config import Settings
-    from infrastructure.crypto import init_crypto
-    from infrastructure.persistence.app_password_store import AppPasswordStore
-    from services.compat.advanced_transcode_service import AdvancedTranscodeService
-    from services.compat.app_password_service import AppPasswordService
-    from services.compat.avatar_service import CompatAvatarService
-    from services.compat.stream_concurrency import StreamConcurrencyService
-    from services.native.target_consumer_composition import (
-        build_target_consumer_composition,
-    )
-    from services.preferences_service import PreferencesService
-    from tests.compat.conftest import subsonic_query
-
-    store, _view, _favorites, _history, root = target_services
-    lock = threading.Lock()
-    auth = AuthStore(store.db_path, lock)
-    init_crypto(tmp_path / "config")
-    app_passwords = AppPasswordService(AppPasswordStore(store.db_path, lock), auth)
-    _record, secret = await app_passwords.create("user-1", "target client")
-    settings = Settings()
-    settings.config_file_path = tmp_path / "target-compat.json"
-    preferences = PreferencesService(settings)
-    preferences.save_connect_apps_settings(
-        ConnectAppsSettings(subsonic_enabled=True, jellyfin_enabled=True)
-    )
-    preferences.save_library_settings(LibrarySettings(library_paths=[str(root)]))
-    provider_covers = AsyncMock()
-    provider_covers.get_release_group_cover.return_value = None
-    provider_covers.get_release_group_cover_etag.return_value = None
-    provider_covers.get_artist_image.return_value = None
-    provider_covers.get_artist_image_etag.return_value = None
-    target = build_target_consumer_composition(
-        store=store,
-        preferences=preferences,
-        auth_store=auth,
-        provider_covers=provider_covers,
-        cache=AsyncMock(),
-        cache_dir=tmp_path,
-        client_factory=SimpleNamespace(
-            resolve_lastfm=AsyncMock(return_value=None),
-            resolve_listenbrainz=AsyncMock(return_value=None),
-        ),
-        listening_prefs_store=SimpleNamespace(
-            get=AsyncMock(
-                return_value=SimpleNamespace(
-                    scrobble_to_lastfm=False,
-                    scrobble_to_listenbrainz=False,
-                )
-            )
-        ),
-        now_playing=SimpleNamespace(
-            update=AsyncMock(),
-            remove=AsyncMock(),
-            compat_now_playing=lambda: [],
-        ),
-    )
-
-    artwork_context = await store.get_target_artwork_context("album", LOCAL_ALBUM_ID)
-    direct_embedded_cover = await target.covers.get_release_group_cover(LOCAL_ALBUM_ID)
-    assert direct_embedded_cover is not None, artwork_context
-    scan = AsyncMock()
-    scan.status.return_value = (False, 0)
-    bundle = CompatServices(
-        app_passwords=app_passwords,
-        view=target.view,
-        favorites=target.favorites,
-        playlists=target.playlists,
-        scrobble=target.scrobble,
-        discover=target.discover,
-        id_map=target.id_map,
-        local_files=target.local_files,
-        coverart=target.covers,
-        preferences=preferences,
-        transcode=AsyncMock(),
-        stream_concurrency=StreamConcurrencyService(),
-        now_playing=AsyncMock(),
-        version=SimpleNamespace(
-            get_current_version=lambda: SimpleNamespace(version="test")
-        ),
-        play_queue=target.play_queue,
-        bookmarks=target.bookmarks,
-        lyrics=AsyncMock(),
-        avatars=CompatAvatarService(tmp_path),
-        playback_report=target.playback_report,
-        scan=scan,
-        advanced_transcode=AdvancedTranscodeService(),
-    )
-    app = FastAPI()
-    app.include_router(subsonic_router)
-    app.include_router(jellyfin_router)
-    app.add_middleware(
-        CompatPathCaseMiddleware,
-        routes=[*subsonic_router.routes, *jellyfin_router.routes],
-    )
-    app.dependency_overrides[get_compat_services] = lambda: bundle
-    client = build_test_client(app)
-    query = subsonic_query(secret, "target")
-
-    search = client.get("/subsonic/rest/search3", params={**query, "query": ""}).json()[
-        "subsonic-response"
-    ]["searchResult3"]
-    songs = search["song"]
-    local_song = next(item for item in songs if item["id"].endswith(LOCAL_TRACK_ID))
-    album_list = client.get(
-        "/subsonic/rest/getAlbumList2",
-        params={**query, "type": "alphabeticalByName", "size": 20},
-    ).json()["subsonic-response"]["albumList2"]["album"]
-    local_album = next(
-        item for item in album_list if item["id"].endswith(LOCAL_ALBUM_ID)
-    )
-    album_info = client.get(
-        "/subsonic/rest/getAlbumInfo2", params={**query, "id": local_album["id"]}
-    ).json()["subsonic-response"]["albumInfo2"]
-    artists = client.get("/subsonic/rest/getArtists", params=query).json()[
-        "subsonic-response"
-    ]["artists"]["index"]
-    flat_artists = [artist for index in artists for artist in index["artist"]]
-    local_artist = next(
-        item for item in flat_artists if item["name"] == "Local Only Artist"
-    )
-    artist_detail = client.get(
-        "/subsonic/rest/getArtist", params={**query, "id": local_artist["id"]}
-    ).json()["subsonic-response"]["artist"]
-    album_detail = client.get(
-        "/subsonic/rest/getAlbum", params={**query, "id": local_album["id"]}
-    ).json()["subsonic-response"]["album"]
-    genres = client.get("/subsonic/rest/getGenres", params=query).json()[
-        "subsonic-response"
-    ]["genres"]["genre"]
-    genre_songs = client.get(
-        "/subsonic/rest/getSongsByGenre",
-        params={**query, "genre": "Local Only Genre"},
-    ).json()["subsonic-response"]["songsByGenre"]["song"]
-    subsonic_cover = client.get(
-        "/subsonic/rest/getCoverArt", params={**query, "id": local_album["id"]}
-    )
-    created = client.get(
-        "/subsonic/rest/createPlaylist",
-        params=[*query.items(), ("name", "Target mix"), ("songId", songs[0]["id"])],
-    ).json()["subsonic-response"]["playlist"]
-    streamed = client.get(
-        "/subsonic/rest/stream", params={**query, "id": local_song["id"]}
-    )
-    client.post(
-        "/subsonic/rest/savePlayQueue",
-        params=[
-            *query.items(),
-            ("id", local_song["id"]),
-            ("current", local_song["id"]),
-        ],
-    )
-    client.post(
-        "/subsonic/rest/createBookmark",
-        params=[*query.items(), ("id", local_song["id"]), ("position", "1200")],
-    )
-    client.get("/subsonic/rest/star", params={**query, "id": local_song["id"]})
-    subsonic_scrobble = client.get(
-        "/subsonic/rest/scrobble",
-        params={
-            **query,
-            "id": local_song["id"],
-            "submission": "true",
-            "time": str(int((time.time() - 60) * 1000)),
-        },
-    )
-    scan_status = client.get("/subsonic/rest/getScanStatus", params=query)
-    scan_start = client.post("/subsonic/rest/startScan", params=query)
-
-    jellyfin_headers = {
-        "Authorization": f'MediaBrowser Token="{secret}", Client="pytest"'
-    }
-    jf_albums = client.get(
-        "/jellyfin/Items",
-        params={"IncludeItemTypes": "MusicAlbum"},
-        headers=jellyfin_headers,
-    ).json()["Items"]
-    jf_local = next(item for item in jf_albums if item["Name"] == "Local Only")
-    jf_tracks = client.get(
-        "/jellyfin/Items",
-        params={"ParentId": jf_local["Id"]},
-        headers=jellyfin_headers,
-    ).json()["Items"]
-    jf_stream = client.get(
-        f"/jellyfin/Audio/{jf_tracks[0]['Id']}/stream",
-        params={"static": "true", "ApiKey": secret},
-    )
-    jf_artists = client.get(
-        "/jellyfin/Artists/AlbumArtists", headers=jellyfin_headers
-    ).json()["Items"]
-    jf_genres = client.get("/jellyfin/Genres", headers=jellyfin_headers).json()["Items"]
-    jf_search = client.get(
-        "/jellyfin/Items",
-        params={"SearchTerm": "Local Only", "Recursive": "true"},
-        headers=jellyfin_headers,
-    ).json()["Items"]
-    jf_cover = client.get(f"/jellyfin/Items/{jf_local['Id']}/Images/Primary")
-    jf_favorite = client.post(
-        f"/jellyfin/UserFavoriteItems/{jf_tracks[0]['Id']}",
-        params={"userId": "user-1"},
-        headers=jellyfin_headers,
-    )
-    jf_stopped = client.post(
-        "/jellyfin/Sessions/Playing/Stopped",
-        headers=jellyfin_headers,
-        json={
-            "ItemId": jf_tracks[0]["Id"],
-            "PositionTicks": jf_tracks[0]["RunTimeTicks"],
-            "RunTimeTicks": jf_tracks[0]["RunTimeTicks"],
-        },
-    )
-    jf_id_again = await target.id_map.to_jf("album", LOCAL_ALBUM_ID)
-
-    assert len(songs) == 2
-    assert len(album_list) == 2
-    assert "musicBrainzId" not in local_album
-    assert "musicBrainzId" not in album_info
-    assert artist_detail["album"][0]["id"] == local_album["id"]
-    assert album_detail["song"][0]["id"] == local_song["id"]
-    assert any(item["value"] == "Local Only Genre" for item in genres)
-    assert [item["id"] for item in genre_songs] == [local_song["id"]]
-    assert subsonic_cover.status_code == 200
-    assert subsonic_cover.headers["content-type"] == "image/png"
-    assert created["songCount"] == 1
-    assert streamed.status_code == 200
-    assert streamed.content.startswith(b"fLaC")
-    assert jf_local.get("ProviderIds") in (None, {})
-    assert jf_tracks[0].get("ProviderIds") in (None, {})
-    assert any(item["Name"] == "Local Only Artist" for item in jf_artists)
-    assert any(item["Name"] == "Local Only Genre" for item in jf_genres)
-    assert any(item["Name"] == "Local Only" for item in jf_search)
-    assert jf_cover.status_code == 200
-    assert jf_cover.headers["content-type"] == "image/png"
-    assert jf_stream.status_code == 200
-    assert jf_stream.content.startswith(b"fLaC")
-    assert jf_favorite.status_code == 200
-    assert jf_favorite.json()["IsFavorite"] is True
-    assert subsonic_scrobble.json()["subsonic-response"]["status"] == "ok"
-    assert jf_stopped.status_code == 204
-    assert scan_status.json()["subsonic-response"]["status"] == "ok"
-    assert scan_start.json()["subsonic-response"]["status"] == "ok"
-    scan.start.assert_awaited_once()
-    assert jf_id_again == jf_local["Id"]
-    provider_covers.get_release_group_cover.assert_not_awaited()
-    with sqlite3.connect(store.db_path) as connection:
-        assert connection.execute(
-            "SELECT local_track_id FROM library_playlist_tracks"
-        ).fetchone() == (songs[0]["id"][3:],)
-        assert connection.execute(
-            "SELECT local_track_id FROM library_play_history ORDER BY played_at"
-        ).fetchall() == [(LOCAL_TRACK_ID,), (LOCAL_TRACK_ID,)]
-        assert connection.execute(
-            "SELECT local_track_id FROM library_compat_bookmarks"
-        ).fetchone() == (LOCAL_TRACK_ID,)
-        assert connection.execute(
-            "SELECT local_track_id FROM library_compat_play_queue_items"
-        ).fetchone() == (LOCAL_TRACK_ID,)
-
-    scrobble_result = await target.scrobble_service.submit_scrobble(
-        ScrobbleRequest(
-            track_name="Target Track",
-            artist_name="Target Artist",
-            timestamp=int(time.time()),
-            duration_ms=180_000,
-        ),
-        user_id="user-1",
-    )
-    assert scrobble_result.accepted is True
-
-    with sqlite3.connect(store.db_path) as connection:
-        connection.execute(
-            "INSERT INTO library_identification_reviews "
-            "(id, local_album_id, state, reason_code, input_revision, created_at, updated_at) "
-            "VALUES ('missing-final-track-review', ?, 'needs_review', "
-            "'TEST_STALE_MEDIA', 'stale-input', 10, 10)",
-            (LOCAL_ALBUM_ID,),
-        )
-    await store.mark_target_tracks_missing(
-        [LOCAL_TRACK_ID],
-        actor_user_id="user-1",
-        reason_code="TEST_STALE_MEDIA",
-        missing_at=11,
-    )
-
-    native_albums, _ = await target.view.get_albums(page_size=20)
-    native_artists, _ = await target.view.get_artists(limit=20)
-    subsonic_after = client.get(
-        "/subsonic/rest/getAlbumList2",
-        params={**query, "type": "alphabeticalByName", "size": 20},
-    ).json()["subsonic-response"]["albumList2"]["album"]
-    jellyfin_after = client.get(
-        "/jellyfin/Items",
-        params={"IncludeItemTypes": "MusicAlbum"},
-        headers=jellyfin_headers,
-    ).json()["Items"]
-
-    assert LOCAL_ALBUM_ID not in {album.rg_mbid for album in native_albums}
-    assert LOCAL_ARTIST_ID not in {artist.artist_mbid for artist in native_artists}
-    assert all(item["name"] != "Local Only" for item in subsonic_after)
-    assert all(item["Name"] != "Local Only" for item in jellyfin_after)
-    with sqlite3.connect(store.db_path) as connection:
-        assert connection.execute(
-            "SELECT state FROM library_identification_reviews WHERE id = ?",
-            ("missing-final-track-review",),
-        ).fetchone() == ("needs_review",)

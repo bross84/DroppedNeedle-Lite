@@ -690,31 +690,6 @@ class MusicBrainzConnectionSettings(AppStruct):
             )
 
 
-class ConnectAppsSettings(AppStruct):
-    """Inbound Connect Apps (Server of Servers) config. Non-secret; persisted
-    as a plain PreferencesService section. Both protocols default OFF."""
-
-    subsonic_enabled: bool = False
-    jellyfin_enabled: bool = False
-    transcoding_enabled: bool = True
-    transcode_default_format: Literal["mp3", "opus"] = "mp3"
-    transcode_max_bitrate_kbps: int = 320
-    advertise_server_name: str = "DroppedNeedle"
-    advertise_server_version: str = "10.10.6"
-    discover_mode: Literal["local-only", "lazy-mb", "use-scrobble-targets"] = (
-        "local-only"
-    )
-
-    def __post_init__(self) -> None:
-        if (
-            self.transcode_max_bitrate_kbps < 32
-            or self.transcode_max_bitrate_kbps > 1411
-        ):
-            raise msgspec.ValidationError(
-                "transcode_max_bitrate_kbps must be between 32 and 1411"
-            )
-
-
 WRAPPED_API_KEY_MASK = "••••••••"
 
 

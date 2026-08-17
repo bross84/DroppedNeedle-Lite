@@ -830,13 +830,6 @@ if app_settings.debug:
         allow_headers=["*"],
     )
 
-# Compat hardening, scoped to /subsonic + /jellyfin. Added last so CompatCORS is
-# outermost and OPTIONS preflights short-circuit before rate-limit + auth.
-from api.compat.common.cors import CompatCORSMiddleware  # noqa: E402
-
-app.add_middleware(CompatCORSMiddleware)
-
-
 @app.get("/health")
 def health_check():
     return {"status": "ok", "message": "DroppedNeedle backend running"}
@@ -895,28 +888,7 @@ v1_router.include_router(downloads_search_routes.router)
 v1_router.include_router(quarantine_routes.router)
 v1_router.include_router(downloads_routes.router)
 v1_router.include_router(tracks_routes.router)
-from api.v1.routes import connect_apps_routes  # noqa: E402
-
-v1_router.include_router(connect_apps_routes.router)
 app.include_router(v1_router)
-
-# Compat shims mount at the app root (not /api/v1) so clients append native paths;
-# must register before mount_frontend's SPA catch-all.
-from api.compat.subsonic.router import router as subsonic_router  # noqa: E402
-from api.compat.jellyfin.router import router as jellyfin_router  # noqa: E402
-
-app.include_router(subsonic_router)
-app.include_router(jellyfin_router)
-
-# Canonicalise compat path casing before routing (some clients lowercase the path).
-# After the shims (needs their routes) and outside the rate-limiter so its exact-path
-# check sees the canonical form.
-from api.compat.common.path_case import CompatPathCaseMiddleware  # noqa: E402
-
-app.add_middleware(
-    CompatPathCaseMiddleware,
-    routes=[*subsonic_router.routes, *jellyfin_router.routes],
-)
 
 # Trust X-Forwarded-Proto / X-Forwarded-Host from the reverse proxy so that
 # request.base_url reflects https:// when TLS is terminated upstream.

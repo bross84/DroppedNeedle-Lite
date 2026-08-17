@@ -8,8 +8,6 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-from infrastructure.persistence.compat_bookmark_store import CompatBookmark
-from infrastructure.persistence.compat_play_queue_store import CompatPlayQueue
 from infrastructure.persistence.native_library_store import NativeLibraryStore
 from infrastructure.persistence.play_history_store import PlayHistoryRecord
 from repositories.playlist_repository import (
@@ -337,44 +335,6 @@ class TargetPlaylistRepository:
         return await self._store.target_playlist_membership(tracks, user_id)
 
 
-class TargetFavoritesStore:
-    def __init__(self, store: NativeLibraryStore) -> None:
-        self._store = store
-
-    async def add(
-        self, user_id: str, item_kind: str, item_id: str, created_at: float
-    ) -> None:
-        await self._store.add_target_favorite(user_id, item_kind, item_id, created_at)
-
-    async def apply_many(
-        self,
-        user_id: str,
-        targets: list[tuple[str, str]],
-        *,
-        add: bool,
-        created_at: float,
-    ) -> None:
-        await self._store.apply_target_favorites(
-            user_id, targets, add=add, created_at=created_at
-        )
-
-    async def remove(self, user_id: str, item_kind: str, item_id: str) -> None:
-        await self._store.remove_target_favorite(user_id, item_kind, item_id)
-
-    async def is_favorite(self, user_id: str, item_kind: str, item_id: str) -> bool:
-        return item_id in await self._store.target_favorite_map(
-            user_id, item_kind, [item_id]
-        )
-
-    async def list(self, user_id: str, item_kind: str) -> list[tuple[str, float]]:
-        return await self._store.list_target_favorites(user_id, item_kind)
-
-    async def map_for_items(
-        self, user_id: str, item_kind: str, item_ids: list[str]
-    ) -> dict[str, float]:
-        return await self._store.target_favorite_map(user_id, item_kind, item_ids)
-
-
 class TargetPlayHistoryStore:
     def __init__(self, store: NativeLibraryStore) -> None:
         self._store = store
@@ -452,61 +412,3 @@ class TargetPlayHistoryStore:
         )
 
 
-class TargetBookmarkStore:
-    def __init__(self, store: NativeLibraryStore) -> None:
-        self._store = store
-
-    async def list(self, user_id: str) -> list[CompatBookmark]:
-        rows = await self._store.list_target_bookmarks(user_id)
-        return [CompatBookmark(**row) for row in rows]
-
-    async def upsert(
-        self, user_id: str, file_id: str, position_ms: int, comment: str
-    ) -> None:
-        await self._store.upsert_target_bookmark(
-            user_id, file_id, position_ms, comment, time.time()
-        )
-
-    async def delete(self, user_id: str, file_id: str) -> None:
-        await self._store.delete_target_bookmark(user_id, file_id)
-
-
-class TargetPlayQueueStore:
-    def __init__(self, store: NativeLibraryStore) -> None:
-        self._store = store
-
-    async def get(self, user_id: str) -> CompatPlayQueue:
-        return CompatPlayQueue(**await self._store.get_target_play_queue(user_id))
-
-    async def replace(
-        self,
-        user_id: str,
-        file_ids: tuple[str, ...],
-        *,
-        current_index: int | None,
-        position_ms: int,
-        changed_by_client: str,
-    ) -> CompatPlayQueue:
-        result = await self._store.replace_target_play_queue(
-            user_id,
-            file_ids,
-            current_index=current_index,
-            position_ms=position_ms,
-            changed_by_client=changed_by_client,
-            updated_at=time.time(),
-        )
-        return CompatPlayQueue(**result)
-
-
-class TargetCompatIdMapStore:
-    def __init__(self, store: NativeLibraryStore) -> None:
-        self._store = store
-
-    async def get_jf_id(self, kind: str, internal_id: str) -> str | None:
-        return await self._store.get_target_compat_id(kind, internal_id)
-
-    async def get_mapping(self, jf_id: str) -> tuple[str, str] | None:
-        return await self._store.get_target_compat_mapping(jf_id)
-
-    async def insert(self, jf_id: str, kind: str, internal_id: str) -> None:
-        await self._store.insert_target_compat_mapping(jf_id, kind, internal_id)

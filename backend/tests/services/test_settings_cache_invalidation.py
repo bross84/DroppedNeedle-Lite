@@ -169,7 +169,6 @@ async def test_jellyfin_and_cover_changes_rebuild_every_target_cover_consumer():
     target_names = (
         "get_target_coverart_repository",
         "get_target_consumer_composition",
-        "get_target_compat_services",
         "get_target_search_service",
         "get_target_genre_cover_prewarm_service",
         "get_target_home_service",

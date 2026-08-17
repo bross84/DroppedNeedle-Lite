@@ -193,20 +193,6 @@ class NowPlayingService:
         """Privacy-projected current sessions, for the GET hydrate endpoint."""
         return [p for e in self._entries.values() if (p := self._project(e)) is not None]
 
-    def compat_now_playing(self) -> list[tuple[NowPlayingSnapshotEntry, str, float]]:
-        """(projection, track_file_id, updated_at) for sessions Subsonic getNowPlaying
-        can serve: a library file id is known and the owner's visibility is full -
-        a redacted projection carries no track, so it is skipped, not leaked."""
-        out: list[tuple[NowPlayingSnapshotEntry, str, float]] = []
-        for e in self._entries.values():
-            if e.track_file_id is None:
-                continue
-            p = self._project(e)
-            if p is None or p.redacted:
-                continue
-            out.append((p, e.track_file_id, e.updated_at))
-        return out
-
     def _project(self, entry: _Entry) -> NowPlayingSnapshotEntry | None:
         if entry.user_id is None:
             # upstream-server sessions aren't DroppedNeedle accounts: no privacy setting

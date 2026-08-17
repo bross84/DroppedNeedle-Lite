@@ -28,7 +28,6 @@ from api.v1.schemas.settings import (
     MusicBrainzConnectionSettings,
     SecuritySettings,
     LibrarySettings,
-    ConnectAppsSettings,
     ACOUSTID_KEY_MASK,
     DOWNLOAD_CLIENT_API_KEY_MASK,
     INDEXER_API_KEY_MASK,
@@ -795,16 +794,6 @@ class PreferencesService:
         except Exception as e:  # noqa: BLE001
             logger.error(f"Failed to save YouTube connection settings: {e}")
             raise ConfigurationError(f"Failed to save YouTube connection settings: {e}")
-
-    def get_connect_apps_settings(self) -> ConnectAppsSettings:
-        return self._get_section("connect_apps", ConnectAppsSettings)
-
-    def save_connect_apps_settings(self, settings: ConnectAppsSettings) -> None:
-        try:
-            self._save_section("connect_apps", settings)
-        except Exception as e:  # noqa: BLE001
-            logger.error(f"Failed to save Connect Apps settings: {e}")
-            raise ConfigurationError(f"Failed to save Connect Apps settings: {e}")
 
     def get_wrapped_settings(self) -> WrappedSettings:
         config = self._load_config()

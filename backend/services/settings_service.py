@@ -204,7 +204,6 @@ class SettingsService:
             get_mbid_store,
             get_target_coverart_repository,
             get_target_consumer_composition,
-            get_target_compat_services,
             get_target_discover_queue_manager,
             get_target_discover_service,
             get_target_genre_cover_prewarm_service,
@@ -226,7 +225,6 @@ class SettingsService:
         get_home_charts_service.cache_clear()
         get_target_coverart_repository.cache_clear()
         get_target_consumer_composition.cache_clear()
-        get_target_compat_services.cache_clear()
         get_target_search_service.cache_clear()
         get_target_genre_cover_prewarm_service.cache_clear()
         get_target_home_service.cache_clear()
@@ -326,7 +324,6 @@ class SettingsService:
             get_coverart_repository,
             clear_library_management_provider_graph,
             get_target_consumer_composition,
-            get_target_compat_services,
             get_target_coverart_repository,
             get_target_discover_queue_manager,
             get_target_discover_service,
@@ -339,7 +336,6 @@ class SettingsService:
         get_coverart_repository.cache_clear()
         get_target_coverart_repository.cache_clear()
         get_target_consumer_composition.cache_clear()
-        get_target_compat_services.cache_clear()
         get_target_search_service.cache_clear()
         get_target_genre_cover_prewarm_service.cache_clear()
         get_target_home_charts_service.cache_clear()

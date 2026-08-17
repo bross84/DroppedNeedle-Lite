@@ -89,7 +89,7 @@ export type ScanKind = 'incremental' | 'rescan_files' | 'policy_reconcile';
 export interface ScanRun {
 	id: string;
 	kind: ScanKind;
-	trigger: 'manual' | 'automatic' | 'subsonic' | 'startup_resume' | 'policy_apply';
+	trigger: 'manual' | 'automatic' | 'startup_resume' | 'policy_apply';
 	state: LibraryWorkState;
 	phase: 'queued' | 'discovering' | 'indexing' | 'reconciling';
 	requested_by_user_id: string | null;

@@ -105,7 +105,6 @@ class TestLoadFromFileTypeValidation:
         "key",
         [
             "_internal",
-            "connect_apps",
             "download_client",
             "home_settings",
             "lastfm_settings",

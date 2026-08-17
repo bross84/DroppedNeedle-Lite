@@ -18,11 +18,6 @@ from fastapi.routing import APIRoute
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
-from api.compat.common.deps import get_compat_services
-from api.compat.common.cors import CompatCORSMiddleware
-from api.compat.common.path_case import CompatPathCaseMiddleware
-from api.compat.jellyfin.router import router as jellyfin_router
-from api.compat.subsonic.router import router as subsonic_router
 from api.v1.routes import (
     albums,
     artists,
@@ -75,7 +70,6 @@ from api.v1.routes import (
     wrapped,
     youtube,
 )
-from api.v1.routes import connect_apps_routes
 from core.dependencies import (
     get_coverart_repository,
     get_acquisition_dispatcher,
@@ -107,7 +101,6 @@ from core.dependencies import (
     get_spotify_import_service,
     get_cache_service,
     get_wrapped_service,
-    get_target_compat_services,
     get_target_album_service,
     get_target_album_discovery_service,
     get_target_artist_service,
@@ -308,7 +301,6 @@ def create_isolated_target_application(
         import_drop.router,
         free_music.router,
         tracks.router,
-        connect_apps_routes.router,
     ):
         v1.include_router(router)
     _include_settings_without_legacy_library(v1)
@@ -320,12 +312,6 @@ def create_isolated_target_application(
         artists.router, dependencies=[Depends(_require_provider_artist_id)]
     )
     app.include_router(v1)
-    app.include_router(subsonic_router)
-    app.include_router(jellyfin_router)
-    app.add_middleware(
-        CompatPathCaseMiddleware,
-        routes=[*subsonic_router.routes, *jellyfin_router.routes],
-    )
 
     target = (
         (lambda: target_composition)
@@ -365,7 +351,6 @@ def create_isolated_target_application(
             get_local_files_service: lambda: target().local_files,
             get_navidrome_library_service: get_target_navidrome_library_service,
             get_plex_library_service: get_target_plex_library_service,
-            get_compat_services: get_target_compat_services,
         }
     )
     if dependency_overrides:
@@ -430,13 +415,10 @@ def _include_complete_target_routes(app: FastAPI) -> None:
         quarantine.router,
         downloads.router,
         tracks.router,
-        connect_apps_routes.router,
     ):
         v1.include_router(router)
     _include_settings_without_legacy_library(v1)
     app.include_router(v1)
-    app.include_router(subsonic_router)
-    app.include_router(jellyfin_router)
 
 
 def _install_target_overrides(app: FastAPI) -> None:
@@ -474,7 +456,6 @@ def _install_target_overrides(app: FastAPI) -> None:
             get_local_files_service: lambda: target().local_files,
             get_navidrome_library_service: get_target_navidrome_library_service,
             get_plex_library_service: get_target_plex_library_service,
-            get_compat_services: get_target_compat_services,
         }
     )
 
@@ -710,18 +691,12 @@ def create_production_target_application() -> FastAPI:
             allow_methods=["*"],
             allow_headers=["*"],
         )
-    app.add_middleware(CompatCORSMiddleware)
-
     @app.get("/health")
     def health_check():
         return {"status": "ok", "message": "DroppedNeedle backend running"}
 
     _include_complete_target_routes(app)
     _install_target_overrides(app)
-    app.add_middleware(
-        CompatPathCaseMiddleware,
-        routes=[*subsonic_router.routes, *jellyfin_router.routes],
-    )
     app.add_middleware(
         ProxyHeadersMiddleware, trusted_hosts=get_settings().trusted_proxy_ips
     )
