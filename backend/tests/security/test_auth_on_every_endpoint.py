@@ -78,6 +78,7 @@ from core.dependencies import (
     get_navidrome_folder_scope_service,
     get_now_playing_service,
     get_per_user_client_factory,
+    get_native_library_store,
     get_personal_mix_service,
     get_playlist_service,
     get_plex_playback_service,
@@ -142,6 +143,7 @@ _SERVICE_PROVIDERS = (
     get_navidrome_folder_scope_service,
     get_now_playing_service,
     get_per_user_client_factory,
+    get_native_library_store,
     get_personal_mix_service,
     get_playlist_service,
     get_plex_playback_service,
@@ -473,6 +475,11 @@ _ADMIN_ENDPOINTS = [
     ),
     (
         "POST",
+        "/api/v1/library/reviews/review-1/dismiss",
+        {"expected_review_revision": 1, "expected_catalog_revision": 1},
+    ),
+    (
+        "POST",
         "/api/v1/library/reviews/review-1/candidate",
         {
             "expected_review_revision": 1,
@@ -719,6 +726,7 @@ _ADMIN_ENDPOINTS = [
     ("GET", "/api/v1/library/scan-runs", None),
     ("GET", "/api/v1/library/scan-runs/estimate", None),
     ("GET", "/api/v1/library/scan-runs/run-1", None),
+    ("GET", "/api/v1/library/scan-runs/run-1/failures", None),
     (
         "POST",
         "/api/v1/library/scan-runs/run-1/pause",
