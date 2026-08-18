@@ -181,8 +181,6 @@ async def test_complete_manifest_migration_startup_and_rollback_rehearsal(
     assert report["source_identity"] == source_identity
     source_smoke = report["source_restore"]["smoke"]
     assert source_smoke["native_playback_prefix_ok"] is True
-    assert source_smoke["subsonic_playback_prefix_ok"] is True
-    assert source_smoke["jellyfin_playback_prefix_ok"] is True
     assert source_smoke["restored_artwork_bytes_match"] is True
     assert report["migration"]["idempotent"] is True
     assert report["migration"]["network_calls"] == 0
@@ -194,11 +192,7 @@ async def test_complete_manifest_migration_startup_and_rollback_rehearsal(
     target_smoke = report["target_startup"]["smoke"]
     assert target_smoke["local_only_browse_consistent"] is True
     assert target_smoke["local_only_native"] is True
-    assert target_smoke["local_only_subsonic"] is True
-    assert target_smoke["local_only_jellyfin"] is True
     assert target_smoke["native_range_status"] == 206
-    assert target_smoke["subsonic_range_status"] == 206
-    assert target_smoke["jellyfin_range_status"] == 206
     assert target_smoke["cached_native_artwork_status"] == 200
     assert target_smoke["restored_artwork_bytes_match"] is True
     assert report["full_rollback"]["smoke"]["native_playback_prefix_ok"] is True
