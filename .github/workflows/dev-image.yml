@@ -22,7 +22,6 @@ concurrency:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  IMAGE: ghcr.io/${{ github.repository }}
 
 jobs:
   build:
@@ -99,6 +98,9 @@ jobs:
         env:
           SHORT_SHA: ${{ steps.sha.outputs.short }}
         run: |
+          # github.repository keeps the repo's casing; Docker requires a
+          # lowercase repository name, so fold it here.
+          IMAGE="ghcr.io/${GITHUB_REPOSITORY,,}"
           {
             echo "TAGS<<EOF"
             echo "${IMAGE}:dev"
