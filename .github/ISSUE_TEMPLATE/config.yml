@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Discord
-    url: https://discord.gg/B5suDg7gu2
-    about: For support questions and general chat.
-  - name: Documentation
+  - name: Upstream DroppedNeedle
+    url: https://github.com/DroppedNeedle/DroppedNeedle
+    about: The original project. Use it for anything not specific to this fork's removals.
+  - name: Upstream documentation
     url: https://www.droppedneedle.com/
-    about: Check the docs before opening an issue.
+    about: Docs for the application itself.

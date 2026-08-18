@@ -1,25 +1,26 @@
 <div align="center">
 
-<img src="Images/logo_wide.png" alt="DroppedNeedle" width="400" />
+<img src="Images/logo_wide.png" alt="DroppedNeedle-Lite" width="400" />
 
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
-[![GitHub Stars](https://img.shields.io/github/stars/DroppedNeedle/DroppedNeedle?label=stars&logo=github&logoColor=white)](https://github.com/DroppedNeedle/DroppedNeedle)
-[![Docker Hub](https://img.shields.io/badge/docker-hub-blue?logo=docker&logoColor=white)](https://hub.docker.com/r/droppedneedle/droppedneedle)
-[![Discord](https://img.shields.io/discord/1356702267809808404?label=discord&logo=discord&logoColor=white)](https://discord.gg/B5suDg7gu2)
-<br>
-
-[![Docs](https://img.shields.io/badge/docs-droppedneedle.com-blue)](https://www.droppedneedle.com/)
-[![GitHub Sponsors](https://img.shields.io/github/sponsors/HabiRabbu?label=sponsors&logo=github&logoColor=white)](https://github.com/sponsors/HabiRabbu)
-<br>
-
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/M4M41URGJO)
-<a href="https://github.com/sponsors/HabiRabbu"><img src="https://img.shields.io/badge/Sponsor%20this%20project-ea4aaa?style=for-the-badge&logo=github&logoColor=white" alt="Sponsor this project" style="border-radius: 6px; height: 30px" /></a>
+[![Fork of DroppedNeedle](https://img.shields.io/badge/fork%20of-DroppedNeedle-blue?logo=github&logoColor=white)](https://github.com/DroppedNeedle/DroppedNeedle)
 
 </div>
 
 ---
 
-DroppedNeedle is a self-hosted music request and discovery app with a **built-in native library and download engine** (no Lidarr required). Search the full MusicBrainz catalogue, request whole albums or single tracks, and let the engine index your library while it drives downloads through your own slskd or Usenet/SABnzbd. Its optional Library Management system can write tags and organize files after an administrator previews and enables it. Stream from Jellyfin, Navidrome, Plex, or your local files, get recommendations from your listening history, and scrobble to ListenBrainz and Last.fm. It all runs as a single Docker container, configured from the web UI.
+> **This is a personal fork of [DroppedNeedle](https://github.com/DroppedNeedle/DroppedNeedle).**
+> It trims the upstream app to a smaller surface: **Plugins**, **Connect Apps** (the
+> OpenSubsonic/Jellyfin server), the **background upgrade scan**, **follow auto-download**
+> with its approval system, and **Lidarr Import** have all been removed. Everything else
+> tracks upstream. For the full-featured application, use upstream - it is actively
+> maintained and this fork is not a replacement for it.
+>
+> Issues and support for the original belong on [upstream's tracker](https://github.com/DroppedNeedle/DroppedNeedle/issues), not here.
+>
+> See [FORK.md](FORK.md) for what was removed and why.
+
+DroppedNeedle-Lite is a self-hosted music request and discovery app with a **built-in native library and download engine** (no Lidarr required). Search the full MusicBrainz catalogue, request whole albums or single tracks, and let the engine index your library while it drives downloads through your own slskd or Usenet/SABnzbd. Its optional Library Management system can write tags and organize files after an administrator previews and enables it. Stream from Jellyfin, Navidrome, Plex, or your local files, get recommendations from your listening history, and scrobble to ListenBrainz and Last.fm. It all runs as a single Docker container, configured from the web UI.
 
 ---
 
@@ -42,12 +43,13 @@ You need Docker, a music library, and a download client. The example below uses 
 
 ### 1. Create a docker-compose.yml
 
-Images are available on [Docker Hub](https://hub.docker.com/r/droppedneedle/droppedneedle) (`droppedneedle/droppedneedle:latest`).
+Images are published to GitHub Container Registry (`ghcr.io/bross84/droppedneedle-lite:latest`).
+Upstream's official images are on [Docker Hub](https://hub.docker.com/r/droppedneedle/droppedneedle).
 
 ```yaml
 services:
   droppedneedle:
-    image: droppedneedle/droppedneedle:latest
+    image: ghcr.io/bross84/droppedneedle-lite:latest
     container_name: droppedneedle
     environment:
       - PUID=1000            # Run `id` on your host to find your user/group ID
@@ -75,7 +77,7 @@ services:
       retries: 3
 ```
 
-> A `:dev` tag (`droppedneedle/droppedneedle:dev`) is also available. It's built automatically from `main` on every push and may be unstable. Pin to a specific commit with `:dev-<short-sha>` (e.g. `:dev-a1b2c3d`).
+> A `:dev` tag (`ghcr.io/bross84/droppedneedle-lite:dev`) is also available. It's built automatically from `main` on every push and may be unstable. Pin to a specific commit with `:dev-<short-sha>` (e.g. `:dev-a1b2c3d`).
 
 ### 2. Start it
 
@@ -737,39 +739,24 @@ See the [CONTRIBUTING](CONTRIBUTING.md) guide for instructions on setting up a d
 
 ---
 
-## Support
+## Credit and support
 
-Documentation is at [droppedneedle.com](https://www.droppedneedle.com/).
+**All credit for this application belongs to [Harvey Bragg (@HabiRabbu)](https://github.com/HabiRabbu)
+and the [DroppedNeedle](https://github.com/DroppedNeedle/DroppedNeedle) contributors.**
+DroppedNeedle-Lite is a personal fork that only removes things; every feature here was
+built by them.
 
-For questions, help, or just to chat, join the [Discord](https://discord.gg/B5suDg7gu2). Bug reports and feature requests go on [GitHub Issues](https://github.com/DroppedNeedle/DroppedNeedle/issues).
-
-If you find DroppedNeedle useful, consider supporting development:
+If you find this useful, support the original author, not this fork:
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/M4M41URGJO)
-<a href="https://github.com/sponsors/HabiRabbu"><img src="https://img.shields.io/badge/Sponsor%20this%20project-ea4aaa?style=for-the-badge&logo=github&logoColor=white" alt="Sponsor this project" style="border-radius: 6px; height: 30px" /></a>
+<a href="https://github.com/sponsors/HabiRabbu"><img src="https://img.shields.io/badge/Sponsor%20the%20original%20author-ea4aaa?style=for-the-badge&logo=github&logoColor=white" alt="Sponsor the original author" style="border-radius: 6px; height: 30px" /></a>
 
-Monthly sponsorships keep development sustainable and unlock a few perks for you:
+### Where to get help
 
-| Tier | Amount | Perks |
-| --- | --- | --- |
-| Supporter | $5/month | Sponsor badge on your GitHub profile |
-| Backer | $20/month | All of the above, plus your name in the README credits and a private Discord role |
-| Patron | $50/month | All of the above, plus early access to beta builds and a vote on upcoming features |
-| Guardian | $100/month | All of the above, plus your name or logo on the website and prioritized bug reports and feature requests |
-
-Prefer to give once? One-time donations are welcome through [GitHub Sponsors](https://github.com/sponsors/HabiRabbu) or [Ko-fi](https://ko-fi.com/M4M41URGJO).
-
----
-
-## Sponsors
-
-Thanks to everyone who supports the project - your sponsorship keeps development sustainable.
-
-<!-- Add sponsors here as they join, e.g.:
-- [@username](https://github.com/username) - Patron
--->
-
-Become a sponsor on [GitHub Sponsors](https://github.com/sponsors/HabiRabbu) or [Ko-fi](https://ko-fi.com/M4M41URGJO).
+- **Questions about DroppedNeedle itself** - upstream's [docs](https://www.droppedneedle.com/),
+  [Discord](https://discord.gg/B5suDg7gu2), and [issue tracker](https://github.com/DroppedNeedle/DroppedNeedle/issues).
+  Please do not open upstream issues for problems caused by this fork's removals.
+- **Problems specific to this fork** - [its own issues](https://github.com/bross84/DroppedNeedle-Lite/issues).
 
 ---
 
@@ -777,4 +764,5 @@ Become a sponsor on [GitHub Sponsors](https://github.com/sponsors/HabiRabbu) or 
 
 DroppedNeedle is licensed under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0). Copyright (c) 2025 Harvey Bragg and contributors.
 
-For commercial licensing enquiries, contact the maintainer.
+This fork is distributed under the same licence, and the original copyright stands unchanged.
+For commercial licensing enquiries, contact the upstream maintainer.

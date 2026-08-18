@@ -5,9 +5,9 @@ body:
   - type: markdown
     attributes:
       value: |
-        Before opening a bug report, please search [existing issues](https://github.com/DroppedNeedle/DroppedNeedle/issues) to check if it's already been reported.
+        Before opening a bug report, please search [existing issues](https://github.com/bross84/DroppedNeedle-Lite/issues) to check if it's already been reported.
 
-        For general support questions, use [Discord](https://discord.gg/B5suDg7gu2) instead.
+        This is a personal fork. For anything not caused by its removals, use [upstream's tracker](https://github.com/DroppedNeedle/DroppedNeedle/issues).
   - type: input
     id: version
     attributes:

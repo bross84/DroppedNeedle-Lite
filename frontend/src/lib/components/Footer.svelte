@@ -2,7 +2,7 @@
 	import { Github } from 'lucide-svelte';
 	import { getVersionQuery } from '$lib/queries/VersionQuery.svelte';
 
-	const GITHUB_URL = 'https://github.com/DroppedNeedle/DroppedNeedle';
+	const GITHUB_URL = 'https://github.com/bross84/DroppedNeedle-Lite';
 
 	const versionQuery = getVersionQuery();
 	const version = $derived(versionQuery.data?.version ?? null);

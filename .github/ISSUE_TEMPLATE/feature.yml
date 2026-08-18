@@ -5,9 +5,9 @@ body:
   - type: markdown
     attributes:
       value: |
-        Before opening a feature request, please search [existing issues](https://github.com/DroppedNeedle/DroppedNeedle/issues) to check if it's already been suggested.
+        Before opening a feature request, please search [existing issues](https://github.com/bross84/DroppedNeedle-Lite/issues) to check if it's already been suggested.
 
-        For general discussion, use [Discord](https://discord.gg/B5suDg7gu2).
+        This is a personal fork; upstream is the place for general feature discussion.
   - type: textarea
     id: description
     attributes:
