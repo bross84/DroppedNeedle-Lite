@@ -8,7 +8,6 @@
 	const query = getFollowedArtistsQuery();
 	const artists = $derived(query.data ?? []);
 	const unfollow = createUnfollowMutation();
-
 </script>
 
 <svelte:head>

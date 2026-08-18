@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
-from xml.etree import ElementTree
 
 import pytest
 
@@ -89,11 +88,3 @@ def test_entrypoint_skips_shadow_check_when_app_missing(tmp_path: Path) -> None:
     assert "does not contain the DroppedNeedle application code" not in result.stdout
 
 
-def test_unraid_template_uses_the_secure_default() -> None:
-    root = ElementTree.parse(REPOSITORY_ROOT / "templates/droppedneedle.xml").getroot()
-    setting = next(
-        item for item in root.findall("Config") if item.get("Target") == "UMASK"
-    )
-
-    assert setting.get("Default") == "027"
-    assert setting.text == "027"

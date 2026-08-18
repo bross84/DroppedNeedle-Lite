@@ -21,7 +21,6 @@
 		X,
 		Heart,
 		Sparkles,
-		DownloadCloud,
 		TrendingUp
 	} from 'lucide-svelte';
 	import WantedWatchCard from '$lib/components/WantedWatchCard.svelte';
@@ -33,7 +32,6 @@
 		createMarkWantedSeenMutation
 	} from '$lib/queries/wanted/WantedMutations.svelte';
 	import type { WantedWatchItem } from '$lib/queries/wanted/types';
-	import ArtistImage from '$lib/components/ArtistImage.svelte';
 	import {
 		fetchActiveRequests,
 		fetchRequestHistory,

@@ -4,11 +4,11 @@ Thanks for your interest. Bug reports, feature requests, and pull requests are a
 
 ## Reporting Bugs
 
-Use the [bug report template](https://github.com/DroppedNeedle/DroppedNeedle/issues/new?template=bug.yml). Include your DroppedNeedle version, steps to reproduce, and relevant logs from `docker compose logs droppedneedle`. The more detail you give, the faster things get fixed.
+Use the [bug report template](https://github.com/bross84/DroppedNeedle-Lite/issues/new?template=bug.yml). Include your DroppedNeedle version, steps to reproduce, and relevant logs from `docker compose logs droppedneedle`. The more detail you give, the faster things get fixed.
 
 ## Requesting Features
 
-Use the [feature request template](https://github.com/DroppedNeedle/DroppedNeedle/issues/new?template=feature.yml). Check existing issues first to avoid duplicates.
+Use the [feature request template](https://github.com/bross84/DroppedNeedle-Lite/issues/new?template=feature.yml). Check existing issues first to avoid duplicates.
 
 ## Development Setup
 
@@ -28,8 +28,17 @@ Backend:
 cd backend
 pip install -r requirements-dev.txt
 cp env.dev.example .env
-uvicorn main:app --reload --port 8688
+python -m maintenance.automatic_upgrade --start-target
 ```
+
+That is what the container runs (see the `CMD` in the `Dockerfile`): it completes the
+legacy-catalog migration, then serves `target_main:app`. Starting `uvicorn main:app`
+directly runs the older application factory, which does not mount the target-only
+routes the frontend expects — Settings > Library will report that it could not load.
+
+Linux (or WSL) is the supported development environment. On native Windows the
+backend will not start: `library_paths` defaults to `/music`, which is not an
+absolute path there, and the startup upgrade cannot create its safety backup.
 
 Frontend:
 
@@ -79,4 +88,4 @@ You're still responsible for understanding and testing the code you submit.
 
 ## Questions?
 
-Open a thread in [Discord](https://discord.gg/B5suDg7gu2) or start a [GitHub Discussion](https://github.com/DroppedNeedle/DroppedNeedle/discussions).
+For the application itself, upstream's [Discord](https://discord.gg/B5suDg7gu2) and [Discussions](https://github.com/DroppedNeedle/DroppedNeedle/discussions) are the right venues. For this fork, open an issue here.

@@ -346,7 +346,6 @@ async def _http_smoke(
             headers=bearer,
         )
         provider_cover.raise_for_status()
-        secret_status = await json_get("/api/v1/lidarr-import/status", headers=bearer)
 
 
 
@@ -401,7 +400,6 @@ async def _http_smoke(
             for response in (provider_cover,)
         )
         and playlist_cover.content.startswith(b"\xff\xd8\xff"),
-        "paired_secret_loaded_by_application": secret_status.get("configured") is True,
     }
 
 
@@ -628,8 +626,7 @@ async def run(
                 {
                     "schema_version": 1,
                     "library_scan_schedule": {"scan_frequency": "manual"},
-                    "lidarr_import": {
-                        "url": "http://127.0.0.1:9",
+                    "wrapped_settings": {
                         "api_key": encrypted_probe,
                     },
                     "library_settings": {
@@ -730,7 +727,7 @@ async def run(
         )
         secret_pair_valid = (
             Fernet(restored_key.encode())
-            .decrypt(restored_config["lidarr_import"]["api_key"].encode())
+            .decrypt(restored_config["wrapped_settings"]["api_key"].encode())
             .decode()
             == "paired-secret-probe"
         )

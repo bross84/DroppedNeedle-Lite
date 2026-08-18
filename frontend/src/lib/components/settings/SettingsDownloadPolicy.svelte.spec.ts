@@ -25,7 +25,7 @@ const basePolicy: DownloadPolicySettings = {
 	max_library_size_gb: 0,
 	default_request_quota_count: 0,
 	default_request_quota_days: 7,
-	default_storage_quota_gb: 0,
+	default_storage_quota_gb: 0
 };
 
 const h = vi.hoisted(() => ({

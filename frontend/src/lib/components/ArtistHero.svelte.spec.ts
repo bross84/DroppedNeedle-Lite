@@ -11,7 +11,7 @@ vi.mock('$lib/queries/following/FollowQueries.svelte', () => ({
 }));
 
 vi.mock('$lib/queries/following/FollowMutations.svelte', () => ({
-	createSetFollowMutation: () => ({ isPending: false, mutate: vi.fn() }),
+	createSetFollowMutation: () => ({ isPending: false, mutate: vi.fn() })
 }));
 
 const artist: ArtistInfo = {

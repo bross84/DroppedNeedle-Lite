@@ -26,7 +26,6 @@ vi.mock('$lib/stores/authStore.svelte', () => ({
 
 import { toastStore } from '$lib/stores/toast';
 import { invalidateQueriesWithPersister } from '$lib/queries/QueryClient';
-import { FollowQueryKeyFactory } from './FollowQueryKeyFactory';
 import { createFollowingEvents } from './FollowingEvents';
 
 const mockShow = vi.mocked(toastStore.show);
