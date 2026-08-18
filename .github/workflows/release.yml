@@ -25,9 +25,6 @@ jobs:
           - runner: ubuntu-24.04
             platform: linux/amd64
             arch: amd64
-          - runner: ubuntu-24.04-arm
-            platform: linux/arm64
-            arch: arm64
     runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout
@@ -98,11 +95,13 @@ jobs:
           {
             echo "TAGS<<EOF"
             echo "${IMAGE}:${TAG}"
-            # a tag containing '-' is a pre-release (e.g. v1.2.0-beta1) and
-            # deliberately does not move :latest
-            if [[ "$TAG" != *-* ]]; then
-              echo "${IMAGE}:latest"
-            fi
+            # Only alpha/beta/rc tags are pre-releases. This fork's normal tags
+            # carry a -lite.N suffix (e.g. v2.6.0-lite.1) naming the upstream
+            # release they track, and those must still move :latest.
+            case "$TAG" in
+              *-alpha*|*-beta*|*-rc*) ;;
+              *) echo "${IMAGE}:latest" ;;
+            esac
             echo "EOF"
           } >> "$GITHUB_ENV"
 
@@ -110,13 +109,11 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
           tags: ${{ env.TAGS }}
           build-args: |
             COMMIT_TAG=${{ steps.version.outputs.tag }}
             BUILD_DATE=${{ steps.date.outputs.timestamp }}
-          cache-from: |
-            type=gha,scope=linux/amd64
-            type=gha,scope=linux/arm64
+          cache-from: type=gha,scope=linux/amd64
           provenance: false
