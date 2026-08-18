@@ -1353,49 +1353,24 @@ def get_follow_service() -> "FollowService":
     return FollowService(get_follow_store(), get_musicbrainz_repository())
 
 
-@singleton
-def get_lidarr_import_service() -> "LidarrImportService":
-    from services.lidarr_import_service import LidarrImportService
-
-    from .repo_providers import get_lidarr_import_repository
-
-    return LidarrImportService(
-        repo=get_lidarr_import_repository(),
-        preferences=get_preferences_service(),
-        follow_store=get_follow_store(),
-        follow_service=get_follow_service(),
-    )
-
-
-def _build_new_release_service(*, library_repo, acquisition) -> "NewReleaseService":
+def _build_new_release_service(*, library_repo) -> "NewReleaseService":
     from services.native.new_release_service import NewReleaseService
-
-    from .repo_providers import get_download_store
 
     return NewReleaseService(
         follow_store=get_follow_store(),
         mb_repo=get_musicbrainz_repository(),
-        acquisition=acquisition,
-        download_store=get_download_store(),
         library_repo=library_repo,
-        sse_publisher=get_sse_publisher(),
     )
 
 
 @singleton
 def get_new_release_service() -> "NewReleaseService":
-    return _build_new_release_service(
-        library_repo=get_library_repository(),
-        acquisition=get_acquisition_dispatcher(),
-    )
+    return _build_new_release_service(library_repo=get_library_repository())
 
 
 @singleton
 def get_target_new_release_service() -> "NewReleaseService":
-    return _build_new_release_service(
-        library_repo=get_target_library_repository(),
-        acquisition=get_target_acquisition_dispatcher(),
-    )
+    return _build_new_release_service(library_repo=get_target_library_repository())
 
 
 def _build_wanted_watcher_service(

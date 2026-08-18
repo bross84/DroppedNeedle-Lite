@@ -1,19 +1,13 @@
 // mirrors backend api/v1/schemas/artist.py (FollowStatusResponse) and the
 // following hub responses
-export type AutoDownloadState = 'none' | 'pending' | 'approved' | 'rejected' | 'revoked';
-
 export interface FollowStatus {
 	followed: boolean;
-	auto_download: boolean;
-	auto_download_state: AutoDownloadState;
 }
 
 export interface FollowedArtist {
 	mbid: string;
 	name: string;
 	image_url?: string | null;
-	auto_download: boolean;
-	auto_download_state: AutoDownloadState;
 	followed_at: number;
 }
 
@@ -34,36 +28,6 @@ export interface NewReleasesResponse {
 
 // mirrors backend api/v1/schemas/following.py (UnseenCountResponse)
 export interface UnseenCountResponse {
-	count: number;
-}
-
-export interface AutoDownloadApproval {
-	user_id: string;
-	artist_mbid: string;
-	artist_name: string;
-	requested_at: number;
-	user_name?: string | null;
-}
-
-export interface AutoDownloadApprovalsResponse {
-	items: AutoDownloadApproval[];
-	count: number;
-}
-
-// mirrors backend api/v1/schemas/requests_page.py (ApprovalBatchItem/ListResponse) -
-// the bulk "Lidarr Import" approval card (LidarrImport D3)
-export interface ApprovalBatch {
-	batch_id: string;
-	user_id: string;
-	artist_count: number;
-	sample_names: string[];
-	requested_at: number;
-	source: string; // e.g. "lidarr_import"
-	user_name?: string | null;
-}
-
-export interface ApprovalBatchListResponse {
-	batches: ApprovalBatch[];
 	count: number;
 }
 

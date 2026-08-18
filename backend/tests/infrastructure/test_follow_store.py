@@ -111,16 +111,12 @@ async def test_follow_then_state(store: FollowStore):
     await store.follow_artist("user-a", "MBID-A", "Radiohead")
     state = await store.get_follow_state("user-a", "mbid-a")  # case-insensitive
     assert state.followed is True
-    assert state.auto_download is False
-    assert state.auto_download_state == "none"
 
 
 @pytest.mark.asyncio
 async def test_unknown_follow_is_not_followed(store: FollowStore):
     state = await store.get_follow_state("user-a", "nope")
     assert state.followed is False
-    assert state.auto_download is False
-    assert state.auto_download_state == "none"
 
 
 @pytest.mark.asyncio
@@ -132,24 +128,6 @@ async def test_unfollow_returns_bool_and_removes(store: FollowStore):
 
 
 @pytest.mark.asyncio
-async def test_refollow_preserves_intent(store: FollowStore):
-    await store.follow_artist("user-a", "MBID-A", "Radiohead")
-    await store.set_auto_download_intent("user-a", "MBID-A", True)
-    await store.follow_artist("user-a", "MBID-A", "Radiohead (renamed)")
-    state = await store.get_follow_state("user-a", "MBID-A")
-    assert state.auto_download is True  # intent survived the re-follow upsert
-
-
-@pytest.mark.asyncio
-async def test_intent_toggle_reflected(store: FollowStore):
-    await store.follow_artist("user-a", "MBID-A", "Radiohead")
-    await store.set_auto_download_intent("user-a", "MBID-A", True)
-    assert (await store.get_follow_state("user-a", "MBID-A")).auto_download is True
-    await store.set_auto_download_intent("user-a", "MBID-A", False)
-    assert (await store.get_follow_state("user-a", "MBID-A")).auto_download is False
-
-
-@pytest.mark.asyncio
 async def test_list_followed_artists_scoped_and_ordered(store: FollowStore):
     await store.follow_artist("user-a", "MBID-1", "First")
     await store.follow_artist("user-a", "MBID-2", "Second")
@@ -157,92 +135,6 @@ async def test_list_followed_artists_scoped_and_ordered(store: FollowStore):
     listed = await store.list_followed_artists("user-a")
     assert [a.artist_name for a in listed] == ["Second", "First"]  # followed_at DESC
     assert [a.artist_name for a in await store.list_followed_artists("user-b")] == ["Other"]
-
-
-@pytest.mark.asyncio
-async def test_pending_then_approved_state(store: FollowStore):
-    await store.follow_artist("user-a", "MBID-A", "Radiohead")
-    await store.set_auto_download_intent("user-a", "MBID-A", True)
-    await store.upsert_approval("user-a", "MBID-A", "Radiohead", "pending")
-    assert (await store.get_follow_state("user-a", "MBID-A")).auto_download_state == "pending"
-
-    updated = await store.set_approval_state("user-a", "MBID-A", "approved", ("admin-1", "Admin"))
-    assert updated is True
-    state = await store.get_follow_state("user-a", "MBID-A")
-    assert state.auto_download is True
-    assert state.auto_download_state == "approved"
-
-    approval = await store.get_approval("user-a", "MBID-A")
-    assert approval is not None
-    assert approval.state == "approved"
-    assert approval.reviewed_by_id == "admin-1"
-    assert approval.reviewed_by_name == "Admin"
-    assert approval.reviewed_at is not None
-
-
-@pytest.mark.asyncio
-async def test_reject_then_intent_off_surfaces_hint(store: FollowStore):
-    """After a reject (service flips intent 0), the state still surfaces
-    'rejected' so the UI can show the declined hint while the follow stays."""
-    await store.follow_artist("user-a", "MBID-A", "Radiohead")
-    await store.set_auto_download_intent("user-a", "MBID-A", True)
-    await store.upsert_approval("user-a", "MBID-A", "Radiohead", "pending")
-    await store.set_approval_state("user-a", "MBID-A", "rejected", ("admin-1", "Admin"))
-    await store.set_auto_download_intent("user-a", "MBID-A", False)
-    state = await store.get_follow_state("user-a", "MBID-A")
-    assert state.followed is True
-    assert state.auto_download is False
-    assert state.auto_download_state == "rejected"
-
-
-@pytest.mark.asyncio
-async def test_get_approval_absent_returns_none(store: FollowStore):
-    assert await store.get_approval("user-a", "MBID-A") is None
-
-
-@pytest.mark.asyncio
-async def test_set_approval_state_missing_row_returns_false(store: FollowStore):
-    assert await store.set_approval_state("user-a", "MBID-A", "approved", ("admin-1", "Admin")) is False
-
-
-@pytest.mark.asyncio
-async def test_upsert_approval_clears_stale_reviewer_on_requeue(store: FollowStore):
-    await store.upsert_approval("user-a", "MBID-A", "Radiohead", "pending")
-    await store.set_approval_state("user-a", "MBID-A", "rejected", ("admin-1", "Admin"))
-    # user re-enables -> fresh pending, reviewer cleared
-    await store.upsert_approval("user-a", "MBID-A", "Radiohead", "pending")
-    approval = await store.get_approval("user-a", "MBID-A")
-    assert approval is not None
-    assert approval.state == "pending"
-    assert approval.reviewed_by_id is None
-    assert approval.reviewed_at is None
-
-
-@pytest.mark.asyncio
-async def test_list_pending_approvals_ordered_with_user_name(store: FollowStore):
-    await store.upsert_approval("user-b", "MBID-2", "Beta", "pending")
-    await store.upsert_approval("user-a", "MBID-1", "Alpha", "pending")
-    await store.upsert_approval("user-a", "MBID-3", "Gamma", "approved")  # not pending
-    pending = await store.list_pending_approvals()
-    assert len(pending) == 2
-    # ordered by requested_at ASC (user-b requested first)
-    assert pending[0].user_id == "user-b"
-    assert pending[0].user_name == "Bob"
-    assert pending[1].user_id == "user-a"
-    assert pending[1].user_name == "Alice"
-
-
-@pytest.mark.asyncio
-async def test_pending_approval_unit_count_uses_one_unit_per_batch(store: FollowStore):
-    await store.upsert_approval("user-a", "MBID-1", "Alpha", "pending")
-    await store.create_import_approval_batch(
-        "user-b", [("MBID-2", "Beta"), ("MBID-3", "Gamma")], "batch-1"
-    )
-    await store.create_import_approval_batch(
-        "user-a", [("MBID-4", "Delta")], "batch-2"
-    )
-
-    assert await store.count_pending_approval_units() == 3
 
 
 @pytest.mark.asyncio
@@ -289,30 +181,6 @@ async def test_record_new_releases_is_idempotent(store: FollowStore, tmp_path: P
     assert total == 1
     assert items[0].release_group_mbid == "RG2"
     assert items[0].title == "New Album"
-
-
-@pytest.mark.asyncio
-async def test_auto_download_followers_gate(store: FollowStore):
-    # admin: intent on, no approval row -> granted by role (DD3)
-    await store.follow_artist("admin-1", "MBID-A", "Radiohead")
-    await store.set_auto_download_intent("admin-1", "MBID-A", True)
-    # user-a: intent on + approved -> granted
-    await store.follow_artist("user-a", "MBID-A", "Radiohead")
-    await store.set_auto_download_intent("user-a", "MBID-A", True)
-    await store.upsert_approval("user-a", "MBID-A", "Radiohead", "approved")
-    # user-b: intent on + only pending -> excluded
-    await store.follow_artist("user-b", "MBID-A", "Radiohead")
-    await store.set_auto_download_intent("user-b", "MBID-A", True)
-    await store.upsert_approval("user-b", "MBID-A", "Radiohead", "pending")
-
-    followers = await store.list_auto_download_followers("mbid-a")
-    assert followers == ["admin-1", "user-a"]  # ordered by user_id, pending excluded
-
-
-@pytest.mark.asyncio
-async def test_auto_download_followers_excludes_intent_off(store: FollowStore):
-    await store.follow_artist("admin-1", "MBID-A", "Radiohead")  # intent off
-    assert await store.list_auto_download_followers("mbid-a") == []
 
 
 @pytest.mark.asyncio
@@ -446,7 +314,6 @@ async def test_seen_marker_cascades_on_user_delete(store: FollowStore, tmp_path:
 @pytest.mark.asyncio
 async def test_cascade_on_user_delete(store: FollowStore, tmp_path: Path):
     await store.follow_artist("user-a", "MBID-A", "Radiohead")
-    await store.upsert_approval("user-a", "MBID-A", "Radiohead", "pending")
     conn = sqlite3.connect(tmp_path / "library.db")
     try:
         conn.execute("PRAGMA foreign_keys=ON")
@@ -455,7 +322,6 @@ async def test_cascade_on_user_delete(store: FollowStore, tmp_path: Path):
     finally:
         conn.close()
     assert (await store.get_follow_state("user-a", "MBID-A")).followed is False
-    assert await store.get_approval("user-a", "MBID-A") is None
 
 
 @pytest.mark.asyncio

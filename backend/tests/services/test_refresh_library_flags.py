@@ -32,13 +32,12 @@ def artist_service(mock_library_repo):
 
 
 def _make_artist(
-    mbid: str = "aaa-bbb", in_library: bool = False, auto_download: bool = False
+    mbid: str = "aaa-bbb", in_library: bool = False
 ) -> ArtistInfo:
     return ArtistInfo(
         name="Test Artist",
         musicbrainz_id=mbid,
         in_library=in_library,
-        auto_download=auto_download,
     )
 
 
@@ -51,31 +50,28 @@ class TestRefreshLibraryFlagsLibraryTransition:
         await artist_service._refresh_library_flags(artist)
 
         assert artist.in_library is True
-        assert artist.auto_download is False
 
     @pytest.mark.asyncio
-    async def test_already_in_library_preserves_auto_download(
+    async def test_already_in_library_is_preserved(
         self, artist_service, mock_library_repo
     ):
         mock_library_repo.get_artist_mbids.return_value = {"aaa-bbb"}
-        artist = _make_artist(in_library=True, auto_download=True)
+        artist = _make_artist(in_library=True)
 
         await artist_service._refresh_library_flags(artist)
 
         assert artist.in_library is True
-        assert artist.auto_download is True
 
     @pytest.mark.asyncio
     async def test_removed_from_artist_mbids_clears_in_library(
         self, artist_service, mock_library_repo
     ):
         mock_library_repo.get_artist_mbids.return_value = set()
-        artist = _make_artist(in_library=True, auto_download=True)
+        artist = _make_artist(in_library=True)
 
         await artist_service._refresh_library_flags(artist)
 
         assert artist.in_library is False
-        assert artist.auto_download is True
 
     @pytest.mark.asyncio
     async def test_not_configured_skips(self, artist_service, mock_library_repo):

@@ -10,7 +10,6 @@ import {
 import { FollowQueryKeyFactory } from './FollowQueryKeyFactory';
 import { FOLLOW_ENDPOINTS } from './endpoints';
 import type {
-	AutoDownloadState,
 	EventCitiesResponse,
 	EventCity,
 	FollowStatus,
@@ -18,9 +17,7 @@ import type {
 } from './types';
 
 const NOT_FOLLOWING: FollowStatus = {
-	followed: false,
-	auto_download: false,
-	auto_download_state: 'none'
+	followed: false
 };
 
 function statusKey(mbid: string) {
@@ -115,44 +112,6 @@ export const createUnfollowMutation = () =>
 			api.global.put<FollowStatus>(FOLLOW_ENDPOINTS.setFollow(mbid), { followed: false }),
 		onSuccess: (data, mbid) => {
 			void setQueryDataWithPersister<FollowStatus>(statusKey(mbid), data);
-		},
-		onSettled: () => {
-			void invalidateFollowedArtists();
-		}
-	}));
-
-export const createSetAutoDownloadMutation = (getMbid: () => string) =>
-	createMutation(() => ({
-		mutationFn: (enabled: boolean) =>
-			api.global.put<FollowStatus>(FOLLOW_ENDPOINTS.autoDownload(getMbid()), { enabled }),
-		onMutate: async (enabled: boolean) => {
-			const key = statusKey(getMbid());
-			await queryClient.cancelQueries({ queryKey: key });
-			const prev = queryClient.getQueryData<FollowStatus>(key) ?? NOT_FOLLOWING;
-			// admins are approved immediately; everyone else enters a pending state (D3)
-			const optimisticState: AutoDownloadState = enabled
-				? authStore.isAdmin
-					? 'approved'
-					: 'pending'
-				: 'none';
-			await setQueryDataWithPersister<FollowStatus>(key, {
-				...prev,
-				auto_download: enabled,
-				auto_download_state: optimisticState
-			});
-			return { prev };
-		},
-		onError: (_err, _enabled, ctx) => {
-			if (ctx) void setQueryDataWithPersister<FollowStatus>(statusKey(getMbid()), ctx.prev);
-		},
-		onSuccess: (data, enabled) => {
-			void setQueryDataWithPersister<FollowStatus>(statusKey(getMbid()), data);
-			if (enabled && data.auto_download_state === 'pending') {
-				toastStore.show({
-					message: 'Request sent - an admin will approve auto-downloads for this artist.',
-					type: 'info'
-				});
-			}
 		},
 		onSettled: () => {
 			void invalidateFollowedArtists();

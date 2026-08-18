@@ -153,7 +153,6 @@ export const API = {
 			return `/api/v1/artists/${id}/lastfm?${params.toString()}`;
 		},
 		follow: (id: string) => `/api/v1/artists/${id}/follow`,
-		autoDownload: (id: string) => `/api/v1/artists/${id}/auto-download`,
 		purchaseOptions: (id: string, artistName: string) => {
 			const params = new URLSearchParams({ name: artistName });
 			return `/api/v1/artists/${id}/purchase-options?${params.toString()}`;
@@ -739,13 +738,6 @@ export const API = {
 		reorder: () => '/api/v1/indexers/reorder',
 		test: () => '/api/v1/indexers/test'
 	},
-	lidarrImport: {
-		config: () => '/api/v1/lidarr-import/config',
-		test: () => '/api/v1/lidarr-import/test',
-		status: () => '/api/v1/lidarr-import/status',
-		artists: () => '/api/v1/lidarr-import/artists',
-		import: () => '/api/v1/lidarr-import/import'
-	},
 	freeMusic: {
 		tasks: (all: boolean = false) => `/api/v1/free-music/tasks${all ? '?all=true' : ''}`,
 		task: (id: string) => `/api/v1/free-music/tasks/${id}`,
@@ -814,18 +806,6 @@ export const API = {
 	requests: {
 		new: () => '/api/v1/requests/new',
 		pendingApprovalCount: () => '/api/v1/requests/pending-approvals/count',
-		autoDownloadApprovals: () => '/api/v1/requests/auto-download-approvals',
-		approveAutoDownload: (userId: string, mbid: string) =>
-			`/api/v1/requests/auto-download-approvals/${userId}/${mbid}/approve`,
-		rejectAutoDownload: (userId: string, mbid: string) =>
-			`/api/v1/requests/auto-download-approvals/${userId}/${mbid}/reject`,
-		revokeAutoDownload: (userId: string, mbid: string) =>
-			`/api/v1/requests/auto-download-approvals/${userId}/${mbid}/revoke`,
-		autoDownloadApprovalBatches: () => '/api/v1/requests/auto-download-approval-batches',
-		approveAutoDownloadBatch: (batchId: string) =>
-			`/api/v1/requests/auto-download-approval-batches/${batchId}/approve`,
-		rejectAutoDownloadBatch: (batchId: string) =>
-			`/api/v1/requests/auto-download-approval-batches/${batchId}/reject`,
 		personalMixApprovals: () => '/api/v1/requests/personal-mix-approvals',
 		approvePersonalMix: (userId: string) =>
 			`/api/v1/requests/personal-mix-approvals/${userId}/approve`,

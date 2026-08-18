@@ -3,12 +3,12 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from core.exceptions import ClientDisconnectedError
-from api.v1.schemas.artist import ArtistInfo, ArtistExtendedInfo, ArtistReleases, LastFmArtistEnrichment, FollowRequest, AutoDownloadRequest, FollowStatusResponse
+from api.v1.schemas.artist import ArtistInfo, ArtistExtendedInfo, ArtistReleases, LastFmArtistEnrichment, FollowRequest, FollowStatusResponse
 from api.v1.schemas.discovery import SimilarArtistsResponse, TopSongsResponse, TopAlbumsResponse
 from api.v1.schemas.get_it import ArtistPurchaseOptionsResponse
 from core.dependencies import get_artist_service, get_artist_discovery_service, get_artist_enrichment_service, get_follow_service, get_get_it_service
 from services.artist_service import ArtistService
-from services.follow_service import FollowService, FollowError
+from services.follow_service import FollowService
 from middleware import CurrentUserDep
 from services.artist_discovery_service import ArtistDiscoveryService
 from services.artist_enrichment_service import ArtistEnrichmentService
@@ -181,11 +181,7 @@ async def get_artist_lastfm_enrichment(
 
 
 def _follow_response(state) -> FollowStatusResponse:
-    return FollowStatusResponse(
-        followed=state.followed,
-        auto_download=state.auto_download,
-        auto_download_state=state.auto_download_state,
-    )
+    return FollowStatusResponse(followed=state.followed)
 
 
 def _validate_artist_mbid(artist_id: str) -> None:
@@ -205,7 +201,7 @@ async def get_follow_status(
     follow_service: FollowService = Depends(get_follow_service),
 ):
     _validate_artist_mbid(artist_id)
-    state = await follow_service.get_status(current_user.id, current_user.role, artist_id)
+    state = await follow_service.get_status(current_user.id, artist_id)
     return _follow_response(state)
 
 
@@ -218,23 +214,6 @@ async def set_follow(
 ):
     _validate_artist_mbid(artist_id)
     state = await follow_service.set_followed(
-        current_user.id, current_user.role, artist_id, body.followed
+        current_user.id, artist_id, body.followed
     )
-    return _follow_response(state)
-
-
-@router.put("/{artist_id}/auto-download", response_model=FollowStatusResponse)
-async def set_auto_download(
-    artist_id: str,
-    current_user: CurrentUserDep,
-    body: AutoDownloadRequest = MsgSpecBody(AutoDownloadRequest),
-    follow_service: FollowService = Depends(get_follow_service),
-):
-    _validate_artist_mbid(artist_id)
-    try:
-        state = await follow_service.set_auto_download(
-            current_user.id, current_user.role, artist_id, body.enabled
-        )
-    except FollowError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     return _follow_response(state)

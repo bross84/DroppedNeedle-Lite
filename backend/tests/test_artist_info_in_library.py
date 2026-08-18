@@ -11,5 +11,4 @@ def test_artist_info_uses_in_library_not_in_lidarr():
 def test_follow_status_response_uses_follow_semantics():
     fields = FollowStatusResponse.__struct_fields__
     assert "followed" in fields
-    assert "auto_download_state" in fields
     assert "monitored" not in fields

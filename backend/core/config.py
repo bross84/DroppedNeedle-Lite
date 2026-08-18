@@ -28,7 +28,6 @@ _PREFERENCES_OWNED_CONFIG_KEYS = frozenset(
         "library_scan_schedule",
         "library_settings",
         "library_sync_settings",
-        "lidarr_import",
         "listenbrainz_settings",
         "local_files_settings",
         "musicbrainz_settings",

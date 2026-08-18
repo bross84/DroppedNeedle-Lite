@@ -1,4 +1,4 @@
-"""Per-user Follow + auto-download persistence.
+"""Per-user Follow persistence and the new-release feed built on it.
 
 ``PRAGMA foreign_keys=ON`` in ``_connect`` is what makes the
 ``ON DELETE CASCADE`` to ``auth_users(id)`` fire when a user is deleted.
@@ -48,45 +48,13 @@ def _owned_release_groups_sql(conn: sqlite3.Connection) -> str:
 
 
 class FollowState(msgspec.Struct, frozen=True):
-    # auto_download_state (none|pending|approved|rejected|revoked) is derived
-    # from the approval row here; the admin role override is applied in the
-    # service layer, which knows the role.
     followed: bool
-    auto_download: bool
-    auto_download_state: str
 
 
 class FollowedArtist(msgspec.Struct, frozen=True):
     artist_mbid: str
     artist_name: str
-    auto_download: bool
-    auto_download_state: str
     followed_at: float
-
-
-class Approval(msgspec.Struct, frozen=True):
-    user_id: str
-    artist_mbid: str
-    artist_name: str
-    state: str
-    requested_at: float
-    reviewed_by_id: str | None = None
-    reviewed_by_name: str | None = None
-    reviewed_at: float | None = None
-    user_name: str | None = None
-
-
-class ApprovalBatch(msgspec.Struct, frozen=True):
-    """A grouped bulk auto-download approval (LidarrImport D3): N per-artist
-    ``auto_download_approvals`` rows sharing a ``batch_id``, presented as one admin card."""
-
-    batch_id: str
-    user_id: str
-    artist_count: int
-    sample_names: list[str]
-    requested_at: float
-    source: str
-    user_name: str | None = None
 
 
 class DistinctFollowedArtist(msgspec.Struct, frozen=True):
@@ -147,32 +115,12 @@ class FollowStore:
                     artist_mbid       TEXT    NOT NULL,
                     artist_mbid_lower TEXT    NOT NULL,
                     artist_name       TEXT    NOT NULL,
-                    auto_download     INTEGER NOT NULL DEFAULT 0,
                     followed_at       REAL    NOT NULL,
                     updated_at        REAL    NOT NULL,
                     PRIMARY KEY (user_id, artist_mbid_lower)
                 );
                 CREATE INDEX IF NOT EXISTS idx_ufa_user ON user_followed_artists(user_id);
                 CREATE INDEX IF NOT EXISTS idx_ufa_mbid ON user_followed_artists(artist_mbid_lower);
-                CREATE INDEX IF NOT EXISTS idx_ufa_autodl
-                    ON user_followed_artists(auto_download) WHERE auto_download = 1;
-
-                CREATE TABLE IF NOT EXISTS auto_download_approvals (
-                    user_id           TEXT    NOT NULL REFERENCES auth_users(id) ON DELETE CASCADE,
-                    artist_mbid       TEXT    NOT NULL,
-                    artist_mbid_lower TEXT    NOT NULL,
-                    artist_name       TEXT    NOT NULL,
-                    state             TEXT    NOT NULL DEFAULT 'pending',
-                    requested_at      REAL    NOT NULL,
-                    reviewed_by_id    TEXT,
-                    reviewed_by_name  TEXT,
-                    reviewed_at       REAL,
-                    batch_id          TEXT,
-                    source            TEXT,
-                    PRIMARY KEY (user_id, artist_mbid_lower)
-                );
-                CREATE INDEX IF NOT EXISTS idx_ada_pending
-                    ON auto_download_approvals(state) WHERE state = 'pending';
 
                 CREATE TABLE IF NOT EXISTS new_release_feed (
                     release_group_mbid_lower TEXT    PRIMARY KEY,
@@ -207,30 +155,9 @@ class FollowStore:
                 );
                 """
             )
-            # Additive ratchet for DBs created before the LidarrImport bulk-approval columns
-            # (LidarrImport DR5). Idempotent: a no-op once the columns exist.
-            self._safe_alter(
-                conn, "ALTER TABLE auto_download_approvals ADD COLUMN batch_id TEXT"
-            )
-            self._safe_alter(
-                conn, "ALTER TABLE auto_download_approvals ADD COLUMN source TEXT"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_ada_batch "
-                "ON auto_download_approvals(batch_id) WHERE batch_id IS NOT NULL"
-            )
             conn.commit()
         finally:
             conn.close()
-
-    @staticmethod
-    def _safe_alter(conn: sqlite3.Connection, sql: str) -> None:
-        """Idempotent additive migration: an ``ADD COLUMN`` that already ran raises
-        ``OperationalError: duplicate column name`` - swallow only that."""
-        try:
-            conn.execute(sql)
-        except sqlite3.OperationalError:
-            pass
 
     def _execute(self, operation, write: bool):
         if write:
@@ -255,18 +182,9 @@ class FollowStore:
     async def _write(self, operation):
         return await asyncio.to_thread(self._execute, operation, True)
 
-    @staticmethod
-    def _derive_state(intent: bool, approval_state: str | None) -> str:
-        """Role-agnostic display state. The service applies the admin override."""
-        if intent:
-            return approval_state or "none"
-        if approval_state in ("rejected", "revoked"):
-            return approval_state
-        return "none"
-
     async def follow_artist(self, user_id: str, artist_mbid: str, artist_name: str) -> None:
-        # re-following preserves auto_download intent and followed_at, only
-        # refreshing the name snapshot and updated_at.
+        # re-following preserves followed_at, only refreshing the name snapshot
+        # and updated_at.
         mbid_lower = artist_mbid.lower()
         now = time.time()
 
@@ -275,8 +193,8 @@ class FollowStore:
                 """
                 INSERT INTO user_followed_artists (
                     user_id, artist_mbid, artist_mbid_lower, artist_name,
-                    auto_download, followed_at, updated_at
-                ) VALUES (?, ?, ?, ?, 0, ?, ?)
+                    followed_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?)
                 ON CONFLICT(user_id, artist_mbid_lower) DO UPDATE SET
                     artist_name = excluded.artist_name,
                     updated_at = excluded.updated_at
@@ -287,7 +205,6 @@ class FollowStore:
         await self._write(operation)
 
     async def unfollow_artist(self, user_id: str, artist_mbid: str) -> bool:
-        # any approval row is deliberately left intact (L4)
         mbid_lower = artist_mbid.lower()
 
         def operation(conn: sqlite3.Connection) -> bool:
@@ -299,413 +216,40 @@ class FollowStore:
 
         return await self._write(operation)
 
-    async def set_auto_download_intent(self, user_id: str, artist_mbid: str, enabled: bool) -> None:
-        mbid_lower = artist_mbid.lower()
-        now = time.time()
-
-        def operation(conn: sqlite3.Connection) -> None:
-            conn.execute(
-                "UPDATE user_followed_artists SET auto_download = ?, updated_at = ? "
-                "WHERE user_id = ? AND artist_mbid_lower = ?",
-                (1 if enabled else 0, now, user_id, mbid_lower),
-            )
-
-        await self._write(operation)
-
-    async def follow_artists_bulk(
-        self, user_id: str, artists: list[tuple[str, str]]
-    ) -> None:
-        """Bulk follow (LidarrImport DR2): one transaction, names supplied by the caller
-        (0 MusicBrainz calls). Reuses ``follow_artist``'s idempotent UPSERT semantics -
-        existing rows keep their ``auto_download`` intent + ``followed_at`` and only refresh
-        the name snapshot + ``updated_at`` (D6/DR4). ``artists`` = [(artist_mbid, name)]."""
-        if not artists:
-            return
-        now = time.time()
-        rows = [(user_id, mbid, mbid.lower(), name, now, now) for mbid, name in artists]
-
-        def operation(conn: sqlite3.Connection) -> None:
-            conn.executemany(
-                """
-                INSERT INTO user_followed_artists (
-                    user_id, artist_mbid, artist_mbid_lower, artist_name,
-                    auto_download, followed_at, updated_at
-                ) VALUES (?, ?, ?, ?, 0, ?, ?)
-                ON CONFLICT(user_id, artist_mbid_lower) DO UPDATE SET
-                    artist_name = excluded.artist_name,
-                    updated_at = excluded.updated_at
-                """,
-                rows,
-            )
-
-        await self._write(operation)
-
-    async def set_auto_download_intent_bulk(
-        self, user_id: str, artist_mbids: list[str], enabled: bool
-    ) -> None:
-        """Flip auto-download intent on/off for many followed artists in one transaction."""
-        if not artist_mbids:
-            return
-        now = time.time()
-        value = 1 if enabled else 0
-        rows = [(value, now, user_id, mbid.lower()) for mbid in artist_mbids]
-
-        def operation(conn: sqlite3.Connection) -> None:
-            conn.executemany(
-                "UPDATE user_followed_artists SET auto_download = ?, updated_at = ? "
-                "WHERE user_id = ? AND artist_mbid_lower = ?",
-                rows,
-            )
-
-        await self._write(operation)
-
-    async def existing_followed_lower(
-        self, user_id: str, artist_mbids_lower: list[str]
-    ) -> set[str]:
-        """The subset of ``artist_mbids_lower`` this user already follows. The pre-read the
-        importer does BEFORE any write, to compute real imported/already-following counts and
-        the D9 brand-new-only auto-download subset (LidarrImport DR6)."""
-        if not artist_mbids_lower:
-            return set()
-
-        def operation(conn: sqlite3.Connection) -> set[str]:
-            placeholders = ",".join("?" * len(artist_mbids_lower))
-            rows = conn.execute(
-                f"SELECT artist_mbid_lower FROM user_followed_artists "
-                f"WHERE user_id = ? AND artist_mbid_lower IN ({placeholders})",
-                (user_id, *artist_mbids_lower),
-            ).fetchall()
-            return {row["artist_mbid_lower"] for row in rows}
-
-        return await self._read(operation)
-
     async def get_follow_state(self, user_id: str, artist_mbid: str) -> FollowState:
         mbid_lower = artist_mbid.lower()
 
-        def operation(conn: sqlite3.Connection) -> tuple[sqlite3.Row | None, sqlite3.Row | None]:
-            follow = conn.execute(
-                "SELECT auto_download FROM user_followed_artists "
+        def operation(conn: sqlite3.Connection) -> sqlite3.Row | None:
+            return conn.execute(
+                "SELECT 1 FROM user_followed_artists "
                 "WHERE user_id = ? AND artist_mbid_lower = ?",
                 (user_id, mbid_lower),
             ).fetchone()
-            approval = conn.execute(
-                "SELECT state FROM auto_download_approvals "
-                "WHERE user_id = ? AND artist_mbid_lower = ?",
-                (user_id, mbid_lower),
-            ).fetchone()
-            return follow, approval
 
-        follow, approval = await self._read(operation)
-        if follow is None:
-            return FollowState(followed=False, auto_download=False, auto_download_state="none")
-        intent = bool(follow["auto_download"])
-        approval_state = approval["state"] if approval else None
-        return FollowState(
-            followed=True,
-            auto_download=intent,
-            auto_download_state=self._derive_state(intent, approval_state),
-        )
+        follow = await self._read(operation)
+        return FollowState(followed=follow is not None)
 
     async def list_followed_artists(self, user_id: str) -> list[FollowedArtist]:
         def operation(conn: sqlite3.Connection) -> list[sqlite3.Row]:
             return conn.execute(
                 """
-                SELECT ufa.artist_mbid AS artist_mbid, ufa.artist_name AS artist_name,
-                       ufa.auto_download AS auto_download, ufa.followed_at AS followed_at,
-                       ada.state AS approval_state
-                FROM user_followed_artists ufa
-                LEFT JOIN auto_download_approvals ada
-                    ON ada.user_id = ufa.user_id AND ada.artist_mbid_lower = ufa.artist_mbid_lower
-                WHERE ufa.user_id = ?
-                ORDER BY ufa.followed_at DESC
+                SELECT artist_mbid, artist_name, followed_at
+                FROM user_followed_artists
+                WHERE user_id = ?
+                ORDER BY followed_at DESC
                 """,
                 (user_id,),
             ).fetchall()
 
         rows = await self._read(operation)
-        result = []
-        for row in rows:
-            intent = bool(row["auto_download"])
-            result.append(
-                FollowedArtist(
-                    artist_mbid=row["artist_mbid"],
-                    artist_name=row["artist_name"],
-                    auto_download=intent,
-                    auto_download_state=self._derive_state(intent, row["approval_state"]),
-                    followed_at=row["followed_at"],
-                )
-            )
-        return result
-
-    async def upsert_approval(
-        self,
-        user_id: str,
-        artist_mbid: str,
-        artist_name: str,
-        state: str,
-        reviewer: tuple[str, str | None] | None = None,
-    ) -> None:
-        # requested_at is refreshed so a re-request surfaces fresh in the admin
-        # queue; reviewer fields are cleared unless a reviewer is given.
-        mbid_lower = artist_mbid.lower()
-        now = time.time()
-        reviewed_by_id = reviewer[0] if reviewer else None
-        reviewed_by_name = reviewer[1] if reviewer else None
-        reviewed_at = now if reviewer else None
-
-        def operation(conn: sqlite3.Connection) -> None:
-            conn.execute(
-                """
-                INSERT INTO auto_download_approvals (
-                    user_id, artist_mbid, artist_mbid_lower, artist_name,
-                    state, requested_at, reviewed_by_id, reviewed_by_name, reviewed_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(user_id, artist_mbid_lower) DO UPDATE SET
-                    artist_name = excluded.artist_name,
-                    state = excluded.state,
-                    requested_at = excluded.requested_at,
-                    reviewed_by_id = excluded.reviewed_by_id,
-                    reviewed_by_name = excluded.reviewed_by_name,
-                    reviewed_at = excluded.reviewed_at
-                """,
-                (
-                    user_id,
-                    artist_mbid,
-                    mbid_lower,
-                    artist_name,
-                    state,
-                    now,
-                    reviewed_by_id,
-                    reviewed_by_name,
-                    reviewed_at,
-                ),
-            )
-
-        await self._write(operation)
-
-    async def set_approval_state(
-        self,
-        user_id: str,
-        artist_mbid: str,
-        state: str,
-        reviewer: tuple[str, str | None],
-    ) -> bool:
-        # admin review transition; leaves requested_at untouched
-        mbid_lower = artist_mbid.lower()
-        now = time.time()
-        reviewed_by_id, reviewed_by_name = reviewer
-
-        def operation(conn: sqlite3.Connection) -> bool:
-            cursor = conn.execute(
-                "UPDATE auto_download_approvals SET state = ?, reviewed_by_id = ?, "
-                "reviewed_by_name = ?, reviewed_at = ? "
-                "WHERE user_id = ? AND artist_mbid_lower = ?",
-                (state, reviewed_by_id, reviewed_by_name, now, user_id, mbid_lower),
-            )
-            return cursor.rowcount > 0
-
-        return await self._write(operation)
-
-    async def get_approval(self, user_id: str, artist_mbid: str) -> Approval | None:
-        mbid_lower = artist_mbid.lower()
-
-        def operation(conn: sqlite3.Connection) -> sqlite3.Row | None:
-            return conn.execute(
-                "SELECT * FROM auto_download_approvals WHERE user_id = ? AND artist_mbid_lower = ?",
-                (user_id, mbid_lower),
-            ).fetchone()
-
-        row = await self._read(operation)
-        if row is None:
-            return None
-        return Approval(
-            user_id=row["user_id"],
-            artist_mbid=row["artist_mbid"],
-            artist_name=row["artist_name"],
-            state=row["state"],
-            requested_at=row["requested_at"],
-            reviewed_by_id=row["reviewed_by_id"],
-            reviewed_by_name=row["reviewed_by_name"],
-            reviewed_at=row["reviewed_at"],
-        )
-
-    async def list_pending_approvals(self) -> list[Approval]:
-        def operation(conn: sqlite3.Connection) -> list[sqlite3.Row]:
-            return conn.execute(
-                """
-                SELECT ada.user_id AS user_id, ada.artist_mbid AS artist_mbid,
-                       ada.artist_name AS artist_name, ada.state AS state,
-                       ada.requested_at AS requested_at, au.display_name AS user_name
-                FROM auto_download_approvals ada
-                JOIN auth_users au ON au.id = ada.user_id
-                WHERE ada.state = 'pending' AND ada.batch_id IS NULL
-                ORDER BY ada.requested_at ASC
-                """
-            ).fetchall()
-
-        rows = await self._read(operation)
         return [
-            Approval(
-                user_id=row["user_id"],
+            FollowedArtist(
                 artist_mbid=row["artist_mbid"],
                 artist_name=row["artist_name"],
-                state=row["state"],
-                requested_at=row["requested_at"],
-                user_name=row["user_name"],
+                followed_at=row["followed_at"],
             )
             for row in rows
         ]
-
-    async def count_pending_approval_units(self) -> int:
-        """Count individual approvals plus one unit per pending import batch."""
-
-        def operation(conn: sqlite3.Connection) -> int:
-            row = conn.execute(
-                """
-                SELECT
-                    (SELECT COUNT(*) FROM auto_download_approvals
-                     WHERE state = 'pending' AND batch_id IS NULL)
-                    +
-                    (SELECT COUNT(*) FROM (
-                        SELECT batch_id, user_id FROM auto_download_approvals
-                        WHERE state = 'pending' AND batch_id IS NOT NULL
-                        GROUP BY batch_id, user_id
-                    )) AS count
-                """
-            ).fetchone()
-            return int(row["count"] if row is not None else 0)
-
-        return await self._read(operation)
-
-    async def create_import_approval_batch(
-        self,
-        user_id: str,
-        artists: list[tuple[str, str]],
-        batch_id: str,
-        source: str = "lidarr_import",
-    ) -> None:
-        """Create one grouped pending approval batch (LidarrImport D3): N per-artist rows
-        sharing ``batch_id``. Guarded conflict clause NEVER downgrades an already-``approved``
-        row (D9 defence-in-depth) - only non-approved rows are (re-)armed to this batch.
-        ``artists`` = [(artist_mbid, name)]. One transaction."""
-        if not artists:
-            return
-        now = time.time()
-        rows = [
-            (user_id, mbid, mbid.lower(), name, now, batch_id, source)
-            for mbid, name in artists
-        ]
-
-        def operation(conn: sqlite3.Connection) -> None:
-            conn.executemany(
-                """
-                INSERT INTO auto_download_approvals (
-                    user_id, artist_mbid, artist_mbid_lower, artist_name,
-                    state, requested_at, reviewed_by_id, reviewed_by_name, reviewed_at,
-                    batch_id, source
-                ) VALUES (?, ?, ?, ?, 'pending', ?, NULL, NULL, NULL, ?, ?)
-                ON CONFLICT(user_id, artist_mbid_lower) DO UPDATE SET
-                    artist_name = excluded.artist_name,
-                    state = 'pending',
-                    requested_at = excluded.requested_at,
-                    reviewed_by_id = NULL,
-                    reviewed_by_name = NULL,
-                    reviewed_at = NULL,
-                    batch_id = excluded.batch_id,
-                    source = excluded.source
-                WHERE auto_download_approvals.state != 'approved'
-                """,
-                rows,
-            )
-
-        await self._write(operation)
-
-    async def list_pending_approval_batches(self) -> list[ApprovalBatch]:
-        """Grouped pending batches (LidarrImport D3), oldest first. Batched rows are grouped
-        by ``(batch_id, user_id)``; ``sample_names`` carries up to 5 names for the card."""
-
-        def operation(conn: sqlite3.Connection) -> list[sqlite3.Row]:
-            return conn.execute(
-                """
-                SELECT ada.batch_id AS batch_id, ada.user_id AS user_id,
-                       ada.artist_name AS artist_name, ada.requested_at AS requested_at,
-                       ada.source AS source, au.display_name AS user_name
-                FROM auto_download_approvals ada
-                JOIN auth_users au ON au.id = ada.user_id
-                WHERE ada.state = 'pending' AND ada.batch_id IS NOT NULL
-                ORDER BY ada.requested_at ASC, ada.artist_name ASC
-                """
-            ).fetchall()
-
-        rows = await self._read(operation)
-        grouped: dict[tuple[str, str], dict] = {}
-        for row in rows:
-            key = (row["batch_id"], row["user_id"])
-            entry = grouped.get(key)
-            if entry is None:
-                entry = {
-                    "batch_id": row["batch_id"],
-                    "user_id": row["user_id"],
-                    "user_name": row["user_name"],
-                    "source": row["source"] or "lidarr_import",
-                    "requested_at": row["requested_at"],
-                    "count": 0,
-                    "names": [],
-                }
-                grouped[key] = entry
-            entry["count"] += 1
-            entry["requested_at"] = min(entry["requested_at"], row["requested_at"])
-            if len(entry["names"]) < 5:
-                entry["names"].append(row["artist_name"])
-        batches = [
-            ApprovalBatch(
-                batch_id=e["batch_id"],
-                user_id=e["user_id"],
-                user_name=e["user_name"],
-                artist_count=e["count"],
-                sample_names=e["names"],
-                requested_at=e["requested_at"],
-                source=e["source"],
-            )
-            for e in grouped.values()
-        ]
-        batches.sort(key=lambda b: b.requested_at)
-        return batches
-
-    async def set_batch_approval_state(
-        self,
-        batch_id: str,
-        state: str,
-        reviewer: tuple[str, str | None],
-    ) -> int:
-        """Approve/reject/revoke every still-pending row of a batch in ONE transaction.
-        For reject/revoke, also flips ``auto_download`` intent off for that batch's artists
-        (matching the single-row reject contract). Returns rows affected."""
-        now = time.time()
-        reviewed_by_id, reviewed_by_name = reviewer
-
-        def operation(conn: sqlite3.Connection) -> int:
-            cursor = conn.execute(
-                "UPDATE auto_download_approvals SET state = ?, reviewed_by_id = ?, "
-                "reviewed_by_name = ?, reviewed_at = ? "
-                "WHERE batch_id = ? AND state = 'pending'",
-                (state, reviewed_by_id, reviewed_by_name, now, batch_id),
-            )
-            affected = cursor.rowcount
-            if affected and state in ("rejected", "revoked"):
-                conn.execute(
-                    """
-                    UPDATE user_followed_artists SET auto_download = 0, updated_at = ?
-                    WHERE (user_id, artist_mbid_lower) IN (
-                        SELECT user_id, artist_mbid_lower FROM auto_download_approvals
-                        WHERE batch_id = ?
-                    )
-                    """,
-                    (now, batch_id),
-                )
-            return affected
-
-        return await self._write(operation)
 
     async def list_distinct_followed_artists(self) -> list[DistinctFollowedArtist]:
         def operation(conn: sqlite3.Connection) -> list[sqlite3.Row]:
@@ -843,37 +387,12 @@ class FollowStore:
 
     async def list_followers(self, artist_mbid_lower: str) -> list[str]:
         """Every user following the artist (the events watcher's SSE fan-out
-        audience) - unlike list_auto_download_followers, no approval gating."""
+        audience for concert notifications)."""
 
         def operation(conn: sqlite3.Connection) -> list[str]:
             rows = conn.execute(
                 "SELECT user_id FROM user_followed_artists WHERE artist_mbid_lower = ?"
                 " ORDER BY user_id",
-                (artist_mbid_lower,),
-            ).fetchall()
-            return [row["user_id"] for row in rows]
-
-        return await self._read(operation)
-
-    async def list_auto_download_followers(self, artist_mbid_lower: str) -> list[str]:
-        # auto_download intent on AND (admin role OR approved standing grant).
-        # admins are granted by role with no approval row (DD3) so a later
-        # demotion correctly drops them. ordered by user_id so the poller's
-        # owner pick is deterministic.
-
-        def operation(conn: sqlite3.Connection) -> list[str]:
-            rows = conn.execute(
-                """
-                SELECT ufa.user_id AS user_id
-                FROM user_followed_artists ufa
-                JOIN auth_users au ON au.id = ufa.user_id
-                LEFT JOIN auto_download_approvals ada
-                    ON ada.user_id = ufa.user_id AND ada.artist_mbid_lower = ufa.artist_mbid_lower
-                WHERE ufa.artist_mbid_lower = ?
-                  AND ufa.auto_download = 1
-                  AND (au.role = 'admin' OR ada.state = 'approved')
-                ORDER BY ufa.user_id
-                """,
                 (artist_mbid_lower,),
             ).fetchall()
             return [row["user_id"] for row in rows]

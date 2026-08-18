@@ -109,7 +109,6 @@ class UserListeningPrefsStore:
             except sqlite3.OperationalError:
                 pass  # column already present
             # standing grants for personal-mix auto-request, one row per user,
-            # mirroring auto_download_approvals (follow_store)
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS personal_mix_approvals (

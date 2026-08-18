@@ -2,7 +2,7 @@ import { page } from '@vitest/browser/context';
 import { expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 
-vi.mock('$lib/queries/following/AdminApprovalsQueries.svelte', () => ({
+vi.mock('$lib/queries/following/PendingApprovalsQuery.svelte', () => ({
 	getPendingApprovalCountQuery: () => ({ data: { count: 12 } })
 }));
 

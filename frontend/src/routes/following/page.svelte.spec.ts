@@ -33,8 +33,6 @@ function artist(n: number): FollowedArtist {
 	return {
 		mbid: `mbid-${n}`,
 		name: `Artist ${n}`,
-		auto_download: false,
-		auto_download_state: 'none',
 		followed_at: n
 	};
 }

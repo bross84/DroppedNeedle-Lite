@@ -58,8 +58,6 @@ class ArtistInfo(AppStruct):
     # /artists/{mbid}/follow endpoint, so these stay at their defaults in the
     # globally-cached struct.
     followed: bool = False
-    auto_download: bool = False
-    auto_download_state: str = "none"
     albums: list[ReleaseItem] = []
     singles: list[ReleaseItem] = []
     eps: list[ReleaseItem] = []

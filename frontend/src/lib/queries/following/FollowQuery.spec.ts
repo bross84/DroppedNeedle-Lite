@@ -50,7 +50,6 @@ import {
 	createMarkConcertsSeenMutation,
 	createMarkNewReleasesSeenMutation,
 	createReplaceEventCitiesMutation,
-	createSetAutoDownloadMutation,
 	createSetFollowMutation
 } from './FollowMutations.svelte';
 import type { FollowStatus, UnseenCountResponse } from './types';
@@ -75,8 +74,8 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	auth.user = { id: 'userA' };
 	auth.isAdmin = false;
-	mockGet.mockResolvedValue({ followed: false, auto_download: false, auto_download_state: 'none' });
-	mockPut.mockResolvedValue({ followed: true, auto_download: false, auto_download_state: 'none' });
+	mockGet.mockResolvedValue({ followed: false });
+	mockPut.mockResolvedValue({ followed: true });
 	queryClient.clear();
 });
 
@@ -238,44 +237,6 @@ describe('follow mutations', () => {
 		expect(mockPut).toHaveBeenCalledWith(FOLLOW_ENDPOINTS.setFollow(MBID), { followed: true });
 	});
 
-	it('setAutoDownload PUTs { enabled } to the auto-download endpoint', async () => {
-		const m = createSetAutoDownloadMutation(() => MBID) as unknown as Opts;
-		await m.mutationFn(true);
-		expect(mockPut).toHaveBeenCalledWith(FOLLOW_ENDPOINTS.autoDownload(MBID), { enabled: true });
-	});
-
-	it('non-admin auto-download optimistically goes pending (D3)', async () => {
-		auth.isAdmin = false;
-		const m = createSetAutoDownloadMutation(() => MBID) as unknown as Opts;
-		await m.onMutate!(true);
-		const cached = queryClient.getQueryData<FollowStatus>(
-			FollowQueryKeyFactory.status(MBID, 'userA')
-		);
-		expect(cached?.auto_download).toBe(true);
-		expect(cached?.auto_download_state).toBe('pending');
-	});
-
-	it('admin auto-download optimistically goes approved (D3)', async () => {
-		auth.isAdmin = true;
-		const m = createSetAutoDownloadMutation(() => MBID) as unknown as Opts;
-		await m.onMutate!(true);
-		const cached = queryClient.getQueryData<FollowStatus>(
-			FollowQueryKeyFactory.status(MBID, 'userA')
-		);
-		expect(cached?.auto_download_state).toBe('approved');
-	});
-
-	it('shows the pending toast when the server confirms pending', async () => {
-		const m = createSetAutoDownloadMutation(() => MBID) as unknown as Opts;
-		await m.onSuccess!(
-			{ followed: true, auto_download: true, auto_download_state: 'pending' },
-			true
-		);
-		expect(mockShow).toHaveBeenCalledWith(
-			expect.objectContaining({ type: 'info', message: expect.stringContaining('admin') })
-		);
-	});
-
 	it('markNewReleasesSeen POSTs and zeroes the cached badge count', async () => {
 		mockPost.mockResolvedValue({ count: 0 });
 		const m = createMarkNewReleasesSeenMutation() as unknown as Opts;
@@ -288,12 +249,4 @@ describe('follow mutations', () => {
 		expect(cached).toEqual({ count: 0 });
 	});
 
-	it('does not toast when an admin is approved immediately', async () => {
-		const m = createSetAutoDownloadMutation(() => MBID) as unknown as Opts;
-		await m.onSuccess!(
-			{ followed: true, auto_download: true, auto_download_state: 'approved' },
-			true
-		);
-		expect(mockShow).not.toHaveBeenCalled();
-	});
 });

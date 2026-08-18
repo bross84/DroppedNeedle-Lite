@@ -33,7 +33,6 @@ def db_path(tmp_path: Path) -> Path:
             artist_mbid TEXT NOT NULL,
             artist_mbid_lower TEXT NOT NULL,
             artist_name TEXT NOT NULL,
-            auto_download INTEGER NOT NULL DEFAULT 0,
             followed_at REAL NOT NULL,
             updated_at REAL NOT NULL,
             PRIMARY KEY (user_id, artist_mbid_lower)
@@ -47,7 +46,7 @@ def db_path(tmp_path: Path) -> Path:
         "INSERT INTO auth_users (id, display_name, created_at) VALUES ('user-b', 'B', '2026')"
     )
     conn.execute(
-        "INSERT INTO user_followed_artists VALUES ('user-a', 'MBID-1', 'mbid-1', 'Fontaines D.C.', 0, 1, 1)"
+        "INSERT INTO user_followed_artists VALUES ('user-a', 'MBID-1', 'mbid-1', 'Fontaines D.C.', 1, 1)"
     )
     conn.commit()
     conn.close()

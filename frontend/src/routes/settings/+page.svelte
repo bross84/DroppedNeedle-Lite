@@ -25,7 +25,6 @@
 		ShieldCheck,
 		HardDriveDownload,
 		CalendarClock,
-		DownloadCloud,
 		Gift,
 		ShoppingBag,
 		Landmark,
@@ -70,8 +69,7 @@
 						tier: 'setup',
 						icon: HardDriveDownload
 					},
-					{ id: 'indexers', label: 'Indexers', tier: 'setup', icon: Search },
-					{ id: 'lidarr-import', label: 'Lidarr Import', tier: 'setup', icon: DownloadCloud }
+					{ id: 'indexers', label: 'Indexers', tier: 'setup', icon: Search }
 				]
 			: []),
 		{ id: 'jellyfin', label: 'Jellyfin', tier: 'setup', icon: JellyfinIcon },

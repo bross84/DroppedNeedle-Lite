@@ -13,8 +13,6 @@ export type AlbumRequestContext = {
 	album?: string;
 	year?: number | null;
 	artistMbid?: string;
-	monitorArtist?: boolean;
-	autoDownloadArtist?: boolean;
 };
 
 export type BatchAlbumItem = {
@@ -35,7 +33,6 @@ export type BatchRequestResult = {
 
 export async function requestBatch(
 	items: BatchAlbumItem[],
-	options?: { monitorArtist?: boolean; autoDownloadArtist?: boolean }
 ): Promise<BatchRequestResult> {
 	const initiatingUserId = authStore.user?.id;
 	try {
@@ -47,8 +44,6 @@ export async function requestBatch(
 			overflow: number;
 		}>('/api/v1/requests/batch', {
 			items,
-			monitor_artist: options?.monitorArtist ?? false,
-			auto_download_artist: options?.autoDownloadArtist ?? false
 		});
 		if (!initiatingUserId || authStore.user?.id !== initiatingUserId) {
 			return {
@@ -103,8 +98,6 @@ export async function requestAlbum(
 			album: context?.album ?? undefined,
 			year: context?.year ?? undefined,
 			artist_mbid: context?.artistMbid ?? undefined,
-			monitor_artist: context?.monitorArtist ?? false,
-			auto_download_artist: context?.autoDownloadArtist ?? false
 		});
 		if (!initiatingUserId || authStore.user?.id !== initiatingUserId) {
 			return { success: false };
