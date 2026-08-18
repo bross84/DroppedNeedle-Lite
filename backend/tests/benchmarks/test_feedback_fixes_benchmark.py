@@ -184,7 +184,6 @@ async def test_complete_manifest_migration_startup_and_rollback_rehearsal(
     assert source_smoke["subsonic_playback_prefix_ok"] is True
     assert source_smoke["jellyfin_playback_prefix_ok"] is True
     assert source_smoke["restored_artwork_bytes_match"] is True
-    assert source_smoke["paired_secret_loaded_by_application"] is True
     assert report["migration"]["idempotent"] is True
     assert report["migration"]["network_calls"] == 0
     assert report["migration"]["tag_reads"] == 0

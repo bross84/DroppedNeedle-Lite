@@ -132,10 +132,11 @@ class TestDownloadServiceFreshness:
             assert dispatcher._get_download_service is sp.get_download_service
             assert dispatcher._get_free_music_service is sp.get_free_music_service
             # every acquisition path shares the one dispatcher singleton
+            # NewReleaseService is detection-only in this fork and holds no
+            # dispatcher: following an artist never auto-acquires.
             for holder in (
                 sp.get_request_service(),
                 sp.get_requests_page_service(),
-                sp.get_new_release_service(),
                 sp.get_personal_mix_service(),
             ):
                 assert (
