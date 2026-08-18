@@ -1,0 +1,9 @@
+# Files that run inside the Linux container must keep LF endings, whatever the
+# host checkout does. On a Windows checkout core.autocrlf rewrites them to CRLF,
+# COPY bakes that into the image, and the kernel then reads the shebang as
+# "/bin/sh\r" -- an interpreter that does not exist. The container dies at start
+# with `exec /entrypoint.sh failed: No such file or directory` (exit 127), which
+# gives no hint at the real cause.
+*.sh            text eol=lf
+entrypoint.sh   text eol=lf
+Dockerfile      text eol=lf
