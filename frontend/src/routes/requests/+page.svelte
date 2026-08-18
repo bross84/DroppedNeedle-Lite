@@ -45,16 +45,6 @@
 		rejectRequest,
 		notifyPendingApprovalCountChanged
 	} from '$lib/utils/requestsApi';
-	import {
-		getAutoDownloadApprovalsQuery,
-		getAutoDownloadApprovalBatchesQuery
-	} from '$lib/queries/following/AdminApprovalsQueries.svelte';
-	import {
-		createApproveAutoDownloadMutation,
-		createRejectAutoDownloadMutation,
-		createApproveAutoDownloadBatchMutation,
-		createRejectAutoDownloadBatchMutation
-	} from '$lib/queries/following/AdminApprovalsMutations.svelte';
 	import { getPersonalMixApprovalsQuery } from '$lib/queries/scrobble-preferences/PersonalMixApprovalsQuery.svelte';
 	import {
 		createApprovePersonalMixMutation,
@@ -147,32 +137,12 @@
 		}
 	}
 
-	// Auto-download standing approvals (TanStack); only fetched for admins on this tab.
-	const autoApprovalsQuery = getAutoDownloadApprovalsQuery(
-		() => authStore.isAdmin && activeTab === 'auto-download'
-	);
-	const autoApprovals = $derived(autoApprovalsQuery.data?.items ?? []);
-	const approveAuto = createApproveAutoDownloadMutation();
-	const rejectAuto = createRejectAutoDownloadMutation();
-
-	// Bulk "Lidarr Import" approval batches share the auto-download tab (LidarrImport D3).
-	const batchApprovalsQuery = getAutoDownloadApprovalBatchesQuery(
-		() => authStore.isAdmin && activeTab === 'auto-download'
-	);
-	const batchApprovals = $derived(batchApprovalsQuery.data?.batches ?? []);
-	const approveBatch = createApproveAutoDownloadBatchMutation();
-	const rejectBatch = createRejectAutoDownloadBatchMutation();
-
 	// Weekly Mix auto-request standing approvals share the auto-download tab.
 	const mixApprovalsQuery = getPersonalMixApprovalsQuery(
 		() => authStore.isAdmin && activeTab === 'auto-download'
 	);
 	const mixApprovals = $derived(mixApprovalsQuery.data?.items ?? []);
-	const autoApprovalCount = $derived(
-		(autoApprovalsQuery.data?.count ?? 0) +
-			(batchApprovalsQuery.data?.count ?? 0) +
-			(mixApprovalsQuery.data?.count ?? 0)
-	);
+	const autoApprovalCount = $derived(mixApprovalsQuery.data?.count ?? 0);
 	const approveMix = createApprovePersonalMixMutation();
 	const rejectMix = createRejectPersonalMixMutation();
 
@@ -1124,20 +1094,18 @@
 		</div>
 	{:else if activeTab === 'auto-download' && authStore.isAdmin}
 		<div in:fade={{ duration: 150 }}>
-			{#if autoApprovalsQuery.isError || mixApprovalsQuery.isError || batchApprovalsQuery.isError}
+			{#if mixApprovalsQuery.isError}
 				<div class="alert alert-warning mb-4">
 					<TriangleAlert class="h-5 w-5" />
 					<span>Could not load auto-download approvals.</span>
 					<button
 						class="btn btn-sm"
 						onclick={() => {
-							void autoApprovalsQuery.refetch();
-							void batchApprovalsQuery.refetch();
 							void mixApprovalsQuery.refetch();
 						}}>Retry</button
 					>
 				</div>
-			{:else if autoApprovalsQuery.isPending || mixApprovalsQuery.isPending || batchApprovalsQuery.isPending}
+			{:else if mixApprovalsQuery.isPending}
 				<div class="flex flex-col gap-2.5">
 					{#each Array(3) as _, i (`auto-approval-loading-${i}`)}
 						<div
@@ -1156,7 +1124,7 @@
 						</div>
 					{/each}
 				</div>
-			{:else if autoApprovals.length === 0 && batchApprovals.length === 0 && mixApprovals.length === 0}
+			{:else if mixApprovals.length === 0}
 				<div class="flex flex-col items-center justify-center min-h-60 text-center py-16">
 					<div class="w-16 h-16 rounded-full bg-success/5 flex items-center justify-center mb-4">
 						<Heart class="h-8 w-8 text-success/30" />
@@ -1169,120 +1137,6 @@
 				</div>
 			{:else}
 				<div class="flex flex-col gap-2.5">
-					{#each autoApprovals as item (item.user_id + item.artist_mbid)}
-						<div
-							in:fly={{ y: 12, duration: 200 }}
-							class="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-base-200 rounded-box"
-						>
-							<div
-								class="w-14 h-14 sm:w-16 sm:h-16 shrink-0 rounded-lg overflow-hidden bg-base-300"
-							>
-								<ArtistImage
-									mbid={item.artist_mbid}
-									alt={item.artist_name}
-									className="w-full h-full object-cover"
-								/>
-							</div>
-							<div class="flex-1 min-w-0">
-								<a
-									href="/artist/{item.artist_mbid}"
-									class="block font-semibold text-sm truncate hover:text-accent hover:underline"
-									title={item.artist_name}>{item.artist_name}</a
-								>
-								<div class="flex items-center gap-1.5 flex-wrap text-xs text-base-content/40">
-									<span>{item.user_name ?? 'A user'}</span>
-									<span class="text-base-content/20">•</span>
-									<span>requested {approvalTimeAgo(item.requested_at)}</span>
-								</div>
-							</div>
-							<div class="flex gap-2 shrink-0">
-								<button
-									class="btn btn-success btn-sm gap-1"
-									disabled={approveAuto.isPending || rejectAuto.isPending}
-									onclick={() =>
-										approveAuto.mutate({
-											userId: item.user_id,
-											mbid: item.artist_mbid,
-											artistName: item.artist_name
-										})}
-								>
-									<Check class="h-3.5 w-3.5" />
-									Approve
-								</button>
-								<button
-									class="btn btn-error btn-sm btn-outline gap-1"
-									disabled={approveAuto.isPending || rejectAuto.isPending}
-									onclick={() =>
-										rejectAuto.mutate({
-											userId: item.user_id,
-											mbid: item.artist_mbid,
-											artistName: item.artist_name
-										})}
-								>
-									<X class="h-3.5 w-3.5" />
-									Reject
-								</button>
-							</div>
-						</div>
-					{/each}
-					{#each batchApprovals as batch (batch.batch_id)}
-						<div
-							in:fly={{ y: 12, duration: 200 }}
-							class="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-base-200 rounded-box"
-						>
-							<div
-								class="w-14 h-14 sm:w-16 sm:h-16 shrink-0 rounded-lg bg-base-300 flex items-center justify-center"
-							>
-								<DownloadCloud class="h-6 w-6 text-accent/60" />
-							</div>
-							<div class="flex-1 min-w-0">
-								<span class="block font-semibold text-sm">
-									{batch.user_name ?? 'A user'} wants auto-download on {batch.artist_count} imported
-									{batch.artist_count === 1 ? 'artist' : 'artists'}
-								</span>
-								<div class="flex items-center gap-1.5 flex-wrap text-xs text-base-content/40">
-									<span>from Lidarr import</span>
-									<span class="text-base-content/20">•</span>
-									<span>requested {approvalTimeAgo(batch.requested_at)}</span>
-								</div>
-								{#if batch.sample_names.length > 0}
-									<p class="mt-0.5 text-xs text-base-content/50 truncate">
-										{batch.sample_names.join(', ')}{batch.artist_count > batch.sample_names.length
-											? `, +${batch.artist_count - batch.sample_names.length} more`
-											: ''}
-									</p>
-								{/if}
-							</div>
-							<div class="flex gap-2 shrink-0">
-								<button
-									class="btn btn-success btn-sm gap-1"
-									disabled={approveBatch.isPending || rejectBatch.isPending}
-									onclick={() =>
-										approveBatch.mutate({
-											batchId: batch.batch_id,
-											userName: batch.user_name ?? 'A user',
-											artistCount: batch.artist_count
-										})}
-								>
-									<Check class="h-3.5 w-3.5" />
-									Approve
-								</button>
-								<button
-									class="btn btn-error btn-sm btn-outline gap-1"
-									disabled={approveBatch.isPending || rejectBatch.isPending}
-									onclick={() =>
-										rejectBatch.mutate({
-											batchId: batch.batch_id,
-											userName: batch.user_name ?? 'A user',
-											artistCount: batch.artist_count
-										})}
-								>
-									<X class="h-3.5 w-3.5" />
-									Reject
-								</button>
-							</div>
-						</div>
-					{/each}
 					{#each mixApprovals as item (item.user_id)}
 						<div
 							in:fly={{ y: 12, duration: 200 }}

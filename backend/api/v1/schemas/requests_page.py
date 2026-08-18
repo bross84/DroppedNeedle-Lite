@@ -87,37 +87,6 @@ class ApprovalActionResponse(AppStruct):
     message: str
 
 
-class AutoDownloadApprovalItem(AppStruct):
-    user_id: str
-    artist_mbid: str
-    artist_name: str
-    requested_at: float  # epoch seconds
-    user_name: str | None = None
-
-
-class AutoDownloadApprovalsResponse(AppStruct):
-    items: list[AutoDownloadApprovalItem]
-    count: int
-
-
-class ApprovalBatchItem(AppStruct):
-    """One grouped bulk auto-download approval card (LidarrImport D3): "user X wants
-    auto-download on N imported artists". ``sample_names`` is a short preview for the card."""
-
-    batch_id: str
-    user_id: str
-    artist_count: int
-    sample_names: list[str]
-    requested_at: float  # epoch seconds
-    source: str  # e.g. "lidarr_import"
-    user_name: str | None = None
-
-
-class ApprovalBatchListResponse(AppStruct):
-    batches: list[ApprovalBatchItem]
-    count: int
-
-
 class PersonalMixApprovalItem(AppStruct):
     user_id: str
     requested_at: float  # epoch seconds

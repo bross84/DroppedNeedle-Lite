@@ -9,8 +9,6 @@ class AlbumRequest(AppStruct):
     album: str | None = None
     year: int | None = None
     artist_mbid: str | None = None
-    monitor_artist: bool = False
-    auto_download_artist: bool = False
 
 
 class RequestAcceptedResponse(AppStruct):
@@ -30,8 +28,6 @@ class BatchAlbumItem(AppStruct):
 
 class BatchAlbumRequest(AppStruct):
     items: Annotated[list[BatchAlbumItem], msgspec.Meta(max_length=500)]
-    monitor_artist: bool = False
-    auto_download_artist: bool = False
 
 
 class BatchRequestResponse(AppStruct):

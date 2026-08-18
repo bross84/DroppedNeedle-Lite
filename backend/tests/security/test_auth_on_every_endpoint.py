@@ -35,7 +35,6 @@ from api.v1.routes import library_policies as library_policy_routes
 from api.v1.routes import library_policies_target as target_library_policy_routes
 from api.v1.routes import library_scan_target as target_library_scan_routes
 from api.v1.routes import library_target as target_library_routes
-from api.v1.routes import lidarr_import as lidarr_import_routes
 from api.v1.routes import discovery_batches as discovery_batches_routes
 from api.v1.routes import library_scan as library_scan_routes
 from api.v1.routes import me_connections as me_routes
@@ -72,8 +71,6 @@ from core.dependencies import (
     get_local_files_service,
     get_drop_import_service,
     get_free_music_service,
-    get_lidarr_import_repository,
-    get_lidarr_import_service,
     get_navidrome_playback_service,
     get_navidrome_folder_scope_service,
     get_now_playing_service,
@@ -137,8 +134,6 @@ _SERVICE_PROVIDERS = (
     get_local_files_service,
     get_drop_import_service,
     get_free_music_service,
-    get_lidarr_import_repository,
-    get_lidarr_import_service,
     get_navidrome_playback_service,
     get_navidrome_folder_scope_service,
     get_now_playing_service,
@@ -430,10 +425,6 @@ _ADMIN_ENDPOINTS = [
     ("PUT", "/api/v1/settings/events", {}),
     ("POST", "/api/v1/settings/events/test-ticketmaster", {}),
     ("POST", "/api/v1/settings/events/test-skiddle", {}),
-    # Lidarr import: connection config + Test are admin-only (LidarrImport).
-    ("GET", "/api/v1/lidarr-import/config", None),
-    ("PUT", "/api/v1/lidarr-import/config", {}),
-    ("POST", "/api/v1/lidarr-import/test", {}),
     # Drop importer (phase 01c): curator-gated (admin + trusted) - a plain user
     # must see 403. POST /import/uploads is multipart and can't be driven here;
     # its auth posture is covered in tests/routes/test_import_drop_routes.py.
@@ -444,10 +435,6 @@ _ADMIN_ENDPOINTS = [
     ("GET", "/api/v1/import/jobs/job-1", None),
     ("POST", "/api/v1/import/items/1/match", {"release_group_mbid": "rg-1"}),
     ("POST", "/api/v1/import/items/1/discard", None),
-    # Bulk auto-download approval batches (admin, requests router)
-    ("GET", "/api/v1/requests/auto-download-approval-batches", None),
-    ("POST", "/api/v1/requests/auto-download-approval-batches/batch-1/approve", None),
-    ("POST", "/api/v1/requests/auto-download-approval-batches/batch-1/reject", None),
     # Feedback Fixes target-only surfaces. The router remains unmounted in production
     # until the separately authorized offline replacement, but its auth contract is
     # complete and testable in isolation.
@@ -842,9 +829,6 @@ _USER_ENDPOINTS = [
     ("GET", "/api/v1/free-music/tasks/t-1", None),
     ("DELETE", "/api/v1/free-music/tasks", None),
     ("DELETE", "/api/v1/free-music/tasks/t-1", None),
-    ("GET", "/api/v1/lidarr-import/status", None),
-    ("GET", "/api/v1/lidarr-import/artists", None),
-    ("POST", "/api/v1/lidarr-import/import", {"selected_mbids": []}),
     # Media-server playback attribution (issue #138): the POST reporting routes
     # carry CurrentUserDep so scrobbles/sessions land on the caller's own
     # upstream account. GET/HEAD stream proxies stay dependency-free (guarded by
@@ -910,7 +894,6 @@ def _client(scenario: str):
         system_routes.router,
         playlists_routes.router,
         requests_page_routes.router,
-        lidarr_import_routes.router,
         import_drop_routes.router,
         free_music_routes.router,
         settings_routes.router,

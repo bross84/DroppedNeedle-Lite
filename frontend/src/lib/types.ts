@@ -150,8 +150,6 @@ export type ArtistInfoBasic = {
 	appears_in_library: boolean;
 	// per-user follow state; artist page reads it from the dedicated /follow query
 	followed?: boolean;
-	auto_download?: boolean;
-	auto_download_state?: 'none' | 'pending' | 'approved' | 'rejected' | 'revoked';
 	release_group_count?: number;
 };
 

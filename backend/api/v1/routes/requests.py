@@ -28,8 +28,6 @@ async def request_album(
         album=album_request.album,
         year=album_request.year,
         artist_mbid=album_request.artist_mbid,
-        monitor_artist=album_request.monitor_artist,
-        auto_download_artist=album_request.auto_download_artist,
         user_id=current_user.id,
         user_role=current_user.role,
         requested_by_name=current_user.display_name,
@@ -44,8 +42,6 @@ async def request_batch(
 ):
     return await request_service.request_batch(
         items=[msgspec.structs.asdict(item) for item in batch.items],
-        monitor_artist=batch.monitor_artist,
-        auto_download_artist=batch.auto_download_artist,
         user_id=current_user.id,
         user_role=current_user.role,
         requested_by_name=current_user.display_name,

@@ -111,8 +111,6 @@ class RequestService:
         album: str | None = None,
         year: int | None = None,
         artist_mbid: str | None = None,
-        monitor_artist: bool = False,
-        auto_download_artist: bool = False,
         user_id: str | None = None,
         user_role: str | None = None,
         requested_by_name: str | None = None,
@@ -129,12 +127,6 @@ class RequestService:
         try:
             existing = await self._request_history.async_get_record(musicbrainz_id)
             if existing and existing.status in ("pending", "downloading"):
-                if monitor_artist and not existing.monitor_artist:
-                    await self._request_history.async_update_monitoring_flags(
-                        musicbrainz_id,
-                        monitor_artist=True,
-                        auto_download_artist=auto_download_artist,
-                    )
                 return RequestAcceptedResponse(
                     success=True,
                     message="Request already in progress",
@@ -164,8 +156,6 @@ class RequestService:
                 album_title=album or "Unknown",
                 year=year,
                 artist_mbid=artist_mbid,
-                monitor_artist=monitor_artist,
-                auto_download_artist=auto_download_artist,
                 user_id=user_id,
                 requested_by_name=requested_by_name,
                 release_mbid=release_mbid,
@@ -253,8 +243,6 @@ class RequestService:
     async def request_batch(
         self,
         items: list[dict],
-        monitor_artist: bool = False,
-        auto_download_artist: bool = False,
         user_id: str | None = None,
         user_role: str | None = None,
         requested_by_name: str | None = None,
@@ -311,8 +299,6 @@ class RequestService:
 
             await self._request_history.async_bulk_record_requests(
                 new_items,
-                monitor_artist=monitor_artist,
-                auto_download_artist=auto_download_artist,
                 user_id=user_id,
                 requested_by_name=requested_by_name,
                 initial_status=initial_status,

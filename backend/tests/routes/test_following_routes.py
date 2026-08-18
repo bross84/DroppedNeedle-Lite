@@ -88,7 +88,6 @@ def test_list_followed_artists(ctx):
     assert len(body) == 1
     assert body[0]["mbid"] == ARTIST
     assert body[0]["name"] == "Radiohead"
-    assert body[0]["auto_download"] is False
 
 
 def test_new_releases_newest_first(ctx):

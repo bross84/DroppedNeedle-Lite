@@ -56,7 +56,6 @@ def _make_store(tmp_path: Path) -> EventsStore:
         CREATE TABLE user_followed_artists (
             user_id TEXT NOT NULL, artist_mbid TEXT NOT NULL,
             artist_mbid_lower TEXT NOT NULL, artist_name TEXT NOT NULL,
-            auto_download INTEGER NOT NULL DEFAULT 0,
             followed_at REAL NOT NULL, updated_at REAL NOT NULL,
             PRIMARY KEY (user_id, artist_mbid_lower)
         );
@@ -64,7 +63,7 @@ def _make_store(tmp_path: Path) -> EventsStore:
     )
     conn.execute("INSERT INTO auth_users VALUES (?, 'Test', 'user', '2026')", (USER_ID,))
     conn.execute(
-        "INSERT INTO user_followed_artists VALUES (?, ?, ?, 'Loathe', 0, 1, 1)",
+        "INSERT INTO user_followed_artists VALUES (?, ?, ?, 'Loathe', 1, 1)",
         (USER_ID, MBID.upper(), MBID),
     )
     conn.commit()

@@ -59,8 +59,6 @@ def ctx(tmp_path: Path):
 def test_follow_status_roundtrip(ctx):
     assert ctx.client.get(f"/artists/{VALID_MBID}/follow").json() == {
         "followed": False,
-        "auto_download": False,
-        "auto_download_state": "none",
     }
     resp = ctx.client.put(f"/artists/{VALID_MBID}/follow", json={"followed": True})
     assert resp.status_code == 200
@@ -73,29 +71,6 @@ def test_follow_status_roundtrip(ctx):
 
 def test_invalid_mbid_returns_400(ctx):
     assert ctx.client.get("/artists/not-an-mbid/follow").status_code == 400
-
-
-def test_auto_download_requires_following(ctx):
-    resp = ctx.client.put(f"/artists/{VALID_MBID}/auto-download", json={"enabled": True})
-    assert resp.status_code == 400
-
-
-def test_user_auto_download_is_pending(ctx):
-    ctx.client.put(f"/artists/{VALID_MBID}/follow", json={"followed": True})
-    resp = ctx.client.put(f"/artists/{VALID_MBID}/auto-download", json={"enabled": True})
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["auto_download"] is True
-    assert body["auto_download_state"] == "pending"
-
-
-def test_admin_auto_download_is_approved(tmp_path: Path):
-    db = tmp_path / "library.db"
-    _seed_auth_users(db)
-    client = build_test_client(_make_app(db, role="admin", user_id="admin-1"))
-    client.put(f"/artists/{VALID_MBID}/follow", json={"followed": True})
-    resp = client.put(f"/artists/{VALID_MBID}/auto-download", json={"enabled": True})
-    assert resp.json()["auto_download_state"] == "approved"
 
 
 def test_follow_is_per_user(ctx):

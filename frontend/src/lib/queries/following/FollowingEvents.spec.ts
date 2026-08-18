@@ -43,45 +43,32 @@ beforeEach(() => {
 });
 
 describe('FollowingEvents', () => {
-	it('toasts once per enqueue and ignores the replayed snapshot', () => {
+	it('toasts a weekly-mix refresh once and ignores the replayed snapshot', () => {
 		const fe = createFollowingEvents();
 		fe.start();
-		const es = FakeEventSource.instances[0];
+		const payload = { event_id: 'evt-1', playlist_id: 'pl-1', track_count: 42 };
 
-		es.emit('auto_download_enqueued', { task_id: 'X', title: 'Album X' });
-		expect(mockShow).toHaveBeenCalledTimes(1);
-		expect(mockShow).toHaveBeenCalledWith(
-			expect.objectContaining({ message: expect.stringContaining('Album X'), type: 'info' })
-		);
-
-		es.emit('auto_download_enqueued', { task_id: 'X', title: 'Album X' });
+		FakeEventSource.instances[0].emit('personal_mix_refreshed', payload);
 		expect(mockShow).toHaveBeenCalledTimes(1);
 
-		es.emit('auto_download_enqueued', { task_id: 'Y', title: 'Album Y' });
-		expect(mockShow).toHaveBeenCalledTimes(2);
+		// SSEPublisher replays its last payload to every new subscriber
+		FakeEventSource.instances[0].emit('personal_mix_refreshed', payload);
+		expect(mockShow).toHaveBeenCalledTimes(1);
 	});
 
-	it('ignores events without a task id', () => {
+	it('ignores a malformed payload without throwing', () => {
 		const fe = createFollowingEvents();
 		fe.start();
-		FakeEventSource.instances[0].emit('auto_download_enqueued', { title: 'No id' });
+		FakeEventSource.instances[0].listeners['personal_mix_refreshed']?.({
+			data: 'not json'
+		} as MessageEvent);
 		expect(mockShow).not.toHaveBeenCalled();
-		expect(mockInvalidate).not.toHaveBeenCalled();
 	});
 
-	it('refreshes the sidebar badge count once per real enqueue', () => {
+	it('refreshes the wanted list when the watcher reports new candidates', () => {
 		const fe = createFollowingEvents();
 		fe.start();
-		const es = FakeEventSource.instances[0];
-
-		es.emit('auto_download_enqueued', { task_id: 'X', title: 'Album X' });
-		expect(mockInvalidate).toHaveBeenCalledTimes(1);
-		expect(mockInvalidate).toHaveBeenCalledWith({
-			queryKey: FollowQueryKeyFactory.newReleasesUnseen('userA')
-		});
-
-		// replayed snapshot is de-duped - no second invalidation
-		es.emit('auto_download_enqueued', { task_id: 'X', title: 'Album X' });
-		expect(mockInvalidate).toHaveBeenCalledTimes(1);
+		FakeEventSource.instances[0].emit('wanted_new_candidates', {});
+		expect(mockInvalidate).toHaveBeenCalled();
 	});
 });

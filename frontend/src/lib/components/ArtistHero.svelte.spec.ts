@@ -5,14 +5,13 @@ import type { ArtistInfo } from '$lib/types';
 
 vi.mock('$lib/queries/following/FollowQueries.svelte', () => ({
 	getFollowStatusQuery: () => ({
-		data: { followed: false, auto_download: false, auto_download_state: 'none' },
+		data: { followed: false },
 		isPending: false
 	})
 }));
 
 vi.mock('$lib/queries/following/FollowMutations.svelte', () => ({
 	createSetFollowMutation: () => ({ isPending: false, mutate: vi.fn() }),
-	createSetAutoDownloadMutation: () => ({ isPending: false, mutate: vi.fn() })
 }));
 
 const artist: ArtistInfo = {

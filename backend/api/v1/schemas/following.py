@@ -8,8 +8,6 @@ from infrastructure.msgspec_fastapi import AppStruct
 class FollowedArtistResponse(AppStruct):
     mbid: str
     name: str
-    auto_download: bool
-    auto_download_state: str
     followed_at: float
     image_url: str | None = None
 

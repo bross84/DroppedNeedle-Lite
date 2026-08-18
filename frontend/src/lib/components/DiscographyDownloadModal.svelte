@@ -12,16 +12,12 @@
 	let includeAlbums = $state(true);
 	let includeEPs = $state(true);
 	let includeSingles = $state(true);
-	let monitorArtist = $state(false);
-	let autoDownload = $state(false);
 
 	$effect(() => {
 		if (discographyDownloadStore.open) {
 			includeAlbums = true;
 			includeEPs = true;
 			includeSingles = true;
-			monitorArtist = false;
-			autoDownload = false;
 			submitting = false;
 		}
 	});
@@ -81,10 +77,7 @@
 			artist_mbid: artistId
 		}));
 
-		const result = await requestBatch(items, {
-			monitorArtist,
-			autoDownloadArtist: autoDownload
-		});
+		const result = await requestBatch(items);
 		if (authStore.user?.id !== initiatingUserId) {
 			return;
 		}
@@ -232,30 +225,6 @@
 					</p>
 				</div>
 			{/if}
-
-			<div class="bg-base-200/50 rounded-box p-3 mb-4">
-				<p class="text-xs font-medium text-base-content/50 uppercase tracking-wider mb-2">
-					Options
-				</p>
-				<label class="label cursor-pointer justify-start gap-3 p-0 mb-1">
-					<input
-						type="checkbox"
-						class="toggle toggle-accent toggle-sm"
-						bind:checked={monitorArtist}
-					/>
-					<span class="label-text text-sm">Monitor artist for future releases</span>
-				</label>
-				{#if monitorArtist}
-					<label class="label cursor-pointer justify-start gap-3 p-0 pl-10">
-						<input
-							type="checkbox"
-							class="toggle toggle-accent toggle-sm"
-							bind:checked={autoDownload}
-						/>
-						<span class="label-text text-sm">Auto-download new releases</span>
-					</label>
-				{/if}
-			</div>
 
 			<div class="modal-action mt-0">
 				<button class="btn btn-ghost" onclick={handleClose} disabled={submitting}>Cancel</button>

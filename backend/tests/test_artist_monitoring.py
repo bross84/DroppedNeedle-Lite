@@ -1,5 +1,4 @@
-"""Follow + auto-download service tests (native replacement for Lidarr
-artist-monitoring), plus the queue processor's album-monitored signal check."""
+"""Follow service tests, plus the queue processor's album-monitored signal check."""
 
 import sqlite3
 import threading
@@ -9,7 +8,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from infrastructure.persistence.follow_store import FollowStore
-from services.follow_service import FollowError, FollowService
+from services.follow_service import FollowService
 
 
 def _seed_auth_users(db_path: Path) -> None:
@@ -46,77 +45,24 @@ def service(tmp_path: Path, mb_repo) -> FollowService:
 class TestFollow:
     @pytest.mark.asyncio
     async def test_follow_sets_state_and_enriches_name(self, service, mb_repo):
-        state = await service.set_followed("user-a", "user", "MBID-A", True)
+        state = await service.set_followed("user-a", "MBID-A", True)
         assert state.followed is True
-        assert state.auto_download is False
-        assert state.auto_download_state == "none"
         mb_repo.get_artist_by_id.assert_awaited_with("MBID-A")
-        listed = await service.list_following("user-a", "user")
+        listed = await service.list_following("user-a")
         assert listed[0].artist_name == "Radiohead"
 
     @pytest.mark.asyncio
     async def test_unfollow(self, service):
-        await service.set_followed("user-a", "user", "MBID-A", True)
-        state = await service.set_followed("user-a", "user", "MBID-A", False)
+        await service.set_followed("user-a", "MBID-A", True)
+        state = await service.set_followed("user-a", "MBID-A", False)
         assert state.followed is False
 
     @pytest.mark.asyncio
     async def test_follow_name_fallback_when_mb_unavailable(self, service, mb_repo):
         mb_repo.get_artist_by_id.return_value = None
-        await service.set_followed("user-a", "user", "MBID-A", True)
-        listed = await service.list_following("user-a", "user")
+        await service.set_followed("user-a", "MBID-A", True)
+        listed = await service.list_following("user-a")
         assert listed[0].artist_name == "Unknown Artist"
-
-
-class TestAutoDownload:
-    @pytest.mark.asyncio
-    async def test_requires_following_first(self, service):
-        with pytest.raises(FollowError):
-            await service.set_auto_download("user-a", "user", "MBID-A", True)
-
-    @pytest.mark.asyncio
-    async def test_user_enable_creates_pending(self, service):
-        await service.set_followed("user-a", "user", "MBID-A", True)
-        state = await service.set_auto_download("user-a", "user", "MBID-A", True)
-        assert state.auto_download is True
-        assert state.auto_download_state == "pending"
-        approval = await service._store.get_approval("user-a", "MBID-A")
-        assert approval is not None and approval.state == "pending"
-
-    @pytest.mark.asyncio
-    async def test_admin_enable_is_approved_without_row(self, service):
-        await service.set_followed("admin-1", "admin", "MBID-A", True)
-        state = await service.set_auto_download("admin-1", "admin", "MBID-A", True)
-        assert state.auto_download is True
-        assert state.auto_download_state == "approved"
-        # DD3: admins are approved by role and never carry an approval row.
-        assert await service._store.get_approval("admin-1", "MBID-A") is None
-
-    @pytest.mark.asyncio
-    async def test_disable_keeps_follow_and_approval_row(self, service):
-        await service.set_followed("user-a", "user", "MBID-A", True)
-        await service.set_auto_download("user-a", "user", "MBID-A", True)
-        state = await service.set_auto_download("user-a", "user", "MBID-A", False)
-        assert state.followed is True
-        assert state.auto_download is False
-        approval = await service._store.get_approval("user-a", "MBID-A")
-        assert approval is not None and approval.state == "pending"
-
-
-class TestStatusAdminOverride:
-    @pytest.mark.asyncio
-    async def test_admin_status_reads_approved(self, service):
-        await service.set_followed("admin-1", "admin", "MBID-A", True)
-        await service.set_auto_download("admin-1", "admin", "MBID-A", True)
-        status = await service.get_status("admin-1", "admin", "MBID-A")
-        assert status.auto_download_state == "approved"
-
-    @pytest.mark.asyncio
-    async def test_unfollowed_status_is_clean(self, service):
-        status = await service.get_status("user-a", "user", "MBID-A")
-        assert status.followed is False
-        assert status.auto_download is False
-        assert status.auto_download_state == "none"
 
 
 class TestProcessorMonitoringSignal:

@@ -47,11 +47,5 @@ class FollowRequest(AppStruct):
     followed: bool
 
 
-class AutoDownloadRequest(AppStruct):
-    enabled: bool
-
-
 class FollowStatusResponse(AppStruct):
     followed: bool
-    auto_download: bool
-    auto_download_state: str

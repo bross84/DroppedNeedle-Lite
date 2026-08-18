@@ -44,8 +44,9 @@ async def stream_following_events(
     current_user: CurrentUserDep,
     publisher=Depends(get_sse_publisher),
 ):
-    """Per-user event stream for auto_download_enqueued. Frontend de-dupes by
-    task id, so the snapshot replayed on (re)connect toasts at most once."""
+    """Per-user event stream for follow-adjacent events (weekly mix refreshes,
+    wanted finds, drop imports, playlist imports). The frontend de-dupes by id,
+    so the snapshot replayed on (re)connect notifies at most once."""
     user_id = current_user.id
 
     async def event_generator():
@@ -69,13 +70,11 @@ async def list_followed_artists(
     current_user: CurrentUserDep,
     follow_service: FollowService = Depends(get_follow_service),
 ):
-    artists = await follow_service.list_following(current_user.id, current_user.role)
+    artists = await follow_service.list_following(current_user.id)
     return [
         FollowedArtistResponse(
             mbid=a.artist_mbid,
             name=a.artist_name,
-            auto_download=a.auto_download,
-            auto_download_state=a.auto_download_state,
             followed_at=a.followed_at,
         )
         for a in artists
