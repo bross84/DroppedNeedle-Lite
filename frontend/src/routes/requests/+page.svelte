@@ -1097,7 +1097,7 @@
 			{#if mixApprovalsQuery.isError}
 				<div class="alert alert-warning mb-4">
 					<TriangleAlert class="h-5 w-5" />
-					<span>Could not load auto-download approvals.</span>
+					<span>Could not load Weekly Mix approvals.</span>
 					<button
 						class="btn btn-sm"
 						onclick={() => {
@@ -1131,8 +1131,7 @@
 					</div>
 					<h2 class="text-lg font-semibold mb-1.5 text-base-content/50">No pending approvals</h2>
 					<p class="text-base-content/30 text-sm max-w-xs">
-						When a user turns on artist auto-download or Weekly Mix auto-requests, it appears here
-						for your review.
+						When a user turns on Weekly Mix auto-requests, it appears here for your review.
 					</p>
 				</div>
 			{:else}
