@@ -31,9 +31,7 @@ export type BatchRequestResult = {
 	error?: string;
 };
 
-export async function requestBatch(
-	items: BatchAlbumItem[],
-): Promise<BatchRequestResult> {
+export async function requestBatch(items: BatchAlbumItem[]): Promise<BatchRequestResult> {
 	const initiatingUserId = authStore.user?.id;
 	try {
 		const response = await api.global.post<{
@@ -43,7 +41,7 @@ export async function requestBatch(
 			skipped: number;
 			overflow: number;
 		}>('/api/v1/requests/batch', {
-			items,
+			items
 		});
 		if (!initiatingUserId || authStore.user?.id !== initiatingUserId) {
 			return {
@@ -97,7 +95,7 @@ export async function requestAlbum(
 			artist: context?.artist ?? undefined,
 			album: context?.album ?? undefined,
 			year: context?.year ?? undefined,
-			artist_mbid: context?.artistMbid ?? undefined,
+			artist_mbid: context?.artistMbid ?? undefined
 		});
 		if (!initiatingUserId || authStore.user?.id !== initiatingUserId) {
 			return { success: false };

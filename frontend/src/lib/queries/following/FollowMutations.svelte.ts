@@ -9,12 +9,7 @@ import {
 } from '../QueryClient';
 import { FollowQueryKeyFactory } from './FollowQueryKeyFactory';
 import { FOLLOW_ENDPOINTS } from './endpoints';
-import type {
-	EventCitiesResponse,
-	EventCity,
-	FollowStatus,
-	UnseenCountResponse
-} from './types';
+import type { EventCitiesResponse, EventCity, FollowStatus, UnseenCountResponse } from './types';
 
 const NOT_FOLLOWING: FollowStatus = {
 	followed: false

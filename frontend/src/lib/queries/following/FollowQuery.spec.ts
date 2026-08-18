@@ -248,5 +248,4 @@ describe('follow mutations', () => {
 		);
 		expect(cached).toEqual({ count: 0 });
 	});
-
 });

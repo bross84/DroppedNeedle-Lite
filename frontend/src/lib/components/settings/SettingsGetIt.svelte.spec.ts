@@ -35,5 +35,4 @@ describe('SettingsGetIt', () => {
 		await page.getByRole('button', { name: 'Save' }).click();
 		expect(h.save).toHaveBeenCalledOnce();
 	});
-
 });
