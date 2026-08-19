@@ -67,5 +67,10 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
           pip install -r requirements-dev.txt
 
+      # --durations prints the slowest tests at the end of the run. The same
+      # suite takes ~10 minutes locally and ~85 here, and the setup steps
+      # account for 19 seconds of that, so the gap is inside pytest itself.
+      # Comparing this list against the local one separates a uniform slowdown
+      # (disk/CPU) from specific tests stalling (network timeouts).
       - name: Run tests
-        run: python -m pytest
+        run: python -m pytest --durations=25
