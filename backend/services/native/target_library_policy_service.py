@@ -233,6 +233,35 @@ class TargetLibraryPolicyService:
             await self._store.get_restorable_root_paths(missing),
         )
 
+    @staticmethod
+    def _restorable_entry(
+        root_id: str,
+        known: dict[str, str],
+        derived: dict[str, dict[str, object]],
+        override: str | None = None,
+        *,
+        require_catalog_files: bool = False,
+    ) -> tuple[str, int] | None:
+        """Path and catalog file count for a removed root, or None to skip it.
+
+        `require_catalog_files` gates the *warning* only. A root the catalog
+        holds no files from lost nothing when it was removed, so telling the
+        operator it is "still used" is a false alarm - provenance rows are
+        written for every configured root at migration time regardless of
+        content and are never deleted, so otherwise the warning fires forever
+        for a root that was only ever a typo. Restoring stays permissive: an
+        operator naming a path explicitly may recreate a trackless root.
+        """
+        info = derived.get(root_id)
+        count = int(info["indexed_file_count"]) if info is not None else 0
+        if require_catalog_files and count == 0:
+            return None
+        derived_path = info.get("path") if info is not None else None
+        path = override or known.get(root_id) or derived_path
+        if path is None:
+            return None
+        return str(path), count
+
     async def restorable_roots(self) -> LibraryRestorableRootsResponse:
         migrated = await self._store.get_migrated_root_ids()
         configured = {
@@ -242,12 +271,12 @@ class TargetLibraryPolicyService:
         known, derived = await self._restorable_paths(missing)
         roots = []
         for root_id in missing:
-            info = derived.get(root_id)
-            path = known.get(root_id)
-            if path is None and info is None:
+            entry = self._restorable_entry(
+                root_id, known, derived, require_catalog_files=True
+            )
+            if entry is None:
                 continue
-            path = path if path is not None else str(info["path"])
-            count = int(info["indexed_file_count"]) if info is not None else 0
+            path, count = entry
             roots.append(
                 LibraryRestorableRoot(
                     root_id=root_id,
@@ -276,11 +305,12 @@ class TargetLibraryPolicyService:
         used_labels = {root.label.casefold() for root in current.library_roots}
         roots = list(current.library_roots)
         for root_id in missing:
-            info = derived.get(root_id)
-            path = overrides.get(root_id) or known.get(root_id)
-            if path is None and info is None:
+            entry = self._restorable_entry(
+                root_id, known, derived, overrides.get(root_id)
+            )
+            if entry is None:
                 continue
-            path = path if path is not None else str(info["path"])
+            path, _ = entry
             roots.append(
                 LibraryRootSettings(
                     id=root_id,
