@@ -21,6 +21,7 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -41,6 +42,10 @@ jobs:
   test:
     name: Tests
     runs-on: ubuntu-latest
+    # The full suite legitimately runs ~80 minutes, so this ceiling is generous
+    # on purpose - it exists to stop a hung run burning GitHub's 6 hour default,
+    # not to police the normal duration. Lower it only alongside a real speedup.
+    timeout-minutes: 100
     defaults:
       run:
         working-directory: ./backend
