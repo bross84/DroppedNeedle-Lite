@@ -56,3 +56,6 @@ Docs/
 
 # Local dev app directory
 backend/app-dev/
+
+# Claude Code project config (local tooling, not part of the app)
+.claude/
