@@ -184,6 +184,16 @@ _T = TypeVar("_T")
 logger = logging.getLogger(__name__)
 
 
+def _positive_position(value: int | None) -> int | None:
+    """Coerce a non-positive track position to NULL.
+
+    Positions reaching the identity tables can originate in file tags, where 0
+    is common, but the column is CHECK(NULL OR > 0). Writing a 0 aborts the
+    whole identification write and the worker iteration with it.
+    """
+    return value if value is not None and value > 0 else None
+
+
 def _complete_track_identity_mapping(
     indexed_tracks: list[sqlite3.Row],
     evidence: CandidateEvidence,
@@ -7321,7 +7331,7 @@ class NativeLibraryStore(PersistenceBase):
                             selected.release_mbid,
                             track.release_track_mbid,
                             track.candidate_disc_number,
-                            track.candidate_track_position,
+                            _positive_position(track.candidate_track_position),
                             decision_source,
                             attempt.id,
                             completed_at,
@@ -30020,14 +30030,20 @@ class NativeLibraryStore(PersistenceBase):
                     Path(str(row["file_path"])).parent
                 )
             restored: dict[str, dict[str, object]] = {}
-            for root_id, parents in paths_by_root.items():
+            for root_id, file_count in counts.items():
+                parents = paths_by_root.get(str(root_id), [])
                 try:
-                    common = os.path.commonpath(parents)
+                    common: str | None = (
+                        os.path.commonpath(parents) if parents else None
+                    )
                 except ValueError:
-                    continue
-                restored[root_id] = {
-                    "path": str(common),
-                    "indexed_file_count": int(counts[root_id]),
+                    # files spanning drives or UNC shares have no common
+                    # ancestor; the count still proves the catalog references
+                    # this root, and callers key the warning off the count
+                    common = None
+                restored[str(root_id)] = {
+                    "path": common,
+                    "indexed_file_count": int(file_count),
                 }
             return restored
 

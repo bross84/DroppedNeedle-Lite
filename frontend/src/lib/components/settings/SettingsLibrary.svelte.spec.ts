@@ -47,6 +47,7 @@ const h = vi.hoisted(() => ({
 	restore: vi.fn(),
 	applyPreview: vi.fn(),
 	requestRun: vi.fn(),
+	requestRunError: null as unknown,
 	toast: vi.fn(),
 	isAdmin: true
 }));
@@ -108,7 +109,13 @@ vi.mock('$lib/queries/library/LibraryPolicyMutations.svelte', () => ({
 	})
 }));
 vi.mock('$lib/queries/library/LibraryOperationMutations.svelte', () => ({
-	requestLibraryRun: () => ({ mutateAsync: h.requestRun, isPending: false })
+	requestLibraryRun: () => ({
+		mutateAsync: h.requestRun,
+		get error() {
+			return h.requestRunError;
+		},
+		isPending: false
+	})
 }));
 vi.mock('$lib/queries/library/LibraryQueries.svelte', () => ({
 	getLibraryStatsQuery: () => ({ data: { total_size_bytes: 0 } }),
@@ -169,6 +176,7 @@ beforeEach(() => {
 	});
 	h.applyPreview.mockResolvedValue({});
 	h.requestRun.mockResolvedValue({});
+	h.requestRunError = null;
 });
 
 describe('SettingsLibrary target policy UI', () => {
@@ -261,6 +269,32 @@ describe('SettingsLibrary target policy UI', () => {
 			scope_ids: ['root-1'],
 			expected_policy_revision: 'policy-2'
 		});
+	});
+
+	it('shows why reconciliation failed and keeps the dialog open', async () => {
+		// A failed apply used to close nothing, show nothing, and leave the
+		// warning banner in place - indistinguishable from a click that did work.
+		h.settings = {
+			data: {
+				...structuredClone(baseSettings),
+				policy_revision: 'policy-2',
+				pending_policy_revision: 'policy-2',
+				reconciliation_required: true,
+				reconciliation_state: 'awaiting_reconciliation',
+				affected_scope_ids: ['root-1']
+			},
+			isLoading: false,
+			isError: false
+		};
+		h.requestRun.mockRejectedValue(new Error('Select at least one library scope.'));
+		h.requestRunError = new Error('Select at least one library scope.');
+		render(SettingsLibrary);
+		await page.getByRole('button', { name: 'Apply changes...' }).click();
+		await page.getByRole('button', { name: 'Apply policy changes' }).click();
+		await expect.element(page.getByText('Select at least one library scope.')).toBeVisible();
+		await expect
+			.element(page.getByRole('heading', { name: 'Apply policy changes?' }))
+			.toBeVisible();
 	});
 
 	it('sends the master switch state with the saved settings', async () => {

@@ -533,6 +533,49 @@ async def test_restorable_roots_excludes_configured_and_reports_derived_paths() 
 
 
 @pytest.mark.asyncio
+async def test_restorable_roots_ignores_a_removed_root_with_no_catalog_files() -> None:
+    """A root that never indexed anything must not raise the removed-roots warning.
+
+    Provenance rows are written for every configured root at migration time
+    whether or not it holds files, and nothing ever deletes them. A root added
+    with a wrong path, which failed to scan and was then removed, would
+    otherwise warn that "the catalog still uses" it - forever, with no way to
+    dismiss it - about a root holding zero rows.
+    """
+    current = TypedLibrarySettings(
+        library_roots=[_root("kept", "/data/music", "music")]
+    )
+    base = Mock()
+    base.current_settings.return_value = current
+    store = AsyncMock()
+    store.get_migrated_root_ids.return_value = {"typo-root", "kept"}
+    # no entry for typo-root: get_restorable_root_paths only reports roots
+    # that local_tracks actually references
+    store.get_restorable_root_paths.return_value = {}
+    store.get_pending_policy.return_value = {
+        "desired_policy_revision": "revision",
+        "pending_scope_ids": ["typo-root"],
+        "pending_scopes": [
+            ScanScope(
+                root_id="typo-root",
+                scope_id="typo-root",
+                relative_path=".",
+                root_path="/music",
+                effective_policy="excluded",
+                policy_revision="revision",
+            )
+        ],
+        "changed_track_count": 0,
+        "cancelled_work_count": 0,
+        "updated_at": 1.0,
+    }
+    service = TargetLibraryPolicyService(base, AsyncMock(), store)
+
+    response = await service.restorable_roots()
+    assert response.restorable_roots == []
+
+
+@pytest.mark.asyncio
 async def test_restore_roots_reuses_migrated_ids_and_applies_overrides() -> None:
     current = TypedLibrarySettings(
         library_roots=[_root("kept", "/library", "music")]

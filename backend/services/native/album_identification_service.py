@@ -167,7 +167,13 @@ def _embedded_decision(
                 recording_mbid=row["embedded_recording_mbid"],
                 release_track_mbid=row["embedded_release_track_mbid"],
                 candidate_disc_number=track.disc_number,
-                candidate_track_position=track.track_number,
+                # tags are user data: a 0 track number is common in real files and
+                # the identity column allows NULL or > 0 only
+                candidate_track_position=(
+                    track.track_number
+                    if track.track_number is not None and track.track_number > 0
+                    else None
+                ),
             )
             for track, row in zip(tracks, raw_tracks, strict=True)
         ],

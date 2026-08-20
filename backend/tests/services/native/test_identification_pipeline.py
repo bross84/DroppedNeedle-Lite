@@ -1663,6 +1663,91 @@ async def test_identity_transaction_rolls_back_attempt_evidence_and_job_on_fk_fa
 
 
 @pytest.mark.asyncio
+async def test_zero_track_position_from_tags_is_stored_as_null_not_a_check_failure(
+    store: NativeLibraryStore, db_path: Path
+) -> None:
+    """A 0 track number in a file's tags must not abort the identification write.
+
+    local_track_external_identities.release_track_position is
+    CHECK(NULL OR > 0). The embedded-ID fast path copies the position straight
+    out of the file's tags, so a single file tagged 0 used to raise
+    IntegrityError, roll the whole transaction back, and kill the worker
+    iteration - stalling identification for the entire library.
+    """
+    await _seed_album(store)
+    job = await _claimed_job(store)
+    context = await store.get_album_identification_context("album-1")
+    assert context is not None
+    evidence = CandidateEvidence(
+        release_group_mbid="rg",
+        release_mbid="release",
+        album_title="Album",
+        album_artist_name="Artist",
+        album_title_classification="supported",
+        album_artist_classification="supported",
+        track_evidence=[
+            TrackEvidence(
+                local_track_id="track-1",
+                classification="supported",
+                recording_mbid="recording",
+                release_track_mbid="release-track",
+                candidate_disc_number=1,
+                candidate_track_position=0,
+            )
+        ],
+        reason_code="SUPPORTED",
+    )
+    attempt = IdentificationAttempt(
+        id="zero-position-attempt",
+        local_album_id="album-1",
+        input_tag_revision="tag",
+        input_file_revision="file",
+        input_policy_revision="policy",
+        input_identity_revision=album_identity_revision(
+            context["identity"],
+            [
+                track
+                for track in context["tracks"]
+                if track["availability"] == "indexed"
+            ],
+        ),
+        matcher_version="matcher",
+        state="identified",
+        terminal_reason_code="SUPPORTED",
+        selected_candidate_key="rg:release",
+        candidate_count=1,
+        started_at=3,
+        completed_at=3,
+    )
+    await store.finish_identification_job(
+        job["id"],
+        worker_id="worker",
+        expected_job_revision=job["row_revision"],
+        expected_album_revision=1,
+        expected_input_revision=":".join(album_input_revisions(context["tracks"])),
+        attempt=attempt,
+        evidence=[
+            IdentificationEvidenceRecord(
+                id="zero-position-evidence",
+                attempt_id=attempt.id,
+                candidate_key="rg:release",
+                evidence=evidence,
+                created_at=3,
+            )
+        ],
+        outcome="identified",
+        review_id="zero-position-review",
+        completed_at=3,
+    )
+    with sqlite3.connect(db_path) as connection:
+        stored = connection.execute(
+            "SELECT release_track_position FROM local_track_external_identities "
+            "WHERE local_track_id = 'track-1'"
+        ).fetchone()
+    assert stored == (None,)
+
+
+@pytest.mark.asyncio
 async def test_coverage_reads_selected_evidence_and_cannot_invent_contradictions(
     store: NativeLibraryStore,
 ) -> None:

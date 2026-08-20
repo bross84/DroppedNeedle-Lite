@@ -21,6 +21,7 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -41,6 +42,10 @@ jobs:
   test:
     name: Tests
     runs-on: ubuntu-latest
+    # The full suite legitimately runs ~80 minutes, so this ceiling is generous
+    # on purpose - it exists to stop a hung run burning GitHub's 6 hour default,
+    # not to police the normal duration. Lower it only alongside a real speedup.
+    timeout-minutes: 100
     defaults:
       run:
         working-directory: ./backend
@@ -62,5 +67,16 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
           pip install -r requirements-dev.txt
 
-      - name: Run tests
-        run: python -m pytest
+      # One benchmark (test_115000_review_cursor_...) was 4306s of a 4808s run -
+      # 90% of CI, versus 16.6s for the same test locally. It seeds 230,000 rows,
+      # so runner storage dominates it; every other test times the same in both
+      # environments. Skipping it on pull requests takes this job from ~80
+      # minutes to ~8 while still running it on every merge to main, so a real
+      # regression in it is caught before it ships, just not on every push.
+      - name: Run tests (pull request)
+        if: github.event_name == 'pull_request'
+        run: python -m pytest -m "not slow" --durations=25
+
+      - name: Run tests (main, including slow benchmarks)
+        if: github.event_name != 'pull_request'
+        run: python -m pytest --durations=25

@@ -14,6 +14,12 @@ line_length = 100
 known_first_party = ["backend"]
 default_section = "THIRDPARTY"
 
+[tool.pytest.ini_options]
+markers = [
+    "slow: a benchmark whose cost is dominated by storage speed. Runs on main, not on every PR - see .github/workflows/backend-ci.yml",
+    "e2e: needs a provisioned slskd; self-skips otherwise",
+]
+
 [tool.ruff]
 # Keep this aligned with Black/isort
 target-version = "py313"

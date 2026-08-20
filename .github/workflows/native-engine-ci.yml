@@ -1,21 +1,26 @@
 name: Native Engine CI
 
-# Phase 9 gate for the native library + download engine. Scoped to the native engine;
-# does NOT replace backend-ci.yml / frontend-ci.yml.
+# Fast, targeted gates for the native library + download engine.
+#
+# This workflow deliberately does NOT run the full backend suite, ruff, or any
+# frontend check: backend-ci.yml and frontend-ci.yml already do, and running
+# them here too meant the entire ~80 minute backend suite executed twice on
+# every pull request, doubling the compute and giving two chances for the same
+# flaky test to turn a PR red.
+#
+# What is left are the two subsets worth reporting on their own: they finish in
+# under a minute and name the failure precisely, instead of being buried in a
+# full-suite run that takes an hour longer to say the same thing.
 
 on:
   push:
     branches: [main]
     paths:
       - 'backend/**'
-      - 'frontend/**'
-      - 'Makefile'
       - '.github/workflows/native-engine-ci.yml'
   pull_request:
     paths:
       - 'backend/**'
-      - 'frontend/**'
-      - 'Makefile'
       - '.github/workflows/native-engine-ci.yml'
 
 concurrency:
@@ -23,65 +28,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  unit-integration:
-    name: Unit + Integration
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-          cache: 'pip'
-          cache-dependency-path: backend/requirements-dev.txt
-
-      - name: Install backend dependencies
-        working-directory: ./backend
-        run: |
-          python -m pip install --upgrade pip setuptools wheel
-          pip install -r requirements-dev.txt
-
-      - name: Backend lint (ruff)
-        run: |
-          pip install ruff==0.6.9
-          ruff check backend
-
-      - name: Backend unit + integration tests
-        working-directory: ./backend
-        run: python -m pytest
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '25'
-          cache: 'pnpm'
-          cache-dependency-path: frontend/pnpm-lock.yaml
-
-      - name: Install frontend dependencies
-        working-directory: ./frontend
-        run: pnpm install --frozen-lockfile
-
-      - name: Frontend lint + format + type check
-        working-directory: ./frontend
-        run: |
-          pnpm run lint
-          pnpm run format:check
-          pnpm run check
-
-      - name: Frontend server tests (incl. integration-coverage)
-        working-directory: ./frontend
-        run: pnpm exec vitest run --project server
-
   e2e:
     name: E2E (mock slskd)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: ./backend
@@ -109,6 +59,7 @@ jobs:
   security:
     name: Security
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: ./backend

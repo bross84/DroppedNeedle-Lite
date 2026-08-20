@@ -201,12 +201,25 @@
 
 	async function confirmApply(): Promise<void> {
 		const preview = applyPreview.data;
-		if (!preview) return;
-		await requestRun.mutateAsync({
-			kind: 'policy_reconcile',
-			scope_ids: preview.scope_ids,
-			expected_policy_revision: preview.policy_revision
-		});
+		if (!preview) {
+			// the dialog cannot render without a preview, so reaching this is a bug
+			// rather than a normal state - say so instead of ignoring the click
+			toastStore.show({
+				message: 'The reconciliation preview expired. Close this and try again.',
+				type: 'error'
+			});
+			return;
+		}
+		try {
+			await requestRun.mutateAsync({
+				kind: 'policy_reconcile',
+				scope_ids: preview.scope_ids,
+				expected_policy_revision: preview.policy_revision
+			});
+		} catch {
+			// leave the dialog open: requestRun.error is rendered inside it
+			return;
+		}
 		applyDialog.close();
 	}
 
@@ -569,6 +582,9 @@
 					<AlertTriangle class="h-4 w-4" /> Music under Excluded scopes will become unavailable to DroppedNeedle
 					and connected clients.
 				</div>{/if}{/if}
+		{#if requestRun.error}
+			<p class="mt-3 text-sm text-error">{requestRun.error.message}</p>
+		{/if}
 		<div class="modal-action">
 			<button class="btn btn-ghost" onclick={() => applyDialog.close()}>Cancel</button><button
 				class="btn btn-warning"

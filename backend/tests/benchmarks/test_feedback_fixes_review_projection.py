@@ -77,6 +77,11 @@ def _seed_reviews(path: Path) -> None:
         connection.execute("ANALYZE")
 
 
+# Seeds 230,000 rows, so its cost is dominated by storage speed rather than by
+# the code under test: 16.6s on a local NVMe, 4306s (71.8 minutes) on a GitHub
+# runner - 260x, while every other test in the suite times the same in both.
+# That single test was 90% of the entire CI run, so it is gated to main.
+@pytest.mark.slow
 @pytest.mark.asyncio
 async def test_115000_review_cursor_is_stable_and_named_indexes_cover_filters(
     tmp_path: Path,

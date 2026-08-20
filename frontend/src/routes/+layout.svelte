@@ -3,6 +3,7 @@
 	import { AUTH_FREE_PATHS } from '$lib/constants';
 	import { loadAuthenticatedAppShell } from '$lib/components/lazyComponentLoaders';
 	import QueryProvider from '$lib/queries/QueryProvider.svelte';
+	import ToastHost from '$lib/components/ToastHost.svelte';
 	import type { Component, Snippet } from 'svelte';
 
 	let { children }: { children: Snippet } = $props();
@@ -60,5 +61,7 @@
 		{:else}
 			{@render children()}
 		{/if}
+		<!-- outside the shell branch so login and setup can report failures too -->
+		<ToastHost />
 	</div>
 </QueryProvider>
