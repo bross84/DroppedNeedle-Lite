@@ -5,6 +5,7 @@ from typing import Any, Sequence
 
 import pytest
 
+from infrastructure.persistence.maintenance_manifest import capture_source_identity
 from maintenance import feedback_fixes
 
 
@@ -203,7 +204,14 @@ def test_staged_runner_pins_source_captures_migrates_starts_and_rolls_back(
     challenge = prepared["authorization_challenge"]
 
     assert prepared["stage"] == "prepared"
-    assert prepared["source_identity"]["dirty"] is True
+    # Agreement with a fresh capture, not a hardcoded True: "dirty" describes
+    # the worktree, so it is True on a developer's checkout and False on CI's
+    # clean one. What matters is that prepare() recorded the state the
+    # repository was actually in.
+    assert (
+        prepared["source_identity"]["dirty"]
+        == capture_source_identity(_REPOSITORY_ROOT)["dirty"]
+    )
     assert prepared["prior_application"]["image_id"] == _SOURCE_IMAGE
     assert prepared["prior_application"]["command"] == _SOURCE_COMMAND
     assert "operator-secret" not in state_path.read_text(encoding="utf-8")
