@@ -67,10 +67,16 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
           pip install -r requirements-dev.txt
 
-      # --durations prints the slowest tests at the end of the run. The same
-      # suite takes ~10 minutes locally and ~85 here, and the setup steps
-      # account for 19 seconds of that, so the gap is inside pytest itself.
-      # Comparing this list against the local one separates a uniform slowdown
-      # (disk/CPU) from specific tests stalling (network timeouts).
-      - name: Run tests
+      # One benchmark (test_115000_review_cursor_...) was 4306s of a 4808s run -
+      # 90% of CI, versus 16.6s for the same test locally. It seeds 230,000 rows,
+      # so runner storage dominates it; every other test times the same in both
+      # environments. Skipping it on pull requests takes this job from ~80
+      # minutes to ~8 while still running it on every merge to main, so a real
+      # regression in it is caught before it ships, just not on every push.
+      - name: Run tests (pull request)
+        if: github.event_name == 'pull_request'
+        run: python -m pytest -m "not slow" --durations=25
+
+      - name: Run tests (main, including slow benchmarks)
+        if: github.event_name != 'pull_request'
         run: python -m pytest --durations=25
