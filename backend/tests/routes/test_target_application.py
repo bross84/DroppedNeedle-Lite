@@ -783,7 +783,15 @@ def test_target_cover_provider_has_no_legacy_catalog_inputs(monkeypatch) -> None
     repo_providers.get_target_coverart_repository.cache_clear()
 
     assert repo_providers.get_target_coverart_repository() is built
-    builder.assert_called_once_with()
+    # The guard is "no legacy catalog authority", not "no inputs at all": the
+    # target provider is meant to pass the native store so folder and embedded
+    # art still resolve. Asserting a bare call also failed the moment that
+    # native input was added, which is what it had been doing.
+    builder.assert_called_once()
+    passed = builder.call_args.kwargs
+    assert set(passed) == {"native_library_store"}
+    assert passed["native_library_store"] is not None
+    assert not builder.call_args.args
 
     repo_providers.get_target_coverart_repository.cache_clear()
 

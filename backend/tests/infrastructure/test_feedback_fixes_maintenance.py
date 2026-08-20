@@ -5,6 +5,7 @@ from typing import Any, Sequence
 
 import pytest
 
+from infrastructure.persistence.maintenance_manifest import capture_source_identity
 from maintenance import feedback_fixes
 
 
@@ -19,6 +20,31 @@ _TARGET_COMMAND = [
     "maintenance.automatic_upgrade",
     "--start-target",
 ]
+
+
+def _compose_file(tmp_path: Path) -> Path:
+    """A stand-in for the operator's compose file.
+
+    prepare() resolves repository_root/"docker-compose.yml" with strict=True,
+    but that file is gitignored - it is per-deployment runtime config carrying
+    one machine's paths - so it does not exist on a fresh checkout and every
+    test in this module failed with FileNotFoundError in CI while passing on
+    any machine that happened to have run the app.
+
+    These tests never execute docker (FakeDocker intercepts the commands); they
+    only need a file that exists and hashes stably, so write our own rather
+    than reaching for the developer's. Mirrors the pattern already used by
+    tests/benchmarks/feedback_fixes_cli_rehearsal.py.
+    """
+    path = tmp_path / "docker-compose.yml"
+    path.write_text(
+        "services:\n"
+        "  droppedneedle:\n"
+        "    image: droppedneedle:local\n"
+        "    container_name: droppedneedle\n",
+        encoding="utf-8",
+    )
+    return path
 
 
 class FakeDocker:
@@ -172,12 +198,20 @@ def test_staged_runner_pins_source_captures_migrates_starts_and_rolls_back(
         repository_root=_REPOSITORY_ROOT,
         data_root=data_root,
         manifest_root=manifest_root,
+        compose_file=_compose_file(tmp_path),
         runner=docker,
     )
     challenge = prepared["authorization_challenge"]
 
     assert prepared["stage"] == "prepared"
-    assert prepared["source_identity"]["dirty"] is True
+    # Agreement with a fresh capture, not a hardcoded True: "dirty" describes
+    # the worktree, so it is True on a developer's checkout and False on CI's
+    # clean one. What matters is that prepare() recorded the state the
+    # repository was actually in.
+    assert (
+        prepared["source_identity"]["dirty"]
+        == capture_source_identity(_REPOSITORY_ROOT)["dirty"]
+    )
     assert prepared["prior_application"]["image_id"] == _SOURCE_IMAGE
     assert prepared["prior_application"]["command"] == _SOURCE_COMMAND
     assert "operator-secret" not in state_path.read_text(encoding="utf-8")
@@ -285,6 +319,7 @@ def test_prepare_refuses_active_work(tmp_path: Path) -> None:
             repository_root=_REPOSITORY_ROOT,
             data_root=data_root,
             manifest_root=tmp_path / "manifest",
+            compose_file=_compose_file(tmp_path),
             runner=FakeDocker(),
         )
 
@@ -311,6 +346,7 @@ def test_prepare_requires_recovery_files_outside_data_root(
             repository_root=_REPOSITORY_ROOT,
             data_root=data_root,
             manifest_root=manifest_root,
+            compose_file=_compose_file(tmp_path),
             runner=FakeDocker(),
         )
 
@@ -327,6 +363,7 @@ def _prepare_and_build(
         repository_root=_REPOSITORY_ROOT,
         data_root=data_root,
         manifest_root=tmp_path / "manifest",
+        compose_file=_compose_file(tmp_path),
         runner=docker,
     )
     challenge = prepared["authorization_challenge"]
@@ -494,6 +531,7 @@ def test_build_refuses_when_source_changes_during_image_build(
         repository_root=_REPOSITORY_ROOT,
         data_root=data_root,
         manifest_root=tmp_path / "manifest",
+        compose_file=_compose_file(tmp_path),
         runner=docker,
     )
     expected = prepared["source_identity"]
