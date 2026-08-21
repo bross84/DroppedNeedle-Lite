@@ -109,7 +109,15 @@
 		if (!config) return;
 		try {
 			await save.mutateAsync(config);
-			toastStore.show({ message: 'Soulseek settings saved', type: 'success' });
+			// The enable switch above is a separate, immediately-persisting control (see
+			// handleToggle) - saving valid settings here does not flip it, so a successful
+			// save can silently leave Soulseek configured but still off. Say so.
+			toastStore.show({
+				message: enabled
+					? 'Soulseek settings saved'
+					: 'Soulseek settings saved - enable the switch above to start using it',
+				type: 'success'
+			});
 		} catch (e) {
 			toastStore.show({
 				message: e instanceof Error ? e.message : 'Failed to save download client',
@@ -199,7 +207,7 @@
 						{#if testResult.valid}
 							<CircleCheck class="size-4" aria-hidden="true" /> Connected{testResult.version
 								? ` · v${testResult.version}`
-								: ''}
+								: ''}{!enabled ? ' - enable the switch above to start using it' : ''}
 						{:else}
 							<CircleX class="size-4" aria-hidden="true" /> {testResult.message}
 						{/if}
