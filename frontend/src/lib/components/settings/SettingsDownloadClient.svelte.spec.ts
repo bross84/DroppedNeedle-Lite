@@ -2,6 +2,11 @@ import { page } from '@vitest/browser/context';
 import { describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 
+const h = vi.hoisted(() => ({
+	toastShow: vi.fn(),
+	saveMutate: vi.fn().mockResolvedValue({})
+}));
+
 const testMutate = vi.fn().mockResolvedValue({
 	valid: true,
 	version: '0.25.1.0',
@@ -32,13 +37,13 @@ vi.mock('$lib/queries/downloads/DownloadClientQueries.svelte', () => ({
 		}
 	}),
 	saveDownloadClientConfig: () => ({
-		mutateAsync: vi.fn().mockResolvedValue({}),
+		mutateAsync: h.saveMutate,
 		isPending: false
 	}),
 	testDownloadClient: () => ({ mutateAsync: testMutate, isPending: false })
 }));
 
-vi.mock('$lib/stores/toast', () => ({ toastStore: { show: vi.fn() } }));
+vi.mock('$lib/stores/toast', () => ({ toastStore: { show: h.toastShow } }));
 
 import SettingsDownloadClient from './SettingsDownloadClient.svelte';
 
@@ -65,5 +70,28 @@ describe('SettingsDownloadClient.svelte', () => {
 			expect.objectContaining({ url: 'http://slskd:5030', api_key: 'slskd****' })
 		);
 		await expect.element(page.getByText(/Connected/)).toBeInTheDocument();
+	});
+
+	it('tells you a working connection is still switched off', async () => {
+		// Regression: a passing test only proves the credentials work. The enable
+		// switch is a separate control (see handleToggle) that this doesn't touch, so
+		// "Connected" alone reads as "you're done" when Soulseek is still disabled.
+		render(SettingsDownloadClient);
+		await page.getByRole('button', { name: 'Expand' }).click();
+		await page.getByRole('button', { name: 'Test connection' }).click();
+		await expect
+			.element(page.getByText('enable the switch above to start using it'))
+			.toBeInTheDocument();
+	});
+
+	it('says the same thing when settings are saved while still disabled', async () => {
+		render(SettingsDownloadClient);
+		await page.getByRole('button', { name: 'Expand' }).click();
+		await page.getByRole('button', { name: 'Save settings' }).click();
+		expect(h.toastShow).toHaveBeenCalledWith(
+			expect.objectContaining({
+				message: 'Soulseek settings saved - enable the switch above to start using it'
+			})
+		);
 	});
 });
