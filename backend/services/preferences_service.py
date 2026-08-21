@@ -835,10 +835,21 @@ class PreferencesService:
             raise ConfigurationError(f"Failed to save Last.fm connection settings: {e}")
 
     def is_lastfm_enabled(self) -> bool:
+        """Credentials are the signal, not the `enabled` flag.
+
+        `enabled` used to gate this as well, and nothing in the application can
+        set it True: the settings form collects only the key and secret and never
+        sends the field, `save_lastfm_connection` only ever forces it *False* when
+        a credential is missing, and even the OAuth session exchange passes the
+        previous value through. It was therefore False on every install, so a
+        valid API key never reached Discover and the ListenBrainz -> Last.fm
+        fallback in IntegrationHelpers.resolve_source could never fire.
+
+        A stored key and secret already mean "the operator configured Last.fm";
+        a second boolean that nothing owns can only ever disagree with them.
+        """
         settings = self.get_lastfm_connection()
-        return (
-            settings.enabled and bool(settings.api_key) and bool(settings.shared_secret)
-        )
+        return bool(settings.api_key) and bool(settings.shared_secret)
 
     def get_spotify_settings(self) -> SpotifySettings:
         config = self._load_config()

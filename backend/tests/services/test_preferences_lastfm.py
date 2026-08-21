@@ -138,7 +138,16 @@ def test_clearing_api_key_only_disables(service):
     assert loaded.username == ""
 
 
-def test_is_lastfm_enabled_requires_all_fields(service):
+def test_is_lastfm_enabled_requires_credentials(service):
+    """Credentials decide it; the `enabled` flag no longer gates it.
+
+    This previously also required `enabled`, and asserted that True/False
+    switched the result. That contract was unreachable in the running app: the
+    settings form never sends `enabled`, the save path only ever forces it
+    False, and the OAuth exchange passes the old value through, so it was False
+    on every install and a valid API key never reached Discover. The assertion
+    only held because the test called the service directly with enabled=True.
+    """
     assert service.is_lastfm_enabled() is False
 
     service.save_lastfm_connection(
@@ -147,18 +156,28 @@ def test_is_lastfm_enabled_requires_all_fields(service):
             shared_secret="secret",
             session_key="",
             username="",
-            enabled=True,
         )
     )
     assert service.is_lastfm_enabled() is True
 
+
+def test_lastfm_is_enabled_from_a_config_the_ui_could_actually_produce(service, tmp_config):
+    """Regression: the exact on-disk shape a real install has.
+
+    A server with a key and secret saved through the settings screen stores
+    `"enabled": false`, because no screen writes that field. Discover must still
+    treat Last.fm as available, otherwise the ListenBrainz -> Last.fm fallback
+    can never fire and the operator's API key silently does nothing.
+    """
+    import json
+
+    _, config_file = tmp_config
     service.save_lastfm_connection(
-        LastFmConnectionSettings(
-            api_key="key",
-            shared_secret="secret",
-            session_key="",
-            username="",
-            enabled=False,
-        )
+        LastFmConnectionSettings(api_key="key", shared_secret="secret")
     )
-    assert service.is_lastfm_enabled() is False
+    on_disk = json.loads(config_file.read_text())
+    assert on_disk["lastfm_settings"]["enabled"] is False, (
+        "precondition: this is the shape a real install has on disk"
+    )
+
+    assert service.is_lastfm_enabled() is True
