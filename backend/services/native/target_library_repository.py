@@ -134,6 +134,59 @@ class TargetLibraryRepository:
     async def get_artist_mbids(self) -> set[str]:
         return await self._store.target_provider_artist_ids()
 
+    async def get_enrichment_candidates(
+        self, *, after_mbid: str | None, limit: int
+    ) -> list[tuple[str, str, dict[str, Any]]]:
+        """Return one keyset page for catalog-wide metadata enrichment.
+
+        Mirrors ``LibraryDB.get_enrichment_candidates`` so the AudioDB sweep
+        works against either repository.
+        """
+        cursor_type = ""
+        cursor_mbid = ""
+        legacy_cursor = after_mbid or ""
+        if after_mbid and ":" in after_mbid:
+            candidate_type, candidate_mbid = after_mbid.split(":", 1)
+            if candidate_type in {"artist", "album"}:
+                cursor_type = candidate_type
+                cursor_mbid = candidate_mbid.casefold()
+                legacy_cursor = ""
+
+        candidates: list[tuple[str, str, dict[str, Any]]] = []
+        for artist in await self.get_artists_from_library():
+            mbid = artist.get("mbid")
+            if mbid:
+                candidates.append(
+                    ("artist", str(mbid).casefold(), {"name": artist.get("name")})
+                )
+        for album in await self.get_albums():
+            mbid = album.get("mbid")
+            if mbid:
+                candidates.append(
+                    (
+                        "album",
+                        str(mbid).casefold(),
+                        {
+                            "title": album.get("title"),
+                            "artist_name": album.get("artist_name"),
+                        },
+                    )
+                )
+
+        if legacy_cursor:
+            cursor = legacy_cursor.casefold()
+            candidates = [c for c in candidates if c[1] > cursor]
+            candidates.sort(key=lambda c: (c[1], c[0]))
+        else:
+            candidates = [
+                c
+                for c in candidates
+                if c[0] > cursor_type or (c[0] == cursor_type and c[1] > cursor_mbid)
+            ]
+            candidates.sort(key=lambda c: (c[0], c[1]))
+
+        return candidates[: max(1, limit)]
+
     async def get_artist_mbid_page(self, *, after_mbid: str, limit: int) -> list[str]:
         """Keyset page over artist MBIDs, ordered case-insensitively.
 
