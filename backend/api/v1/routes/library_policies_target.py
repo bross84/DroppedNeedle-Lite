@@ -13,6 +13,7 @@ from api.v1.schemas.library_policies import (
     LibrarySettingsResponse,
     LibrarySettingsUpdateRequest,
 )
+from api.v1.schemas.library_scan_target import ScanRunRequestedResponse
 from core.dependencies import (
     LegacyPendingMigrationServiceDep,
     TargetLibraryPolicyServiceDep,
@@ -75,6 +76,15 @@ async def preview_saved_policy_apply(
     request: LibraryPolicyApplyRequest = MsgSpecBody(LibraryPolicyApplyRequest),
 ) -> LibraryPolicyApplyPreviewResponse:
     return await service.preview_apply(request)
+
+
+@router.post("/policy-apply", response_model=ScanRunRequestedResponse)
+async def apply_saved_policy(
+    current_admin: CurrentAdminDep,
+    service: TargetLibraryPolicyServiceDep,
+    request: LibraryPolicyApplyRequest = MsgSpecBody(LibraryPolicyApplyRequest),
+) -> ScanRunRequestedResponse:
+    return await service.apply(request, requested_by_user_id=current_admin.id)
 
 
 @router.get("/restorable-roots", response_model=LibraryRestorableRootsResponse)

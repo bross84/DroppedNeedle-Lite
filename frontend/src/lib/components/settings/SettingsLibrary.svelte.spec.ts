@@ -46,6 +46,8 @@ const h = vi.hoisted(() => ({
 	save: vi.fn(),
 	restore: vi.fn(),
 	applyPreview: vi.fn(),
+	applyPolicy: vi.fn(),
+	applyPolicyError: null as unknown,
 	requestRun: vi.fn(),
 	requestRunError: null as unknown,
 	toast: vi.fn(),
@@ -104,6 +106,13 @@ vi.mock('$lib/queries/library/LibraryPolicyMutations.svelte', () => ({
 			estimated_file_count: 80,
 			content_will_become_unavailable: true,
 			queued_work_was_cancelled_on_save: false
+		},
+		isPending: false
+	}),
+	applyLibraryPolicy: () => ({
+		mutateAsync: h.applyPolicy,
+		get error() {
+			return h.applyPolicyError;
 		},
 		isPending: false
 	})
@@ -175,6 +184,8 @@ beforeEach(() => {
 		]
 	});
 	h.applyPreview.mockResolvedValue({});
+	h.applyPolicy.mockResolvedValue({});
+	h.applyPolicyError = null;
 	h.requestRun.mockResolvedValue({});
 	h.requestRunError = null;
 });
@@ -264,8 +275,9 @@ describe('SettingsLibrary target policy UI', () => {
 			.element(page.getByRole('heading', { name: 'Apply policy changes?' }))
 			.toBeVisible();
 		await page.getByRole('button', { name: 'Apply policy changes' }).click();
-		expect(h.requestRun).toHaveBeenCalledWith({
-			kind: 'policy_reconcile',
+		// Not requestLibraryRun's generic /scan-runs - that validates scope_ids
+		// against current settings, where a removed root can never appear.
+		expect(h.applyPolicy).toHaveBeenCalledWith({
 			scope_ids: ['root-1'],
 			expected_policy_revision: 'policy-2'
 		});
@@ -286,8 +298,8 @@ describe('SettingsLibrary target policy UI', () => {
 			isLoading: false,
 			isError: false
 		};
-		h.requestRun.mockRejectedValue(new Error('Select at least one library scope.'));
-		h.requestRunError = new Error('Select at least one library scope.');
+		h.applyPolicy.mockRejectedValue(new Error('Select at least one library scope.'));
+		h.applyPolicyError = new Error('Select at least one library scope.');
 		render(SettingsLibrary);
 		await page.getByRole('button', { name: 'Apply changes...' }).click();
 		await page.getByRole('button', { name: 'Apply policy changes' }).click();

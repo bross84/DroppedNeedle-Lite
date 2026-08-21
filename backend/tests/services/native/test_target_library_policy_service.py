@@ -21,7 +21,7 @@ from api.v1.schemas.library_policies import (
 )
 from core.exceptions import ValidationError
 from infrastructure.persistence.native_library_store import NativeLibraryStore
-from models.library_work import ScanRequest, ScanScope
+from models.library_work import ScanRequest, ScanRequestResult, ScanScope
 from services.native.library_policy_service import LibraryPolicyService
 from services.native.library_policy_reconciliation_service import (
     LibraryPolicyReconciliationService,
@@ -918,3 +918,75 @@ async def test_restored_root_labels_avoid_collisions() -> None:
         "kept": "music",
         "removed": "music (2)",
     }
+
+
+@pytest.mark.asyncio
+async def test_apply_reconciles_a_removed_root_that_scan_runs_would_reject(
+    tmp_path: Path,
+) -> None:
+    """Regression: "Apply policy changes" always failed for a removed root.
+
+    Saving a settings change that removes a library root produces a pending
+    scope whose scope_id *is* the removed root's id (see
+    LibraryPolicyService._transition_scopes). The generic /library/scan-runs
+    route validates scope_ids against the *current* settings, where a removed
+    root can never appear by definition, so every such apply was rejected with
+    "One or more selected library scopes no longer exist." before reaching the
+    database. TargetLibraryPolicyService.apply() routes through
+    LibraryPolicyReconciliationService.apply() instead, which validates against
+    the *pending* scopes - the ones actually being reconciled.
+    """
+    path = tmp_path / "library.db"
+    with sqlite3.connect(path) as connection:
+        connection.execute("CREATE TABLE auth_users (id TEXT PRIMARY KEY)")
+        connection.execute("INSERT INTO auth_users(id) VALUES ('admin')")
+    store = NativeLibraryStore(path, threading.Lock())
+
+    # settings after the save that removed "typo-root" - it cannot appear here,
+    # which is exactly what made the old /scan-runs route reject it
+    current_settings = TypedLibrarySettings(
+        library_roots=[
+            LibraryRootSettings(id="root-a", path="/music", label="Library")
+        ]
+    )
+    resolver = LibraryPolicyResolver(current_settings)
+    policy_revision = resolver.policy_revision
+
+    removed_root_scope = ScanScope(
+        root_id="typo-root",
+        scope_id="typo-root",
+        relative_path=".",
+        root_path="/typo",
+        effective_policy="excluded",
+        policy_revision=policy_revision,
+    )
+    await store.record_pending_policy(
+        policy_revision=policy_revision,
+        scopes=[removed_root_scope],
+        changed_track_count=0,
+        cancelled_work_count=0,
+        updated_at=1.0,
+    )
+
+    reconciliation = LibraryPolicyReconciliationService(
+        store, lambda: resolver, coordinator=AsyncMock()
+    )
+    reconciliation._coordinator.request_run.return_value = ScanRequestResult(
+        run_id="run-1",
+        disposition="started",
+        state="running",
+        row_revision=1,
+    )
+    service = TargetLibraryPolicyService(Mock(), reconciliation, store)
+
+    response = await service.apply(
+        LibraryPolicyApplyRequest(
+            scope_ids=["typo-root"], expected_policy_revision=policy_revision
+        ),
+        requested_by_user_id="admin",
+    )
+
+    assert response.disposition == "started"
+    assert response.run_id == "run-1"
+    request = reconciliation._coordinator.request_run.call_args.args[0]
+    assert request.scopes == [removed_root_scope]

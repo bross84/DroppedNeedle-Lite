@@ -5,6 +5,7 @@ from fastapi import FastAPI
 
 from api.v1.routes.library_policies_target import router
 from api.v1.schemas.library_policies import LibrarySettingsResponse
+from api.v1.schemas.library_scan_target import ScanRunRequestedResponse
 from core.dependencies import get_legacy_pending_migration_service
 from core.dependencies.service_providers import get_target_library_policy_service
 from core.exceptions import StaleRevisionError
@@ -124,3 +125,34 @@ def test_restore_roots_skips_schedule_when_library_disabled(
     assert response.status_code == 200
     assert response.json()["enabled"] is False
     pending_migration.schedule.assert_not_awaited()
+
+
+def test_policy_apply_route_calls_service_apply_with_the_current_admin(
+    app: tuple[FastAPI, AsyncMock, AsyncMock],
+) -> None:
+    """The apply route must exist and reach TargetLibraryPolicyService.apply().
+
+    Regression: "Apply policy changes" previously posted to the generic
+    /library/scan-runs route, which validates scope_ids against the *current*
+    settings - a removed root's scope_id can never appear there, so every such
+    apply was rejected. This route calls service.apply() instead, which the
+    service backs with LibraryPolicyReconciliationService.apply() - validated
+    against the *pending* scopes being reconciled.
+    """
+    application, target, _ = app
+    target.apply.return_value = ScanRunRequestedResponse(
+        run_id="run-1",
+        disposition="started",
+        state="running",
+        row_revision=1,
+    )
+    client = build_test_client(application)
+    response = client.post(
+        "/settings/library/policy-apply",
+        json={"scope_ids": ["typo-root"], "expected_policy_revision": "policy-2"},
+    )
+    assert response.status_code == 200
+    assert response.json()["disposition"] == "started"
+    request = target.apply.call_args.args[0]
+    assert request.scope_ids == ["typo-root"]
+    assert target.apply.call_args.kwargs["requested_by_user_id"]

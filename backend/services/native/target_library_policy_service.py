@@ -21,6 +21,7 @@ from api.v1.schemas.library_policies import (
     LibraryPolicyTreeResponse,
     TypedLibrarySettings,
 )
+from api.v1.schemas.library_scan_target import ScanRunRequestedResponse
 from core.exceptions import TargetStartupInvariantError, ValidationError
 from infrastructure.persistence.native_library_store import NativeLibraryStore
 from services.native.library_policy_reconciliation_service import (
@@ -384,4 +385,29 @@ class TargetLibraryPolicyService:
             queued_work_was_cancelled_on_save=bool(
                 pending and pending["cancelled_work_count"]
             ),
+        )
+
+    async def apply(
+        self, request: LibraryPolicyApplyRequest, *, requested_by_user_id: str
+    ) -> ScanRunRequestedResponse:
+        """Queue the reconcile scan for a saved policy change.
+
+        Unlike ``/library/scan-runs``, this validates scope_ids against the
+        *pending* scopes (what the operator is actually reconciling, including a
+        removed root) rather than the current settings - a removed root's scope_id
+        cannot appear in the current settings by definition, so routing this
+        through the generic scan-runs validation always rejected it.
+        """
+        result = await self._reconciliation.apply(
+            request.scope_ids,
+            expected_policy_revision=request.expected_policy_revision,
+            requested_by_user_id=requested_by_user_id,
+        )
+        return ScanRunRequestedResponse(
+            run_id=result.run_id,
+            disposition=result.disposition,
+            state=result.state,
+            row_revision=result.row_revision,
+            queued_reason=result.queued_reason,
+            conflicting_kind=result.conflicting_kind,
         )
