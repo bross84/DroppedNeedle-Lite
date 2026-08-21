@@ -46,6 +46,13 @@
 			Connect your Navidrome server for music streaming, recently played tracks, and favorites.
 		</p>
 
+		<div class="rounded-xl border border-info/20 bg-info/5 p-3 text-sm text-base-content/70 mb-4">
+			This points the whole instance at your Navidrome server. Each user - including you -
+			still links <span class="font-medium">their own</span> Navidrome account from their
+			<a href="/profile#media-accounts" class="link link-primary">profile</a> before it's actually
+			connected.
+		</div>
+
 		{#if form.loading}
 			<div class="flex justify-center items-center py-12">
 				<span class="loading loading-spinner loading-lg"></span>
