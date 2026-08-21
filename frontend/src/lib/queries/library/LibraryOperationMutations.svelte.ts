@@ -29,7 +29,7 @@ async function invalidateWork(): Promise<void> {
  * indistinguishable from one that started - the operator clicks, is told it
  * worked, and nothing happens.
  */
-function describeScanRequest(result: ScanRunRequestedResponse | undefined): {
+export function describeScanRequest(result: ScanRunRequestedResponse | undefined): {
 	message: string;
 	type: 'success' | 'error' | 'info';
 } {

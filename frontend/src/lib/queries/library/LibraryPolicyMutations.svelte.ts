@@ -3,11 +3,13 @@ import { api, ApiError } from '$lib/api/client';
 import { API } from '$lib/constants';
 import { invalidateQueriesWithPersister } from '$lib/queries/QueryClient';
 import { toastStore } from '$lib/stores/toast';
+import { describeScanRequest } from './LibraryOperationMutations.svelte';
 import { LibraryQueryKeyFactory } from './LibraryQueryKeyFactory';
 import type {
 	LibraryPolicyApplyPreviewResponse,
 	LibraryPolicyImpactResponse,
 	LibraryRestoreRootsRequest,
+	ScanRunRequestedResponse,
 	TargetLibrarySettingsResponse,
 	TypedLibrarySettings
 } from './LibraryOperationsTypes';
@@ -70,5 +72,21 @@ export function previewLibraryPolicyApply() {
 	return createMutation(() => ({
 		mutationFn: (input: { scope_ids: string[]; expected_policy_revision: string }) =>
 			api.global.post<LibraryPolicyApplyPreviewResponse>(API.library.policyApplyPreview(), input)
+	}));
+}
+
+export function applyLibraryPolicy() {
+	return createMutation(() => ({
+		mutationFn: (input: { scope_ids: string[]; expected_policy_revision: string }) =>
+			api.global.post<ScanRunRequestedResponse>(API.library.policyApply(), input),
+		onSuccess: async (result) => {
+			await invalidatePolicies();
+			toastStore.show(describeScanRequest(result));
+		},
+		onError: (error) =>
+			toastStore.show({
+				message: serverErrorMessage(error, 'Could not apply the library policy changes'),
+				type: 'error'
+			})
 	}));
 }

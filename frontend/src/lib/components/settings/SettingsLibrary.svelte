@@ -6,6 +6,7 @@
 		getTargetLibrarySettingsQuery
 	} from '$lib/queries/library/LibraryPolicyQueries.svelte';
 	import {
+		applyLibraryPolicy,
 		previewLibraryPolicyApply,
 		previewLibraryPolicyImpact,
 		restoreLibraryRoots,
@@ -34,6 +35,7 @@
 	const save = saveTargetLibrarySettings();
 	const restore = restoreLibraryRoots();
 	const applyPreview = previewLibraryPolicyApply();
+	const applyPolicy = applyLibraryPolicy();
 	const requestRun = requestLibraryRun();
 	const policyQuery = getDownloadPolicyQuery(() => authStore.isAdmin);
 	const savePolicy = saveDownloadPolicy();
@@ -211,13 +213,16 @@
 			return;
 		}
 		try {
-			await requestRun.mutateAsync({
-				kind: 'policy_reconcile',
+			// Not requestLibraryRun's generic /scan-runs: that validates scope_ids
+			// against the *current* settings, where a removed root's scope_id can
+			// never appear, so applying a change that removed a root was always
+			// rejected. This goes through the pending-scope-aware apply route instead.
+			await applyPolicy.mutateAsync({
 				scope_ids: preview.scope_ids,
 				expected_policy_revision: preview.policy_revision
 			});
 		} catch {
-			// leave the dialog open: requestRun.error is rendered inside it
+			// leave the dialog open: applyPolicy.error is rendered inside it
 			return;
 		}
 		applyDialog.close();
@@ -582,15 +587,15 @@
 					<AlertTriangle class="h-4 w-4" /> Music under Excluded scopes will become unavailable to DroppedNeedle
 					and connected clients.
 				</div>{/if}{/if}
-		{#if requestRun.error}
-			<p class="mt-3 text-sm text-error">{requestRun.error.message}</p>
+		{#if applyPolicy.error}
+			<p class="mt-3 text-sm text-error">{applyPolicy.error.message}</p>
 		{/if}
 		<div class="modal-action">
 			<button class="btn btn-ghost" onclick={() => applyDialog.close()}>Cancel</button><button
 				class="btn btn-warning"
-				disabled={requestRun.isPending}
+				disabled={applyPolicy.isPending}
 				onclick={() => void confirmApply()}
-				>{#if requestRun.isPending}<span class="loading loading-spinner loading-sm"></span>{/if} Apply
+				>{#if applyPolicy.isPending}<span class="loading loading-spinner loading-sm"></span>{/if} Apply
 				policy changes</button
 			>
 		</div>

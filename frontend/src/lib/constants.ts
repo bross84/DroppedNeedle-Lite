@@ -457,6 +457,7 @@ export const API = {
 		policyTree: () => '/api/v1/settings/library/policy-tree',
 		policyImpact: () => '/api/v1/settings/library/policy-impact',
 		policyApplyPreview: () => '/api/v1/settings/library/policy-apply-preview',
+		policyApply: () => '/api/v1/settings/library/policy-apply',
 		pathMapping: () => '/api/v1/settings/library/path-mapping',
 		restorableRoots: () => '/api/v1/settings/library/restorable-roots',
 		restoreRoots: () => '/api/v1/settings/library/restore-roots',

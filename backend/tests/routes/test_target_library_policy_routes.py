@@ -138,6 +138,13 @@ def test_target_policy_routes_are_admin_only(
         ).status_code
         == 403
     )
+    assert (
+        client.post(
+            "/settings/library/policy-apply",
+            json={"scope_ids": ["root"], "expected_policy_revision": "policy-2"},
+        ).status_code
+        == 403
+    )
     assert client.get("/settings/library/restorable-roots").status_code == 403
     assert (
         client.post(
@@ -216,6 +223,7 @@ def test_target_policy_route_inventory_is_complete() -> None:
         ("GET", "/settings/library/policy-tree"),
         ("POST", "/settings/library/policy-impact"),
         ("POST", "/settings/library/policy-apply-preview"),
+        ("POST", "/settings/library/policy-apply"),
         ("GET", "/settings/library/restorable-roots"),
         ("POST", "/settings/library/restore-roots"),
     }
