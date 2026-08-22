@@ -46,8 +46,11 @@ async def get_home_data(
 
 
 @router.get("/integration-status", response_model=HomeIntegrationStatus)
-async def get_integration_status(home_service: HomeService = Depends(get_home_service)):
-    status = home_service.get_integration_status()
+async def get_integration_status(
+    current_user: CurrentUserDep,
+    home_service: HomeService = Depends(get_home_service),
+):
+    status = await home_service.get_integration_status_for_user(current_user.id)
     # Refine localfiles via async lib check; never blank gating-critical status, so fall back on error.
     try:
         has_local = await home_service.has_local_files()

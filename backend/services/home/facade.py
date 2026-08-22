@@ -187,6 +187,13 @@ class HomeService:
             plex=self._helpers.is_plex_enabled(),
         )
 
+    async def get_integration_status_for_user(self, user_id: str) -> HomeIntegrationStatus:
+        """Per-user-correct variant: listenbrainz/lastfm reflect this user's own
+        Connect flow instead of the instance-wide (and for ListenBrainz, never
+        written) preferences the base method reads."""
+        music = await self._resolve_user_music(user_id, None)
+        return self._integration_status_for_user(music.lb_enabled, music.lfm_enabled)
+
     async def has_local_files(self) -> bool:
         # the engine is always present; affordances only light up once music exists
         return await self._library_repo.has_any_files()

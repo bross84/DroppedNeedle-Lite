@@ -45,6 +45,7 @@ class DiscoverRadioService:
         integration: IntegrationHelpers | None = None,
         transformers: Any = None,
         lfm_repo: Any = None,
+        client_factory: Any = None,
     ) -> None:
         self._lb_repo = lb_repo
         self._lfm_repo = lfm_repo
@@ -55,6 +56,7 @@ class DiscoverRadioService:
         self._genre_index = genre_index
         self._integration = integration
         self._transformers = transformers
+        self._client_factory = client_factory
 
     async def _similar_artist_pools(self, seeds, seed_mbids, *, excluded_mbids, similar_limit, albums_per):
         """Similar-artist album pools. ALWAYS prefers ListenBrainz; swaps to the Last.fm
@@ -79,19 +81,28 @@ class DiscoverRadioService:
             mbid_svc=self._mbid,
         )
 
-    async def generate_radio(self, request: RadioRequest) -> HomeSection:
+    async def generate_radio(self, request: RadioRequest, user_id: str) -> HomeSection:
         if not request.seed_id or not request.seed_id.strip():
             raise HTTPException(status_code=400, detail="seed_id must be non-empty")
 
+        # ListenBrainz is per-user (token-based, no instance-wide credential) - resolve
+        # via this user's own Connect flow rather than the instance-wide preference.
+        lb_enabled = (
+            await self._client_factory.is_listenbrainz_linked(user_id)
+            if self._client_factory
+            else False
+        )
+        lfm_enabled = self._integration.is_lastfm_enabled() if self._integration else False
+
         resolved_source = (
-            self._integration.resolve_source(request.source)
+            self._integration.resolve_source(
+                request.source, lb_enabled=lb_enabled, lfm_enabled=lfm_enabled
+            )
             if self._integration
             else request.source or "listenbrainz"
         )
 
         if self._integration:
-            lb_enabled = self._integration.is_listenbrainz_enabled()
-            lfm_enabled = self._integration.is_lastfm_enabled()
             source_available = (
                 (resolved_source == "listenbrainz" and lb_enabled)
                 or (resolved_source == "lastfm" and lfm_enabled)

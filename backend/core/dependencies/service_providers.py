@@ -2220,6 +2220,7 @@ def _build_discover_service(
         genre_index=genre_index,
         integration=radio_integration,
         transformers=HomeDataTransformers(),
+        client_factory=get_per_user_client_factory(),
     )
 
     return DiscoverService(

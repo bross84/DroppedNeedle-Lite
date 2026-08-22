@@ -7,6 +7,8 @@ from fastapi.testclient import TestClient
 from api.v1.routes.home import router
 from api.v1.schemas.home import HomeIntegrationStatus
 from core.dependencies import get_home_charts_service, get_home_service
+from middleware import _get_current_user
+from tests.helpers import mock_user
 
 
 @pytest.fixture
@@ -67,6 +69,7 @@ def client(mock_home_service, mock_charts_service):
     app.include_router(router)
     app.dependency_overrides[get_home_service] = lambda: mock_home_service
     app.dependency_overrides[get_home_charts_service] = lambda: mock_charts_service
+    app.dependency_overrides[_get_current_user] = mock_user
     return TestClient(app)
 
 
@@ -89,7 +92,7 @@ class TestIntegrationStatusGating:
     not the sync capability flag - this gates the Local Files tab + affordances."""
 
     def test_localfiles_true_when_library_has_files(self, client, mock_home_service):
-        mock_home_service.get_integration_status = MagicMock(
+        mock_home_service.get_integration_status_for_user = AsyncMock(
             return_value=_make_status(False)
         )
         mock_home_service.has_local_files = AsyncMock(return_value=True)
@@ -101,7 +104,7 @@ class TestIntegrationStatusGating:
         mock_home_service.has_local_files.assert_awaited_once()
 
     def test_localfiles_false_when_library_empty(self, client, mock_home_service):
-        mock_home_service.get_integration_status = MagicMock(
+        mock_home_service.get_integration_status_for_user = AsyncMock(
             return_value=_make_status(True)
         )
         mock_home_service.has_local_files = AsyncMock(return_value=False)
@@ -113,7 +116,7 @@ class TestIntegrationStatusGating:
 
     def test_status_survives_has_local_files_error(self, client, mock_home_service):
         # A localfiles-refinement failure must not blank the gating status; it falls back to the sync default.
-        mock_home_service.get_integration_status = MagicMock(
+        mock_home_service.get_integration_status_for_user = AsyncMock(
             return_value=_make_status(True)
         )
         mock_home_service.has_local_files = AsyncMock(
