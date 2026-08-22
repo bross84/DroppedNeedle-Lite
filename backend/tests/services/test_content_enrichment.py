@@ -1,14 +1,12 @@
 """Tests for lyrics, album info, and audio-quality enrichment."""
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, PropertyMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from repositories.navidrome_models import SubsonicAlbumInfo, SubsonicLyrics
 from services.navidrome_library_service import NavidromeLibraryService
-from services.plex_library_service import PlexLibraryService
-from repositories.plex_models import PlexTrack, PlexMedia, PlexPart
 
 
 def _navidrome_service(
@@ -32,25 +30,6 @@ def _navidrome_service(
     repo.get_lyrics_by_song_id = AsyncMock(return_value=lyrics_by_id)
     prefs = MagicMock()
     return NavidromeLibraryService(navidrome_repo=repo, preferences_service=prefs)
-
-
-def _plex_service() -> PlexLibraryService:
-    repo = MagicMock()
-    repo.get_albums = AsyncMock(return_value=([], 0))
-    repo.get_recently_added = AsyncMock(return_value=[])
-    repo.get_recently_viewed = AsyncMock(return_value=[])
-    repo.get_genres = AsyncMock(return_value=[])
-    repo.get_track_count = AsyncMock(return_value=0)
-    repo.get_artist_count = AsyncMock(return_value=0)
-    type(repo).stats_ttl = PropertyMock(return_value=600)
-    prefs = MagicMock()
-    conn = MagicMock()
-    conn.enabled = True
-    conn.plex_url = "http://plex:32400"
-    conn.plex_token = "tok"
-    conn.music_library_ids = ["1"]
-    prefs.get_plex_connection_raw.return_value = conn
-    return PlexLibraryService(plex_repo=repo, preferences_service=prefs)
 
 
 @pytest.mark.asyncio
@@ -124,49 +103,3 @@ async def test_navidrome_lyrics_returns_none_on_all_errors():
     svc._navidrome.get_lyrics = AsyncMock(side_effect=RuntimeError("fail"))
     result = await svc.get_lyrics("song-1", artist="A", title="T")
     assert result is None
-
-
-def test_plex_track_to_info_extracts_audio_quality():
-    track = PlexTrack(
-        ratingKey="1",
-        title="Song",
-        index=1,
-        parentIndex=1,
-        duration=180000,
-        parentTitle="Album",
-        grandparentTitle="Artist",
-        Media=[
-            PlexMedia(
-                bitrate=1411,
-                audioCodec="flac",
-                audioChannels=2,
-                container="flac",
-                Part=[PlexPart(key="/part/1")],
-            )
-        ],
-    )
-    svc = _plex_service()
-    info = svc._track_to_info(track)
-    assert info.codec == "flac"
-    assert info.bitrate == 1411
-    assert info.audio_channels == 2
-    assert info.container == "flac"
-
-
-def test_plex_track_to_info_handles_missing_media():
-    track = PlexTrack(
-        ratingKey="2",
-        title="Song2",
-        index=2,
-        parentIndex=1,
-        duration=120000,
-        parentTitle="Album",
-        grandparentTitle="Artist",
-        Media=[],
-    )
-    svc = _plex_service()
-    info = svc._track_to_info(track)
-    assert info.codec is None
-    assert info.bitrate is None
-    assert info.audio_channels is None
-    assert info.container is None

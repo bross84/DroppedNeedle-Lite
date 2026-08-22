@@ -82,7 +82,6 @@ def _make_status(localfiles: bool) -> HomeIntegrationStatus:
         youtube_api=False,
         lastfm=False,
         navidrome=False,
-        plex=False,
         localfiles=localfiles,
     )
 

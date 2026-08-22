@@ -24,7 +24,6 @@ async def test_background_import_signals_completion_over_sse(monkeypatch):
     # process-global getters because they are shared by both application entrypoints.
     for getter in (
         "get_navidrome_library_service",
-        "get_plex_library_service",
     ):
         monkeypatch.setattr(spotify_routes, getter, lambda: AsyncMock())
     folder_scope = AsyncMock()

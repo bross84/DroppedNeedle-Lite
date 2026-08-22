@@ -68,20 +68,19 @@ ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 MAX_COVER_SIZE = 2 * 1024 * 1024
 _MIME_TO_EXT = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
 _SAFE_ID_RE = re.compile(r"^[a-f0-9\-]+$")
-VALID_SOURCE_TYPES = {"local", "navidrome", "plex", "youtube", ""}
+VALID_SOURCE_TYPES = {"local", "navidrome", "youtube", ""}
 MAX_NAME_LENGTH = 100
 # Albums in a playlist are resolved against external sources concurrently. A
 # large playlist (300+ tracks) can span hundreds of albums; resolving them one
 # at a time turned the synchronous /resolve-sources call into hundreds of serial
 # round-trips and made big playlists appear to hang. Bound the fan-out so we
-# don't hammer Navidrome/Plex all at once.
+# don't hammer Navidrome all at once.
 _ALBUM_RESOLVE_CONCURRENCY = 8
 
 _SOURCE_TYPE_ALIASES = {
     "local": "local",
     "howler": "local",
     "navidrome": "navidrome",
-    "plex": "plex",
     "youtube": "youtube",
     "droppedneedle-local": "droppedneedle-local",  # Q11: compat-created local entry
     "": "",
@@ -488,7 +487,6 @@ class PlaylistService:
         available_sources: Optional[list[str]] = None,
         local_service: object = None,
         nd_service: object = None,
-        plex_service: object = None,
         navidrome_folder_ids: tuple[str, ...] | None = None,
     ) -> PlaylistTrackRecord:
         await self._load_owned_or_raise(playlist_id, requesting)
@@ -528,7 +526,6 @@ class PlaylistService:
                     normalized_source,
                     local_service,
                     nd_service,
-                    plex_service,
                     requesting.id,
                     navidrome_folder_ids,
                 )
@@ -606,7 +603,6 @@ class PlaylistService:
         requesting: UserRecord | None = None,
         local_service: object = None,
         nd_service: object = None,
-        plex_service: object = None,
         navidrome_folder_ids: tuple[str, ...] | None = None,
     ) -> dict[str, list[str]]:
         # Ownership gates the user-triggered endpoint; the post-import background task
@@ -636,7 +632,6 @@ class PlaylistService:
         ) -> tuple[
             dict[tuple[int, int], tuple[str, str]],
             dict[tuple[int, int], tuple[str, str]],
-            dict[tuple[int, int], tuple[str, str, str]],
         ]:
             representative = album_tracks[0]
             async with sem:
@@ -645,7 +640,6 @@ class PlaylistService:
                         representative.album_id,
                         local_service,
                         nd_service,
-                        plex_service,
                         album_name=representative.album_name or "",
                         artist_name=representative.artist_name or "",
                         user_id=requesting.id
@@ -664,7 +658,7 @@ class PlaylistService:
                         representative.album_id,
                         exc_info=True,
                     )
-                    return ({}, {}, {})
+                    return ({}, {})
 
         resolved_maps = await asyncio.gather(
             *(_resolve_group(album_tracks) for _album_id, album_tracks in grouped)
@@ -677,7 +671,6 @@ class PlaylistService:
         for (_album_id, album_tracks), (
             local_by_num,
             nd_by_num,
-            plex_by_num,
         ) in zip(grouped, resolved_maps):
             for t in album_tracks:
                 sources = set()
@@ -697,10 +690,6 @@ class PlaylistService:
                 nd_track = nd_by_num.get(disc_key)
                 if nd_track and _fuzzy_name_match(t.track_name, nd_track[0]):
                     sources.add("navidrome")
-
-                plex_track = plex_by_num.get(disc_key)
-                if plex_track and _fuzzy_name_match(t.track_name, plex_track[0]):
-                    sources.add("plex")
 
                 result[t.id] = sorted(sources)
 
@@ -736,7 +725,6 @@ class PlaylistService:
         album_id: str,
         local_service: object,
         nd_service: object = None,
-        plex_service: object = None,
         album_name: str = "",
         artist_name: str = "",
         user_id: str = "global",
@@ -744,7 +732,6 @@ class PlaylistService:
     ) -> tuple[
         dict[tuple[int, int], tuple[str, str]],
         dict[tuple[int, int], tuple[str, str]],
-        dict[tuple[int, int], tuple[str, str, str]],
     ]:
         scope_segment = "all"
         if navidrome_folder_ids is not None:
@@ -762,16 +749,14 @@ class PlaylistService:
         )
         if self._cache:
             cached = await self._cache.get(cache_key)
-            if cached is not None and len(cached) == 3:
+            if cached is not None and len(cached) == 2:
                 return (
                     _normalize_source_map(cached[0]),
                     _normalize_source_map(cached[1]),
-                    _normalize_source_map(cached[2]),
                 )
 
         local_by_num: dict[tuple[int, int], tuple[str, str]] = {}
         nd_by_num: dict[tuple[int, int], tuple[str, str]] = {}
-        plex_by_num: dict[tuple[int, int], tuple[str, str, str]] = {}
 
         match_album_id = album_id
 
@@ -815,30 +800,7 @@ class PlaylistService:
                     exc_info=True,
                 )
 
-        if plex_service is not None:
-            try:
-                match = await plex_service.get_album_match(
-                    album_id=album_id,
-                    album_name=album_name,
-                    artist_name=artist_name,
-                )
-                if match.found:
-                    for t in match.tracks:
-                        key = _safe_track_number(t.track_number)
-                        if key is not None:
-                            plex_by_num[(getattr(t, "disc_number", 1) or 1, key)] = (
-                                t.title,
-                                t.part_key or t.plex_id,
-                                t.plex_id,
-                            )
-            except Exception:  # noqa: BLE001
-                logger.debug(
-                    "Plex source resolution failed for album %s",
-                    album_id,
-                    exc_info=True,
-                )
-
-        resolved = (local_by_num, nd_by_num, plex_by_num)
+        resolved = (local_by_num, nd_by_num)
         if self._cache:
             await self._cache.set(cache_key, resolved, ttl_seconds=3600)
         return resolved
@@ -849,7 +811,6 @@ class PlaylistService:
         new_source_type: str,
         local_service: object,
         nd_service: object = None,
-        plex_service: object = None,
         user_id: str = "global",
         navidrome_folder_ids: tuple[str, ...] | None = None,
     ) -> tuple[str, str | None]:
@@ -862,12 +823,10 @@ class PlaylistService:
         (
             local_by_num,
             nd_by_num,
-            plex_by_num,
         ) = await self._resolve_album_sources(
             track.album_id,
             local_service,
             nd_service,
-            plex_service,
             album_name=track.album_name or "",
             artist_name=track.artist_name or "",
             user_id=user_id,
@@ -890,14 +849,6 @@ class PlaylistService:
                 return (match_info[1], None)
             raise SourceResolutionError(
                 f"Track '{track.track_name}' not found in Navidrome for album {track.album_id}"
-            )
-
-        if new_source_type == "plex":
-            match_info = plex_by_num.get(disc_key)
-            if match_info and _fuzzy_name_match(track.track_name, match_info[0]):
-                return (match_info[1], match_info[2])
-            raise SourceResolutionError(
-                f"Track '{track.track_name}' not found in Plex for album {track.album_id}"
             )
 
         raise SourceResolutionError(

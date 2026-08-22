@@ -51,8 +51,6 @@ from api.v1.routes import (
     navidrome_preferences,
     now_playing,
     playlists,
-    plex_auth,
-    plex_library,
     profile,
     quarantine,
     requests,
@@ -84,7 +82,6 @@ from core.dependencies import (
     get_legacy_pending_migration_service,
     get_local_files_service,
     get_navidrome_library_service,
-    get_plex_library_service,
     get_download_service,
     get_drop_import_service,
     get_events_watcher_getter,
@@ -118,7 +115,6 @@ from core.dependencies import (
     get_target_home_charts_service,
     get_target_genre_cover_prewarm_service,
     get_target_navidrome_library_service,
-    get_target_plex_library_service,
     get_target_personal_mix_service,
     get_target_quota_service,
     get_target_library_ownership_service,
@@ -355,7 +351,6 @@ def create_isolated_target_application(
             get_wrapped_service: get_target_wrapped_service,
             get_local_files_service: lambda: target().local_files,
             get_navidrome_library_service: get_target_navidrome_library_service,
-            get_plex_library_service: get_target_plex_library_service,
         }
     )
     if dependency_overrides:
@@ -395,8 +390,6 @@ def _include_complete_target_routes(app: FastAPI) -> None:
         stream.router,
         navidrome_library.router,
         navidrome_preferences.router,
-        plex_library.router,
-        plex_auth.router,
         local_library.router,
         lastfm.router,
         scrobble.router,
@@ -458,7 +451,6 @@ def _install_target_overrides(app: FastAPI) -> None:
             get_wrapped_service: get_target_wrapped_service,
             get_local_files_service: lambda: target().local_files,
             get_navidrome_library_service: get_target_navidrome_library_service,
-            get_plex_library_service: get_target_plex_library_service,
         }
     )
 

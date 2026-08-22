@@ -6,7 +6,6 @@ from fastapi.responses import Response, StreamingResponse
 from core.dependencies import (
     get_local_files_service,
     get_navidrome_playback_service,
-    get_plex_playback_service,
 )
 from core.exceptions import (
     ExternalServiceError,
@@ -16,7 +15,6 @@ from infrastructure.msgspec_fastapi import MsgSpecRoute
 from middleware import CurrentUserDep
 from services.local_files_service import LocalFilesService
 from services.navidrome_playback_service import NavidromePlaybackService
-from services.plex_playback_service import PlexPlaybackService
 
 logger = logging.getLogger(__name__)
 
@@ -148,65 +146,3 @@ async def navidrome_stopped(
     return {"status": "ok"}
 
 
-@router.head("/plex/{part_key:path}")
-async def head_plex_audio(
-    part_key: str,
-    current_user: CurrentUserDep,
-    playback_service: PlexPlaybackService = Depends(get_plex_playback_service),
-) -> Response:
-    try:
-        return await playback_service.proxy_head(part_key, user_id=current_user.id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid stream request")
-    except ExternalServiceError:
-        raise HTTPException(status_code=502, detail="Failed to stream from Plex")
-
-
-@router.get("/plex/{part_key:path}")
-async def stream_plex_audio(
-    part_key: str,
-    request: Request,
-    current_user: CurrentUserDep,
-    playback_service: PlexPlaybackService = Depends(get_plex_playback_service),
-) -> StreamingResponse:
-    try:
-        return await playback_service.proxy_stream(
-            part_key, request.headers.get("Range"), user_id=current_user.id
-        )
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid stream request")
-    except ExternalServiceError as e:
-        detail = str(e)
-        if "416" in detail or "Range not satisfiable" in detail:
-            raise HTTPException(status_code=416, detail="Range not satisfiable")
-        raise HTTPException(status_code=502, detail="Failed to stream from Plex")
-
-
-@router.post("/plex/{rating_key}/scrobble")
-async def scrobble_plex(
-    rating_key: str,
-    current_user: CurrentUserDep,
-    playback_service: PlexPlaybackService = Depends(get_plex_playback_service),
-) -> dict[str, str]:
-    ok = await playback_service.scrobble(rating_key, user_id=current_user.id)
-    return {"status": "ok" if ok else "error"}
-
-
-@router.post("/plex/{rating_key}/now-playing")
-async def plex_now_playing(
-    rating_key: str,
-    current_user: CurrentUserDep,
-    playback_service: PlexPlaybackService = Depends(get_plex_playback_service),
-) -> dict[str, str]:
-    ok = await playback_service.report_now_playing(rating_key, user_id=current_user.id)
-    return {"status": "ok" if ok else "error"}
-
-
-@router.post("/plex/{rating_key}/stopped")
-async def plex_stopped(
-    rating_key: str,
-    current_user: CurrentUserDep,
-    playback_service: PlexPlaybackService = Depends(get_plex_playback_service),
-) -> dict[str, str]:
-    ok = await playback_service.report_stopped(rating_key, user_id=current_user.id)
-    return {"status": "ok" if ok else "error"}

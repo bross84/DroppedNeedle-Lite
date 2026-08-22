@@ -9,8 +9,6 @@ from api.v1.schemas.settings import (
     LastFmConnectionSettings,
     NAVIDROME_PASSWORD_MASK,
     LASTFM_SECRET_MASK,
-    PlexConnectionSettings,
-    PLEX_TOKEN_MASK,
     DownloadClientConnectionSettings,
     DOWNLOAD_CLIENT_API_KEY_MASK,
     MusicBrainzConnectionSettings,
@@ -45,12 +43,6 @@ class NavidromeVerifyResult(msgspec.Struct):
     message: str
 
 
-class PlexVerifyResult(msgspec.Struct):
-    valid: bool
-    message: str
-    libraries: list[tuple[str, str]] = []
-
-
 class YouTubeVerifyResult(msgspec.Struct):
     valid: bool
     message: str
@@ -73,13 +65,11 @@ class SettingsService:
         cache: CacheInterface,
         *,
         navidrome_library_getter=None,
-        plex_library_getter=None,
         discovery_snapshot_store=None,
     ):
         self._preferences_service = preferences_service
         self._cache = cache
         self._navidrome_library_getter = navidrome_library_getter
-        self._plex_library_getter = plex_library_getter
         self._discovery_snapshot_store = discovery_snapshot_store
 
     async def verify_listenbrainz(
@@ -360,56 +350,12 @@ class SettingsService:
                 valid=False, message="Couldn't finish the Last.fm connection test"
             )
 
-    async def verify_plex(self, settings: PlexConnectionSettings) -> PlexVerifyResult:
-        try:
-            from infrastructure.validators import validate_service_url
-
-            validate_service_url(settings.plex_url, label="Plex URL")
-
-            from repositories.plex_repository import PlexRepository
-
-            PlexRepository.reset_circuit_breaker()
-
-            app_settings = get_settings()
-            http_client = get_http_client(app_settings)
-            temp_cache = InMemoryCache(max_entries=100)
-
-            token = settings.plex_token
-            if token == PLEX_TOKEN_MASK:
-                raw = self._preferences_service.get_plex_connection_raw()
-                token = raw.plex_token
-
-            client_id = self._preferences_service.get_setting("plex_client_id") or ""
-
-            temp_repo = PlexRepository(http_client=http_client, cache=temp_cache)
-            temp_repo.configure(
-                url=settings.plex_url,
-                token=token,
-                client_id=client_id,
-            )
-
-            ok, message = await temp_repo.validate_connection()
-            libs: list[tuple[str, str]] = []
-            if ok:
-                try:
-                    sections = await temp_repo.get_music_libraries()
-                    libs = [(s.key, s.title) for s in sections]
-                except Exception:  # noqa: BLE001
-                    logger.warning("Plex verify succeeded but library fetch failed")
-            return PlexVerifyResult(valid=ok, message=message, libraries=libs)
-        except Exception as e:  # noqa: BLE001
-            logger.exception("Failed to verify Plex connection: %s", e)
-            return PlexVerifyResult(
-                valid=False,
-                message="Couldn't finish the Plex connection test",
-            )
-
     async def verify_download_client(
         self, settings: DownloadClientConnectionSettings
     ) -> ServiceStatus:
         """Health-check the submitted slskd url/key without saving, so Test-connection
         validates the form (stored-config test fails before the first save). A masked
-        api_key falls back to the stored secret, mirroring verify_plex."""
+        api_key falls back to the stored secret."""
         try:
             from infrastructure.validators import validate_service_url
 
@@ -433,17 +379,16 @@ class SettingsService:
                 status="error", message="Couldn't finish the connection test"
             )
 
-    async def on_plex_settings_changed(self, enabled: bool = False) -> None:
+    async def on_plex_settings_changed(self) -> None:
+        """Reset the Plex repo/circuit-breaker whenever the shared connection
+        settings (url/token/enabled, or the ``login_enabled`` toggle) are saved.
+
+        The library/playback surface is gone (Stage 2), but the repo singleton
+        still backs the Plex login flow and the admin bulk-user-import feature,
+        so both must be rebuilt here to pick up a freshly-saved connection
+        without an app restart."""
         from repositories.plex_repository import PlexRepository
-        from core.dependencies import (
-            get_plex_repository,
-            get_plex_library_service,
-            get_target_plex_library_service,
-            get_plex_playback_service,
-            get_home_service,
-            get_home_charts_service,
-            get_mbid_store,
-        )
+        from core.dependencies import get_plex_repository, get_mbid_store
         from core.dependencies.auth_providers import (
             get_user_import_service,
             get_plex_user_auth_service,
@@ -451,14 +396,6 @@ class SettingsService:
 
         PlexRepository.reset_circuit_breaker()
         get_plex_repository.cache_clear()
-        get_plex_library_service.cache_clear()
-        get_target_plex_library_service.cache_clear()
-        get_plex_playback_service.cache_clear()
-        get_home_service.cache_clear()
-        get_home_charts_service.cache_clear()
-        # The import + SSO-login services capture the plex repo singleton; rebuild
-        # them so a newly-configured Plex is enumerable and usable for login
-        # without an app restart.
         get_user_import_service.cache_clear()
         get_plex_user_auth_service.cache_clear()
         mbid_store = get_mbid_store()
@@ -467,37 +404,7 @@ class SettingsService:
         await new_repo.clear_cache()
         await self.clear_home_cache()
         await self.clear_source_resolution_cache()
-        if enabled:
-            import asyncio
-            from core.tasks import warm_plex_mbid_cache
-            from core.task_registry import TaskRegistry
-
-            registry = TaskRegistry.get_instance()
-            if not registry.is_running("plex-mbid-warmup"):
-                _plex_task = asyncio.create_task(
-                    warm_plex_mbid_cache(self._plex_library_getter)
-                )
-                try:
-                    registry.register("plex-mbid-warmup", _plex_task)
-                except RuntimeError:
-                    pass
-        logger.info("Plex settings change: all caches/singletons reset")
-
-    async def get_plex_libraries(self) -> list[tuple[str, str]]:
-        raw = self._preferences_service.get_plex_connection_raw()
-        if not raw.plex_url or not raw.plex_token:
-            raise ValueError("Plex is not configured")
-
-        from repositories.plex_repository import PlexRepository
-
-        app_settings = get_settings()
-        http_client = get_http_client(app_settings)
-        temp_cache = InMemoryCache(max_entries=100)
-        client_id = self._preferences_service.get_setting("plex_client_id") or ""
-        temp_repo = PlexRepository(http_client=http_client, cache=temp_cache)
-        temp_repo.configure(url=raw.plex_url, token=raw.plex_token, client_id=client_id)
-        sections = await temp_repo.get_music_libraries()
-        return [(s.key, s.title) for s in sections]
+        logger.info("Plex settings change: repo/login singletons reset")
 
     async def verify_musicbrainz(
         self, settings: MusicBrainzConnectionSettings

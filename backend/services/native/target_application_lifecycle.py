@@ -224,7 +224,6 @@ async def start_target_operational_runtime(
         get_mbid_store,
         get_target_navidrome_library_service,
         get_now_playing_service,
-        get_target_plex_library_service,
         get_request_history_store,
         get_target_artist_discovery_service,
         get_target_consumer_composition,
@@ -263,7 +262,6 @@ async def start_target_operational_runtime(
         start_store_prune_task,
         start_wanted_watcher_task,
         warm_navidrome_mbid_cache,
-        warm_plex_mbid_cache,
     )
     from services.now_playing_poller import run_now_playing_presence_loop
 
@@ -302,7 +300,6 @@ async def start_target_operational_runtime(
             get_now_playing_service(),
             get_target_home_service,
             get_target_navidrome_library_service,
-            get_target_plex_library_service,
         ),
     )
 
@@ -352,11 +349,6 @@ async def start_target_operational_runtime(
         _register_task(
             "navidrome-mbid-warmup",
             warm_navidrome_mbid_cache(get_target_navidrome_library_service),
-        )
-    if preferences.get_plex_connection().enabled:
-        _register_task(
-            "plex-mbid-warmup",
-            warm_plex_mbid_cache(get_target_plex_library_service),
         )
 
     start_request_status_sync_task(get_target_requests_page_service())

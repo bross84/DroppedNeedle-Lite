@@ -496,7 +496,6 @@ class LibraryManagementRootAssignment(AppStruct):
 
 class ExternalRefreshSettings(AppStruct):
     enabled: bool = False
-    plex_enabled: bool = False
     navidrome_enabled: bool = False
     retry_attempts: int = 3
     retry_delay_seconds: int = 30

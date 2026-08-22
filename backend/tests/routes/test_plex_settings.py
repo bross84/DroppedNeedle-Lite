@@ -5,7 +5,7 @@ import tempfile
 
 os.environ.setdefault("ROOT_APP_DIR", tempfile.mkdtemp())
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import FastAPI
@@ -41,12 +41,6 @@ def mock_preferences():
 def mock_settings_service():
     mock = MagicMock()
     mock.on_plex_settings_changed = AsyncMock()
-
-    verify_result = MagicMock()
-    verify_result.valid = True
-    verify_result.message = "Connected"
-    verify_result.libraries = [("1", "Music")]
-    mock.verify_plex = AsyncMock(return_value=verify_result)
     return mock
 
 
@@ -92,54 +86,4 @@ class TestUpdatePlexSettings:
             "plex_token": "",
         }
         resp = settings_client.put("/settings/plex", json=payload)
-        assert resp.status_code == 400
-
-
-class TestVerifyPlexConnection:
-    def test_verify_success(self, settings_client):
-        payload = {
-            "enabled": True,
-            "plex_url": "http://plex:32400",
-            "plex_token": "tok",
-        }
-        resp = settings_client.post("/settings/plex/verify", json=payload)
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["valid"] is True
-        assert len(data["libraries"]) == 1
-        assert data["libraries"][0]["key"] == "1"
-
-    def test_verify_invalid(self, settings_client, mock_settings_service):
-        result = MagicMock()
-        result.valid = False
-        result.message = "Connection refused"
-        result.libraries = []
-        mock_settings_service.verify_plex = AsyncMock(return_value=result)
-
-        payload = {
-            "enabled": True,
-            "plex_url": "http://bad:32400",
-            "plex_token": "tok",
-        }
-        resp = settings_client.post("/settings/plex/verify", json=payload)
-        assert resp.status_code == 200
-        assert resp.json()["valid"] is False
-
-
-class TestGetPlexLibraries:
-    def test_returns_libraries(self, settings_client, mock_settings_service):
-        mock_settings_service.get_plex_libraries = AsyncMock(return_value=[("1", "Music")])
-
-        resp = settings_client.get("/settings/plex/libraries")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert len(data) == 1
-        assert data[0]["title"] == "Music"
-
-    def test_400_when_not_configured(self, settings_client, mock_settings_service):
-        mock_settings_service.get_plex_libraries = AsyncMock(
-            side_effect=ValueError("Plex is not configured")
-        )
-
-        resp = settings_client.get("/settings/plex/libraries")
         assert resp.status_code == 400

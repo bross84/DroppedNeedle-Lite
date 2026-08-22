@@ -2,63 +2,12 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, PropertyMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from repositories.plex_models import PlexSession
 from repositories.navidrome_models import SubsonicNowPlayingEntry
-from services.plex_library_service import PlexLibraryService
 from services.navidrome_library_service import NavidromeLibraryService
-
-
-def _make_plex_service() -> tuple[PlexLibraryService, MagicMock]:
-    repo = MagicMock()
-    repo.get_sessions = AsyncMock(return_value=[])
-    repo.get_albums = AsyncMock(return_value=([], 0))
-    repo.get_artists = AsyncMock(return_value=[])
-    repo.get_album_metadata = AsyncMock()
-    repo.get_album_tracks = AsyncMock(return_value=[])
-    repo.get_recently_added = AsyncMock(return_value=[])
-    repo.get_recently_viewed = AsyncMock(return_value=[])
-    repo.get_genres = AsyncMock(return_value=[])
-    repo.get_track_count = AsyncMock(return_value=0)
-    repo.get_artist_count = AsyncMock(return_value=0)
-    repo.search = AsyncMock(return_value={"albums": [], "tracks": [], "artists": []})
-    type(repo).stats_ttl = PropertyMock(return_value=600)
-
-    prefs = MagicMock()
-    conn = MagicMock()
-    conn.enabled = True
-    conn.plex_url = "http://plex:32400"
-    conn.plex_token = "tok"
-    conn.music_library_ids = ["1"]
-    prefs.get_plex_connection_raw.return_value = conn
-
-    svc = PlexLibraryService(plex_repo=repo, preferences_service=prefs)
-    return svc, repo
-
-
-def _plex_session(**overrides) -> PlexSession:
-    defaults = dict(
-        session_id="sess1",
-        user_name="alice",
-        track_title="Song A",
-        artist_name="Artist A",
-        album_name="Album A",
-        album_thumb="/library/metadata/200/thumb",
-        player_device="iPhone",
-        player_platform="iOS",
-        player_state="playing",
-        is_direct_play=True,
-        progress_ms=60000,
-        duration_ms=180000,
-        audio_codec="flac",
-        audio_channels=2,
-        bitrate=1411,
-    )
-    defaults.update(overrides)
-    return PlexSession(**defaults)
 
 
 def _make_navidrome_service() -> tuple[NavidromeLibraryService, MagicMock]:
@@ -104,53 +53,6 @@ def _navidrome_entry(**overrides) -> SubsonicNowPlayingEntry:
     )
     defaults.update(overrides)
     return SubsonicNowPlayingEntry(**defaults)
-
-
-class TestPlexGetSessions:
-    @pytest.mark.asyncio
-    async def test_returns_mapped_sessions(self):
-        svc, repo = _make_plex_service()
-        repo.get_sessions.return_value = [_plex_session()]
-
-        result = await svc.get_sessions()
-
-        assert len(result.sessions) == 1
-        s = result.sessions[0]
-        assert s.session_id == "sess1"
-        assert s.user_name == "alice"
-        assert s.track_title == "Song A"
-        assert s.artist_name == "Artist A"
-        assert s.cover_url == "/api/v1/plex/thumb//library/metadata/200/thumb"
-        assert s.player_state == "playing"
-        assert s.progress_ms == 60000
-        assert s.duration_ms == 180000
-
-    @pytest.mark.asyncio
-    async def test_empty_sessions(self):
-        svc, repo = _make_plex_service()
-        repo.get_sessions.return_value = []
-
-        result = await svc.get_sessions()
-
-        assert result.sessions == []
-
-    @pytest.mark.asyncio
-    async def test_error_returns_empty(self):
-        svc, repo = _make_plex_service()
-        repo.get_sessions.side_effect = RuntimeError("Connection refused")
-
-        result = await svc.get_sessions()
-
-        assert result.sessions == []
-
-    @pytest.mark.asyncio
-    async def test_no_cover_when_no_album_thumb(self):
-        svc, repo = _make_plex_service()
-        repo.get_sessions.return_value = [_plex_session(album_thumb="")]
-
-        result = await svc.get_sessions()
-
-        assert result.sessions[0].cover_url == ""
 
 
 class TestNavidromeGetNowPlaying:
@@ -215,7 +117,6 @@ from api.v1.schemas.navidrome import (  # noqa: E402
     NavidromeNowPlayingEntrySchema,
     NavidromeNowPlayingResponse,
 )
-from api.v1.schemas.plex import PlexSessionInfo, PlexSessionsResponse  # noqa: E402
 
 
 class _RecordingSSE:
@@ -375,50 +276,22 @@ def test_poller_map_navidrome_builds_cover_and_progress():
     assert out[0].is_paused is False
 
 
-def test_poller_map_plex_reads_paused_state():
-    resp = PlexSessionsResponse(
-        sessions=[
-            PlexSessionInfo(
-                session_id="p1",
-                user_name="Al",
-                track_title="T",
-                artist_name="A",
-                album_name="Alb",
-                cover_url="/c",
-                player_device="Dev",
-                player_state="paused",
-                progress_ms=5000,
-                duration_ms=10000,
-            )
-        ]
-    )
-    out = poller.map_plex(resp)
-    assert out[0].key == "plex:p1" and out[0].track_name == "T"
-    assert out[0].is_paused is True
-
-
 @pytest.mark.asyncio
 async def test_poller_gates_each_source_on_integration_status():
     from unittest.mock import AsyncMock, MagicMock
 
     now_playing = AsyncMock()
     home = MagicMock()
-    home.get_integration_status.return_value = SimpleNamespace(
-        navidrome=True, plex=False
-    )
+    home.get_integration_status.return_value = SimpleNamespace(navidrome=True)
     nav = MagicMock()
     nav.get_now_playing = AsyncMock(
         return_value=NavidromeNowPlayingResponse(entries=[])
     )
-    plex = MagicMock()
-    plex.get_sessions = AsyncMock()
 
-    await poller.poll_external_once(now_playing, home, nav, plex)
+    await poller.poll_external_once(now_playing, home, nav)
 
     nav.get_now_playing.assert_awaited_once()
-    # disabled sources are reconciled to empty without an upstream fetch
-    plex.get_sessions.assert_not_awaited()
-    assert now_playing.reconcile_source.await_count == 2
+    assert now_playing.reconcile_source.await_count == 1
 
 
 @pytest.mark.asyncio
@@ -426,7 +299,7 @@ async def test_presence_loop_resolves_rebuilt_services_each_cycle(monkeypatch):
     import asyncio
 
     now_playing = AsyncMock()
-    instances = [MagicMock() for _ in range(3)]
+    instances = [MagicMock() for _ in range(2)]
     getters = [MagicMock(return_value=instance) for instance in instances]
     poll_once = AsyncMock()
 

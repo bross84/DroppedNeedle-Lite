@@ -12,59 +12,11 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from api.v1.routes.plex_library import router as plex_router
 from api.v1.routes.navidrome_library import router as navidrome_router
-from api.v1.schemas.plex import PlexSessionInfo, PlexSessionsResponse
 from api.v1.schemas.navidrome import NavidromeNowPlayingEntrySchema, NavidromeNowPlayingResponse
 from core.dependencies import (
-    get_plex_library_service,
     get_navidrome_library_service,
-    get_plex_repository,
 )
-
-
-class TestPlexSessionsRoute:
-    @pytest.fixture
-    def _setup(self):
-        self.mock_svc = MagicMock()
-        self.mock_svc.get_sessions = AsyncMock(return_value=PlexSessionsResponse(sessions=[
-            PlexSessionInfo(
-                session_id="s1",
-                user_name="alice",
-                track_title="Song A",
-                artist_name="Artist A",
-                album_name="Album A",
-                cover_url="/api/v1/plex/thumb/200",
-                player_device="iPhone",
-                player_platform="iOS",
-                player_state="playing",
-                is_direct_play=True,
-                progress_ms=60000,
-                duration_ms=180000,
-                audio_codec="flac",
-                audio_channels=2,
-                bitrate=1411,
-            )
-        ]))
-        app = FastAPI()
-        app.include_router(plex_router)
-        app.dependency_overrides[get_plex_library_service] = lambda: self.mock_svc
-        app.dependency_overrides[get_plex_repository] = lambda: MagicMock()
-        self.client = TestClient(app)
-
-    def test_sessions_returns_200(self, _setup):
-        resp = self.client.get("/plex/sessions")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert len(data["sessions"]) == 1
-        assert data["sessions"][0]["session_id"] == "s1"
-        assert data["sessions"][0]["track_title"] == "Song A"
-
-    def test_sessions_empty(self, _setup):
-        self.mock_svc.get_sessions = AsyncMock(return_value=PlexSessionsResponse(sessions=[]))
-        resp = self.client.get("/plex/sessions")
-        assert resp.status_code == 200
-        assert resp.json()["sessions"] == []
 
 
 class TestNavidromeNowPlayingRoute:

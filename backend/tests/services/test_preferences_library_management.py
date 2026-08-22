@@ -106,7 +106,7 @@ def test_management_save_round_trips_every_nested_group_without_activation(
     profile.file_behavior.preserve_permissions = False
     profile.enrichment.lyrics.write_synced = False
     profile.notification.refresh_external_servers = True
-    update.external_refresh.plex_enabled = True
+    update.external_refresh.navidrome_enabled = True
 
     prefs.save_library_management_settings_if_current(
         update,
@@ -122,7 +122,7 @@ def test_management_save_round_trips_every_nested_group_without_activation(
     assert saved_profile.file_behavior.preserve_permissions is False
     assert saved_profile.enrichment.lyrics.write_synced is False
     assert saved_profile.notification.refresh_external_servers is True
-    assert saved.external_refresh.plex_enabled is True
+    assert saved.external_refresh.navidrome_enabled is True
     assert saved.root_assignments == []
 
 

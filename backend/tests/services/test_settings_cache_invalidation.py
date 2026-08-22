@@ -167,7 +167,9 @@ async def test_navidrome_settings_change_rebuilds_every_captured_repository():
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_plex_settings_change_clears_user_import_service():
-    """Phase 6: configuring Plex must rebuild the import service singleton too."""
+    """Configuring Plex must rebuild the login/admin-import singletons too - the
+    library/playback surface is gone (Stage 2), but the repo singleton still backs
+    the Plex login flow and the admin bulk-user-import feature."""
     from unittest.mock import patch, MagicMock, AsyncMock
 
     service, _cache = await _build_service()
@@ -177,26 +179,19 @@ async def test_plex_settings_change_clears_user_import_service():
     plex_repo.clear_cache = AsyncMock()
     import_fn = MagicMock()
     auth_fn = MagicMock()
-    target_plex = MagicMock()
 
     with (
         patch(
             "core.dependencies.get_plex_repository", MagicMock(return_value=plex_repo)
         ),
-        patch("core.dependencies.get_plex_library_service", MagicMock()),
-        patch("core.dependencies.get_target_plex_library_service", target_plex),
-        patch("core.dependencies.get_plex_playback_service", MagicMock()),
-        patch("core.dependencies.get_home_service", MagicMock()),
-        patch("core.dependencies.get_home_charts_service", MagicMock()),
         patch("core.dependencies.get_mbid_store", MagicMock(return_value=mbid)),
         patch("core.dependencies.auth_providers.get_user_import_service", import_fn),
         patch("core.dependencies.auth_providers.get_plex_user_auth_service", auth_fn),
     ):
-        await service.on_plex_settings_changed(enabled=False)
+        await service.on_plex_settings_changed()
 
     import_fn.cache_clear.assert_called_once()
     auth_fn.cache_clear.assert_called_once()
-    target_plex.cache_clear.assert_called_once()
 
 
 @pytest.mark.asyncio(loop_scope="function")

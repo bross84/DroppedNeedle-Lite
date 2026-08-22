@@ -42,7 +42,6 @@ from .repo_providers import (
     get_listenbrainz_repository,
     get_lrclib_repository,
     get_navidrome_repository,
-    get_plex_repository,
     get_coverart_repository,
     get_target_coverart_repository,
     get_youtube_repo,
@@ -1996,7 +1995,6 @@ def get_target_settings_service() -> "SettingsService":
         get_preferences_service(),
         get_cache(),
         navidrome_library_getter=get_target_navidrome_library_service,
-        plex_library_getter=get_target_plex_library_service,
         discovery_snapshot_store=get_discovery_snapshot_store(),
     )
 
@@ -2399,45 +2397,6 @@ def get_navidrome_playback_service() -> "NavidromePlaybackService":
     return NavidromePlaybackService(
         navidrome_repo, cache, get_per_user_client_factory()
     )
-
-
-@singleton
-def get_plex_library_service() -> "PlexLibraryService":
-    from services.plex_library_service import PlexLibraryService
-
-    plex_repo = get_plex_repository()
-    preferences_service = get_preferences_service()
-    library_db = get_library_db()
-    mbid_store = get_mbid_store()
-    return PlexLibraryService(
-        plex_repo,
-        preferences_service,
-        library_db,
-        mbid_store,
-        get_per_user_client_factory(),
-    )
-
-
-@singleton
-def get_target_plex_library_service() -> "PlexLibraryService":
-    from services.plex_library_service import PlexLibraryService
-
-    return PlexLibraryService(
-        get_plex_repository(),
-        get_preferences_service(),
-        get_target_library_repository(),
-        get_mbid_store(),
-        get_per_user_client_factory(),
-    )
-
-
-@singleton
-def get_plex_playback_service() -> "PlexPlaybackService":
-    from services.plex_playback_service import PlexPlaybackService
-
-    plex_repo = get_plex_repository()
-    cache = get_cache()
-    return PlexPlaybackService(plex_repo, cache, get_per_user_client_factory())
 
 
 @singleton

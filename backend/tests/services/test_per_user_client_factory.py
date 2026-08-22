@@ -55,9 +55,6 @@ def _factory(
     prefs.get_navidrome_connection_raw.return_value = SimpleNamespace(
         enabled=media_enabled, navidrome_url="http://nd.local"
     )
-    prefs.get_plex_connection_raw.return_value = SimpleNamespace(
-        enabled=media_enabled, plex_url="http://plex.local"
-    )
     prefs.get_setting.return_value = "app-client-id"
     return PerUserClientFactory(
         connections_store=store,
@@ -156,59 +153,24 @@ async def test_resolve_navidrome_none_when_admin_disabled(store):
 
 
 @pytest.mark.asyncio
-async def test_resolve_plex_threads_token_and_app_client_id(store):
-    await store.upsert(
-        "u1", "plex", {"auth_token": "plex-tok", "plex_user_id": "px-uid", "username": "pxuser"}
-    )
-    repo = await _factory(store).resolve_plex("u1")
-    assert repo is not None
-    assert repo._url == "http://plex.local"
-    assert repo._token == "plex-tok"
-    assert repo._client_id == "app-client-id"
-    assert repo.is_configured()
-
-
-@pytest.mark.asyncio
-async def test_resolve_plex_none_when_unlinked_or_admin_disabled(store):
-    assert await _factory(store).resolve_plex("u1") is None
-    await store.upsert("u1", "plex", {"auth_token": "plex-tok"})
-    assert await _factory(store, media_enabled=False).resolve_plex("u1") is None
-
-
-@pytest.mark.asyncio
 async def test_playlist_resolvers_use_linked_credentials_and_user_cache_scope(store):
     await store.upsert(
         "u1", "navidrome", {"username": "nduser", "password": "ndpass"}
     )
-    await store.upsert(
-        "u1",
-        "plex",
-        {
-            "auth_token": "account-tok",
-            "server_access_token": "server-tok",
-            "username": "plexuser",
-        },
-    )
     factory = _factory(store)
 
     navidrome = await factory.resolve_navidrome_playlist("u1")
-    plex = await factory.resolve_plex_playlist("u1")
 
     assert navidrome is not None
     assert navidrome.account_mode == "linked"
     assert navidrome.account_label == "nduser"
     assert navidrome.repository._cache_scope.startswith("user:u1:")
-    assert plex is not None
-    assert plex.account_label == "plexuser"
-    assert plex.repository._token == "server-tok"
-    assert plex.repository._cache_scope.startswith("user:u1:")
 
 
 @pytest.mark.asyncio
 async def test_playlist_resolvers_return_none_only_when_user_has_no_link(store):
     factory = _factory(store)
     assert await factory.resolve_navidrome_playlist("u1") is None
-    assert await factory.resolve_plex_playlist("u1") is None
 
 
 @pytest.mark.asyncio
@@ -285,56 +247,15 @@ async def test_relink_changes_playlist_cache_generation(store):
 
 
 @pytest.mark.asyncio
-async def test_legacy_plex_link_is_upgraded_to_server_specific_token(
-    store, monkeypatch
-):
-    await store.upsert(
-        "u1",
-        "plex",
-        {
-            "auth_token": "account-token",
-            "plex_user_id": "plex-user",
-            "username": "alice",
-        },
-    )
-
-    from repositories.plex_repository import PlexRepository
-
-    async def machine_id(_self):
-        return "machine-1"
-
-    async def server_token(_self, auth_token, client_id, machine_id):
-        assert (auth_token, client_id, machine_id) == (
-            "account-token",
-            "app-client-id",
-            "machine-1",
-        )
-        return "server-token"
-
-    monkeypatch.setattr(PlexRepository, "get_machine_identifier", machine_id)
-    monkeypatch.setattr(PlexRepository, "get_server_access_token", server_token)
-
-    resolution = await _factory(store).resolve_plex_playlist("u1")
-
-    assert resolution is not None
-    assert resolution.repository._token == "server-token"
-    assert (await store.get("u1", "plex"))["server_access_token"] == "server-token"
-
-
-@pytest.mark.asyncio
 async def test_media_server_linked_checks_mirror_resolvers(store):
     factory = _factory(store)
     assert await factory.is_navidrome_linked("u1") is False
-    assert await factory.is_plex_linked("u1") is False
 
     await store.upsert("u1", "navidrome", {"username": "n", "password": "p"})
-    await store.upsert("u1", "plex", {"auth_token": "t"})
     assert await factory.is_navidrome_linked("u1") is True
-    assert await factory.is_plex_linked("u1") is True
 
     disabled = _factory(store, media_enabled=False)
     assert await disabled.is_navidrome_linked("u1") is False
-    assert await disabled.is_plex_linked("u1") is False
 
 
 @pytest.mark.asyncio

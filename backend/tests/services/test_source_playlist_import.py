@@ -1,4 +1,4 @@
-"""Tests for source playlist list, detail, and import across Plex and Navidrome."""
+"""Tests for source playlist list, detail, and import from Navidrome."""
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, PropertyMock
@@ -6,16 +6,11 @@ from unittest.mock import AsyncMock, MagicMock, PropertyMock
 import pytest
 
 from core.exceptions import (
-    ExternalServiceError,
     MediaAccountRelinkRequiredError,
     NavidromeAuthError,
-    PlexAuthError,
-    ResourceNotFoundError,
 )
-from repositories.plex_models import PlexMedia, PlexPart, PlexPlaylist, PlexTrack
 from repositories.navidrome_models import SubsonicPlaylist, SubsonicSong
 from repositories.playlist_repository import PlaylistRecord
-from services.plex_library_service import PlexLibraryService
 from services.navidrome_library_service import NavidromeLibraryService
 from services.per_user_client_factory import MediaClientResolution
 from tests.helpers import mock_user
@@ -32,27 +27,6 @@ def _mock_playlist_service(existing: PlaylistRecord | None = None) -> MagicMock:
     svc.add_tracks = AsyncMock(return_value=[])
     svc.delete_playlist = AsyncMock()
     return svc
-
-
-def _plex_service(playlists=None, items=None) -> PlexLibraryService:
-    repo = MagicMock()
-    repo.get_playlists = AsyncMock(return_value=playlists or [])
-    repo.get_playlist_items = AsyncMock(return_value=items or [])
-    repo.get_albums = AsyncMock(return_value=([], 0))
-    repo.get_recently_added = AsyncMock(return_value=[])
-    repo.get_recently_viewed = AsyncMock(return_value=[])
-    repo.get_genres = AsyncMock(return_value=[])
-    repo.get_track_count = AsyncMock(return_value=0)
-    repo.get_artist_count = AsyncMock(return_value=0)
-    type(repo).stats_ttl = PropertyMock(return_value=600)
-    prefs = MagicMock()
-    conn = MagicMock()
-    conn.enabled = True
-    conn.plex_url = "http://plex:32400"
-    conn.plex_token = "tok"
-    conn.music_library_ids = ["1"]
-    prefs.get_plex_connection_raw.return_value = conn
-    return PlexLibraryService(plex_repo=repo, preferences_service=prefs)
 
 
 def _navidrome_service(playlists=None, playlist_detail=None) -> NavidromeLibraryService:
@@ -77,133 +51,12 @@ def _navidrome_service(playlists=None, playlist_detail=None) -> NavidromeLibrary
     return NavidromeLibraryService(navidrome_repo=repo, preferences_service=prefs)
 
 
-def _plex_playlist(key="pl-1", title="My Plex Playlist", leaf=3, dur=180000, smart=False) -> PlexPlaylist:
-    return PlexPlaylist(ratingKey=key, title=title, leafCount=leaf, duration=dur, smart=smart, composite="/art/1")
-
-
-def _plex_track(key="t-1", title="Song", artist="Artist", album="Album", parent_key="a-1", part_key="/library/parts/1/1/file.flac") -> PlexTrack:
-    media = [PlexMedia(Part=[PlexPart(key=part_key)])] if part_key else []
-    return PlexTrack(ratingKey=key, title=title, grandparentTitle=artist, parentTitle=album, parentRatingKey=parent_key, duration=200000, index=1, parentIndex=1, Media=media)
-
-
 def _navidrome_playlist(pid="nd-pl-1", name="ND Playlist", songs=2, dur=300) -> SubsonicPlaylist:
     return SubsonicPlaylist(id=pid, name=name, songCount=songs, duration=dur)
 
 
 def _navidrome_song(sid="ns-1", title="Song", artist="Artist", album="Album") -> SubsonicSong:
     return SubsonicSong(id=sid, title=title, artist=artist, album=album, albumId="alb-1", artistId="art-1", duration=180, track=1, discNumber=1)
-
-
-class TestPlexListPlaylists:
-    @pytest.mark.asyncio
-    async def test_returns_summaries(self):
-        svc = _plex_service(playlists=[_plex_playlist(), _plex_playlist(key="pl-2", title="Second")])
-        result = await svc.list_playlists(limit=10)
-        assert len(result) == 2
-        assert result[0].id == "pl-1"
-        assert result[0].name == "My Plex Playlist"
-        assert result[0].duration_seconds == 180
-        assert result[0].cover_url == "/api/v1/plex/playlist-image/pl-1/pl-1"
-
-    @pytest.mark.asyncio
-    async def test_empty_playlists(self):
-        svc = _plex_service(playlists=[])
-        result = await svc.list_playlists()
-        assert result == []
-
-    @pytest.mark.asyncio
-    async def test_limit_respected(self):
-        playlists = [_plex_playlist(key=f"pl-{i}") for i in range(10)]
-        svc = _plex_service(playlists=playlists)
-        result = await svc.list_playlists(limit=3)
-        assert len(result) == 3
-
-
-class TestPlexPlaylistDetail:
-    @pytest.mark.asyncio
-    async def test_returns_detail_with_tracks(self):
-        pl = _plex_playlist()
-        tracks = [_plex_track(), _plex_track(key="t-2", title="Song 2")]
-        svc = _plex_service(playlists=[pl], items=tracks)
-        detail = await svc.get_playlist_detail("pl-1")
-        assert detail.id == "pl-1"
-        assert detail.name == "My Plex Playlist"
-        assert len(detail.tracks) == 2
-        assert detail.tracks[0].track_name == "Song"
-        assert detail.tracks[0].duration_seconds == 200
-
-    @pytest.mark.asyncio
-    async def test_not_found_raises(self):
-        svc = _plex_service(playlists=[])
-        with pytest.raises(Exception, match="not found"):
-            await svc.get_playlist_detail("nonexistent")
-
-
-class TestPlexImportPlaylist:
-    @pytest.mark.asyncio
-    async def test_import_new_playlist(self):
-        pl = _plex_playlist()
-        tracks = [_plex_track()]
-        svc = _plex_service(playlists=[pl], items=tracks)
-        ps = _mock_playlist_service()
-        result = await svc.import_playlist("pl-1", ps, requesting=_REQ)
-        assert result.droppedneedle_playlist_id == "new-pl-1"
-        assert result.tracks_imported == 1
-        assert result.already_imported is False
-        ps.create_playlist.assert_awaited_once()
-        ps.add_tracks.assert_awaited_once()
-
-    @pytest.mark.asyncio
-    async def test_import_idempotent(self):
-        existing = PlaylistRecord(id="existing-1", name="Already", cover_image_path=None, created_at="2024-01-01", updated_at="2024-01-01")
-        svc = _plex_service()
-        ps = _mock_playlist_service(existing=existing)
-        result = await svc.import_playlist("pl-1", ps, requesting=_REQ)
-        assert result.already_imported is True
-        assert result.droppedneedle_playlist_id == "existing-1"
-        ps.create_playlist.assert_not_awaited()
-
-    @pytest.mark.asyncio
-    async def test_import_track_keys_correct(self):
-        pl = _plex_playlist()
-        tracks = [_plex_track()]
-        svc = _plex_service(playlists=[pl], items=tracks)
-        ps = _mock_playlist_service()
-        await svc.import_playlist("pl-1", ps, requesting=_REQ)
-        call_args = ps.add_tracks.call_args[0]
-        track_dicts = call_args[2]
-        assert track_dicts[0]["track_name"] == "Song"
-        assert track_dicts[0]["artist_name"] == "Artist"
-        assert track_dicts[0]["album_name"] == "Album"
-        assert track_dicts[0]["source_type"] == "plex"
-        # track_source_id must be the Plex part key (what the stream proxy needs),
-        # while plex_rating_key keeps the rating key for scrobble/now-playing.
-        assert track_dicts[0]["track_source_id"] == "/library/parts/1/1/file.flac"
-        assert track_dicts[0]["plex_rating_key"] == "t-1"
-
-    @pytest.mark.asyncio
-    async def test_import_skips_tracks_without_part_key(self):
-        pl = _plex_playlist()
-        tracks = [_plex_track(), _plex_track(key="t-2", title="No Media", part_key="")]
-        svc = _plex_service(playlists=[pl], items=tracks)
-        ps = _mock_playlist_service()
-        result = await svc.import_playlist("pl-1", ps, requesting=_REQ)
-        assert result.tracks_imported == 1
-        assert result.tracks_failed == 1
-        track_dicts = ps.add_tracks.call_args[0][2]
-        assert len(track_dicts) == 1
-        assert track_dicts[0]["track_source_id"] == "/library/parts/1/1/file.flac"
-
-    @pytest.mark.asyncio
-    async def test_import_rollback_on_add_tracks_failure(self):
-        pl = _plex_playlist()
-        tracks = [_plex_track()]
-        svc = _plex_service(playlists=[pl], items=tracks)
-        ps = _mock_playlist_service()
-        ps.add_tracks = AsyncMock(side_effect=Exception("DB error"))
-        with pytest.raises(Exception):
-            await svc.import_playlist("pl-1", ps, requesting=_REQ)
-        ps.delete_playlist.assert_awaited_once_with("new-pl-1", _REQ)
 
 
 class TestNavidromeListPlaylists:
@@ -279,33 +132,18 @@ def _resolution(repo, label: str) -> MediaClientResolution:
 
 class TestPersonalPlaylistResolution:
     @pytest.mark.asyncio
-    @pytest.mark.parametrize(
-        ("source", "auth_error"),
-        [
-            ("navidrome", NavidromeAuthError("revoked")),
-            ("plex", PlexAuthError("revoked")),
-        ],
-    )
-    async def test_linked_auth_failure_never_falls_back_to_shared(self, source, auth_error):
+    async def test_linked_auth_failure_never_falls_back_to_shared(self):
         linked_repo = MagicMock()
-        linked_repo.get_playlists = AsyncMock(side_effect=auth_error)
+        linked_repo.get_playlists = AsyncMock(side_effect=NavidromeAuthError("revoked"))
         factory = MagicMock()
         playlist_service = _playlist_flags({})
 
-        if source == "navidrome":
-            service = _navidrome_service(playlists=[_navidrome_playlist(name="Shared")])
-            factory.resolve_navidrome_playlist = AsyncMock(
-                return_value=_resolution(linked_repo, "alice")
-            )
-            service._client_factory = factory
-            shared_get = service._navidrome.get_playlists
-        else:
-            service = _plex_service(playlists=[_plex_playlist(title="Shared")])
-            factory.resolve_plex_playlist = AsyncMock(
-                return_value=_resolution(linked_repo, "alice")
-            )
-            service._client_factory = factory
-            shared_get = service._plex.get_playlists
+        service = _navidrome_service(playlists=[_navidrome_playlist(name="Shared")])
+        factory.resolve_navidrome_playlist = AsyncMock(
+            return_value=_resolution(linked_repo, "alice")
+        )
+        service._client_factory = factory
+        shared_get = service._navidrome.get_playlists
 
         with pytest.raises(MediaAccountRelinkRequiredError):
             await service.list_user_playlists(

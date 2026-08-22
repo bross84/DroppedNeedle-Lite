@@ -25,7 +25,7 @@ from api.v1.schemas.playlists import (
     UpdateTrackRequest,
 )
 from api.v1.schemas.request import BatchRequestResponse
-from core.dependencies import LocalFilesServiceDep, NavidromeLibraryServiceDep, PlexLibraryServiceDep, PlaylistServiceDep, get_navidrome_folder_scope_service, get_request_service
+from core.dependencies import LocalFilesServiceDep, NavidromeLibraryServiceDep, PlaylistServiceDep, get_navidrome_folder_scope_service, get_request_service
 from core.dependencies.type_aliases import CurrentUserDep
 from core.exceptions import PlaylistNotFoundError
 from infrastructure.msgspec_fastapi import MsgSpecBody, MsgSpecRoute
@@ -328,7 +328,6 @@ async def update_track(
     navidrome_folder_ids: UserNavidromeFolderIdsDep,
     local_service: LocalFilesServiceDep,
     nd_service: NavidromeLibraryServiceDep,
-    plex_service: PlexLibraryServiceDep,
     body: UpdateTrackRequest = MsgSpecBody(UpdateTrackRequest),
 ) -> PlaylistTrackResponse:
     result = await service.update_track_source(
@@ -337,7 +336,6 @@ async def update_track(
         available_sources=body.available_sources,
         local_service=local_service,
         nd_service=nd_service,
-        plex_service=plex_service,
         navidrome_folder_ids=navidrome_folder_ids,
     )
     return _track_to_response(result)
@@ -354,11 +352,10 @@ async def resolve_sources(
     navidrome_folder_ids: UserNavidromeFolderIdsDep,
     local_service: LocalFilesServiceDep,
     nd_service: NavidromeLibraryServiceDep,
-    plex_service: PlexLibraryServiceDep,
 ) -> ResolveSourcesResponse:
     sources = await service.resolve_track_sources(
         playlist_id, requesting=current_user, local_service=local_service,
-        nd_service=nd_service, plex_service=plex_service,
+        nd_service=nd_service,
         navidrome_folder_ids=navidrome_folder_ids,
     )
     return ResolveSourcesResponse(sources=sources)

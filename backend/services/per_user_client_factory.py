@@ -6,7 +6,7 @@ the global app api_key/shared_secret (one registered app) plus the user's per-us
 session_key. Username is exposed separately via ``resolve_lastfm_username`` because
 the Last.fm repo holds no username field (reads take it per-method-call).
 
-Media servers (Navidrome/Plex): the server URL and enabled flag stay
+Media servers (Navidrome): the server URL and enabled flag stay
 admin-owned in preferences; only the credential is per-user. General resolvers
 serve playback attribution. Playlist resolvers additionally serve the explicitly
 personal list/detail/import flow and give each fresh repository a user cache scope.
@@ -21,7 +21,6 @@ from core.config import Settings
 from core.exceptions import (
     ExternalServiceError,
     MediaAccountRelinkRequiredError,
-    PlexAuthError,
 )
 from infrastructure.cache.memory_cache import CacheInterface
 from infrastructure.http.client import get_http_client, get_listenbrainz_http_client
@@ -33,13 +32,11 @@ if TYPE_CHECKING:
     from repositories.lastfm_repository import LastFmRepository
     from repositories.listenbrainz_repository import ListenBrainzRepository
     from repositories.navidrome_repository import NavidromeRepository
-    from repositories.plex_repository import PlexRepository
 
 _LISTENBRAINZ = "listenbrainz"
 _LASTFM = "lastfm"
 _SPOTIFY = "spotify"
 _NAVIDROME = "navidrome"
-_PLEX = "plex"
 
 RepositoryT = TypeVar("RepositoryT")
 
@@ -216,27 +213,6 @@ class PerUserClientFactory:
         repo.configure(url=nd.navidrome_url, username=username, password=password)
         return repo
 
-    async def resolve_plex(self, user_id: str) -> "PlexRepository | None":
-        plex = self._preferences_service.get_plex_connection_raw()
-        if not (plex.enabled and plex.plex_url):
-            return None
-        data = await self._connections_store.get(user_id, _PLEX)
-        if not data:
-            return None
-        token = data.get("server_access_token") or data.get("auth_token", "")
-        if not token:
-            return None
-
-        from repositories.plex_repository import PlexRepository
-
-        repo = PlexRepository(http_client=self._media_http_client(), cache=self._cache)
-        repo.configure(
-            url=plex.plex_url,
-            token=token,
-            client_id=self._preferences_service.get_setting("plex_client_id") or "",
-        )
-        return repo
-
     async def resolve_navidrome_playlist(
         self, user_id: str
     ) -> "MediaClientResolution[NavidromeRepository] | None":
@@ -277,73 +253,6 @@ class PerUserClientFactory:
             cache_scope=scope,
         )
 
-    async def resolve_plex_playlist(
-        self, user_id: str
-    ) -> "MediaClientResolution[PlexRepository] | None":
-        plex = self._preferences_service.get_plex_connection_raw()
-        if not (plex.enabled and plex.plex_url):
-            raise ExternalServiceError("Plex is not configured")
-        if not await self._connections_store.has_enabled(user_id, _PLEX):
-            return None
-        data = await self._connections_store.get(user_id, _PLEX)
-        if not data or not data.get("auth_token"):
-            raise MediaAccountRelinkRequiredError(
-                "Reconnect Plex to check your playlists"
-            )
-
-        from repositories.plex_repository import PlexRepository
-
-        client_id = self._preferences_service.get_setting("plex_client_id") or ""
-        server_token = str(data.get("server_access_token") or "")
-        if not server_token:
-            probe = PlexRepository(
-                http_client=self._media_http_client(),
-                cache=self._cache,
-            )
-            probe.configure(
-                url=plex.plex_url,
-                token=str(data["auth_token"]),
-                client_id=client_id,
-            )
-            try:
-                machine_id = await probe.get_machine_identifier()
-                server_token = (
-                    await probe.get_server_access_token(
-                        str(data["auth_token"]), client_id, machine_id
-                    )
-                    or ""
-                )
-            except PlexAuthError as exc:
-                raise MediaAccountRelinkRequiredError(
-                    "Reconnect Plex to check your playlists"
-                ) from exc
-            if not server_token:
-                raise MediaAccountRelinkRequiredError(
-                    "Reconnect Plex to check your playlists"
-                )
-            data = {**data, "server_access_token": server_token}
-            await self._connections_store.upsert(user_id, _PLEX, data)
-
-        scope = _media_cache_scope(
-            user_id,
-            _PLEX,
-            plex.plex_url,
-            server_token,
-            client_id,
-        )
-        repo = PlexRepository(
-            http_client=self._media_http_client(),
-            cache=self._cache,
-            cache_scope=scope,
-        )
-        repo.configure(url=plex.plex_url, token=server_token, client_id=client_id)
-        return MediaClientResolution(
-            repository=repo,
-            account_mode="linked",
-            account_label=str(data.get("username") or "Plex"),
-            cache_scope=scope,
-        )
-
     async def invalidate_playlist_cache(self, user_id: str, service: str) -> int:
         return await invalidate_media_playlist_cache(
             self._cache, user_id, service
@@ -369,11 +278,3 @@ class PerUserClientFactory:
             return False
         data = await self._connections_store.get(user_id, _NAVIDROME)
         return bool(data and data.get("username") and data.get("password"))
-
-    async def is_plex_linked(self, user_id: str) -> bool:
-        """Lightweight enable check (no client build) mirroring resolve_plex."""
-        plex = self._preferences_service.get_plex_connection_raw()
-        if not (plex.enabled and plex.plex_url):
-            return False
-        data = await self._connections_store.get(user_id, _PLEX)
-        return bool(data and data.get("auth_token"))

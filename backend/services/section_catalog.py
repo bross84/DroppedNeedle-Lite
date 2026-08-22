@@ -282,12 +282,6 @@ SIDEBAR_SECTIONS: tuple[SectionDef, ...] = (
         zone="Services",
     ),
     SectionDef(
-        key="plex",
-        title="Plex",
-        description="The Plex entry in the sidebar.",
-        zone="Services",
-    ),
-    SectionDef(
         key="localfiles",
         title="Local Files",
         description="The Local Files entry in the sidebar.",
