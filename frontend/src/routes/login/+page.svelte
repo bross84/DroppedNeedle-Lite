@@ -114,9 +114,7 @@
 		}
 	}
 
-	const availableTabs = $derived(
-		(['local', 'plex', 'oidc'] as Tab[]).filter((t) => providers[t])
-	);
+	const availableTabs = $derived((['local', 'plex', 'oidc'] as Tab[]).filter((t) => providers[t]));
 </script>
 
 <svelte:head>

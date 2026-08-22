@@ -393,12 +393,7 @@
 
 								<div>
 									<ContextMenu
-										items={getTrackContextMenuItems(
-											track,
-											localTrack,
-											navidromeTrack,
-											plexTrack
-										)}
+										items={getTrackContextMenuItems(track, localTrack, navidromeTrack, plexTrack)}
 										position="end"
 										size="xs"
 									/>

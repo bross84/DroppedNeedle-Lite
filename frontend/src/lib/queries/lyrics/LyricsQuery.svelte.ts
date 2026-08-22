@@ -59,7 +59,6 @@ export const getLyricsQuery = (
 				np?.trackName
 			),
 			queryFn: ({ signal }: { signal: AbortSignal }) => fetchLyrics(np!, signal),
-			enabled:
-				!!np?.trackSourceId && (np.sourceType === 'local' || np.sourceType === 'navidrome')
+			enabled: !!np?.trackSourceId && (np.sourceType === 'local' || np.sourceType === 'navidrome')
 		};
 	});

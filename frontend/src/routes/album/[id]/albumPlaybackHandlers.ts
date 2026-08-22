@@ -139,8 +139,7 @@ export function playSourceTrack(
 	canonicalTracks: Track[]
 ): void {
 	const opts = { startTrack: trackPosition, startDisc: discNumber, startTitle: title };
-	if (source === 'local')
-		playSource(localMatch, launchLocalPlayback, album, canonicalTracks, opts);
+	if (source === 'local') playSource(localMatch, launchLocalPlayback, album, canonicalTracks, opts);
 	else if (source === 'plex')
 		playSource(plexMatch, launchPlexPlayback, album, canonicalTracks, opts);
 	else playSource(navidromeMatch, launchNavidromePlayback, album, canonicalTracks, opts);
@@ -177,7 +176,13 @@ export function getTrackContextMenuItems(
 	resolvedPlex: PlexTrackInfo | null,
 	playlistModalRef: { open: (tracks: QueueItem[]) => void } | null
 ): MenuItem[] {
-	const queueItem = buildTrackQueueItem(track, album, resolvedLocal, resolvedNavidrome, resolvedPlex);
+	const queueItem = buildTrackQueueItem(
+		track,
+		album,
+		resolvedLocal,
+		resolvedNavidrome,
+		resolvedPlex
+	);
 	const hasSource = queueItem !== null;
 	const items: MenuItem[] = [
 		{

@@ -862,7 +862,11 @@ describe('non-seekable state propagation', () => {
 	});
 
 	it('sets isSeekable to true for Navidrome streams', async () => {
-		const item = makeItem({ sourceType: 'navidrome', trackSourceId: 'nd-ns', streamUrl: undefined });
+		const item = makeItem({
+			sourceType: 'navidrome',
+			trackSourceId: 'nd-ns',
+			streamUrl: undefined
+		});
 		playerStore.playQueue([item]);
 		await vi.advanceTimersByTimeAsync(0);
 

@@ -29,9 +29,7 @@
 	let isPlaying = $state(false);
 	let isShuffling = $state(false);
 
-	let hasPlaybackSource = $derived(
-		$integrationStore.localfiles || $integrationStore.navidrome
-	);
+	let hasPlaybackSource = $derived($integrationStore.localfiles || $integrationStore.navidrome);
 
 	function getMeta(): AlbumCardMeta {
 		return { mbid, albumName, artistName, coverUrl, artistId };

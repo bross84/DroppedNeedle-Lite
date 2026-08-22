@@ -65,8 +65,8 @@
 	<div class="modal-box max-w-2xl">
 		<h3 class="text-lg font-bold">Import Users</h3>
 		<p class="text-sm text-base-content/60 mt-0.5">
-			Pre-provision accounts from your media server. Each imported user signs in with their own
-			Plex login - no password is set here.
+			Pre-provision accounts from your media server. Each imported user signs in with their own Plex
+			login - no password is set here.
 		</p>
 
 		<div class="flex items-center gap-2 mt-4">
