@@ -13,11 +13,6 @@ import {
 	reportNavidromeNowPlaying,
 	reportNavidromeStopped
 } from '$lib/player/navidromePlaybackApi';
-import {
-	reportPlexScrobble,
-	reportPlexNowPlaying,
-	reportPlexStopped
-} from '$lib/player/plexPlaybackApi';
 import { playbackToast } from '$lib/stores/playbackToast.svelte';
 import { radioSession } from '$lib/stores/radioSession.svelte';
 import {
@@ -130,8 +125,7 @@ function createPlayerStore() {
 
 	const handleBeforeUnload = createBeforeUnloadHandler(
 		() => ({ currentItem: queue[currentIndex] ?? null, progress }),
-		API.stream.navidromeScrobble,
-		API.stream.plexScrobble
+		API.stream.navidromeScrobble
 	);
 
 	function getNextIndex(): number | null {
@@ -162,8 +156,6 @@ function createPlayerStore() {
 		if (!item) return;
 		if (item.sourceType === 'navidrome') {
 			void reportNavidromeStopped(item.trackSourceId);
-		} else if (item.sourceType === 'plex' && item.plexRatingKey) {
-			void reportPlexStopped(item.plexRatingKey);
 		}
 	}
 
@@ -200,18 +192,10 @@ function createPlayerStore() {
 			isSeekable = true;
 			return { source: createPlaybackSource('local', { url: url!, seekable: true }), loadUrl: url };
 		}
-		if (item.sourceType === 'navidrome') {
-			isSeekable = true;
-			void reportNavidromeNowPlaying(item.trackSourceId);
-			return {
-				source: createPlaybackSource('navidrome', { url: url!, seekable: true }),
-				loadUrl: url
-			};
-		}
 		isSeekable = true;
-		if (item.plexRatingKey) void reportPlexNowPlaying(item.plexRatingKey);
+		void reportNavidromeNowPlaying(item.trackSourceId);
 		return {
-			source: createPlaybackSource('plex', { url: url!, seekable: true }),
+			source: createPlaybackSource('navidrome', { url: url!, seekable: true }),
 			loadUrl: url
 		};
 	}
@@ -253,7 +237,7 @@ function createPlayerStore() {
 		source.setVolume(volume);
 		try {
 			const activeItem = queue[index] ?? item;
-			if (activeItem.sourceType === 'navidrome' || activeItem.sourceType === 'plex') {
+			if (activeItem.sourceType === 'navidrome') {
 				registerBeforeUnload();
 			}
 			const loadPromise = source.load({
@@ -323,9 +307,7 @@ function createPlayerStore() {
 			if (state === 'ended') {
 				const endedItem = getCurrentItem();
 				void stopPreviousSession(endedItem, progress);
-				if (endedItem?.sourceType === 'plex' && endedItem.plexRatingKey)
-					void reportPlexScrobble(endedItem.plexRatingKey);
-				else if (endedItem?.sourceType === 'navidrome')
+				if (endedItem?.sourceType === 'navidrome')
 					void reportNavidromeScrobble(endedItem.trackSourceId);
 				const nextIdx = getNextIndex();
 				if (nextIdx !== null) {
@@ -696,8 +678,7 @@ function createPlayerStore() {
 			playlistTrackId: string,
 			newSourceType: SourceType,
 			newTrackSourceId: string,
-			newFormat?: string,
-			plexRatingKey?: string
+			newFormat?: string
 		): void {
 			const r = updateItemByPlaylistTrackId(
 				queue,
@@ -705,8 +686,7 @@ function createPlayerStore() {
 				currentIndex,
 				newSourceType,
 				newTrackSourceId,
-				newFormat,
-				plexRatingKey
+				newFormat
 			);
 			if (r) {
 				queue = r;
@@ -722,8 +702,6 @@ function createPlayerStore() {
 		pause(): void {
 			currentSource?.pause();
 			const item = getCurrentItem();
-			if (item?.sourceType === 'plex' && item.plexRatingKey)
-				void reportPlexStopped(item.plexRatingKey);
 			if (item?.sourceType === 'navidrome') void reportNavidromeStopped(item.trackSourceId);
 			persist();
 		},
@@ -732,8 +710,6 @@ function createPlayerStore() {
 			if (isPlaying) {
 				currentSource?.pause();
 				const item = getCurrentItem();
-				if (item?.sourceType === 'plex' && item.plexRatingKey)
-					void reportPlexStopped(item.plexRatingKey);
 				if (item?.sourceType === 'navidrome') void reportNavidromeStopped(item.trackSourceId);
 				persist();
 			} else {
@@ -796,10 +772,7 @@ function createPlayerStore() {
 					nowPlaying = resume.nowPlaying;
 					subscribeToSource(source, gen);
 					source.setVolume(volume);
-					if (
-						resume.currentItem.sourceType === 'navidrome' ||
-						resume.currentItem.sourceType === 'plex'
-					) {
+					if (resume.currentItem.sourceType === 'navidrome') {
 						registerBeforeUnload();
 					}
 					await source.load({

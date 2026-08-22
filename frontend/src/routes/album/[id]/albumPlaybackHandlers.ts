@@ -4,8 +4,6 @@ import type {
 	LocalTrackInfo,
 	NavidromeAlbumMatch,
 	NavidromeTrackInfo,
-	PlexAlbumMatch,
-	PlexTrackInfo,
 	Track
 } from '$lib/types';
 import type { QueueItem, PlaybackMeta } from '$lib/player/types';
@@ -14,7 +12,6 @@ import {
 	buildQueueItem,
 	buildQueueItemsFromLocal,
 	buildQueueItemsFromNavidrome,
-	buildQueueItemsFromPlex,
 	compareDiscTrack,
 	getDiscTrackKey,
 	normalizeDiscNumber
@@ -22,7 +19,6 @@ import {
 import { getCoverUrl } from '$lib/utils/errorHandling';
 import { launchLocalPlayback } from '$lib/player/launchLocalPlayback';
 import { launchNavidromePlayback } from '$lib/player/launchNavidromePlayback';
-import { launchPlexPlayback } from '$lib/player/launchPlexPlayback';
 import { playerStore } from '$lib/stores/player.svelte';
 import type { MenuItem } from '$lib/components/ContextMenu.svelte';
 import { ListPlus, ListStart, ListMusic, Download } from 'lucide-svelte';
@@ -128,20 +124,17 @@ function playSource<T extends SourceTrack>(
 }
 
 export function playSourceTrack(
-	source: 'local' | 'navidrome' | 'plex',
+	source: 'local' | 'navidrome',
 	trackPosition: number,
 	discNumber: number,
 	title: string,
 	album: AlbumBasicInfo,
 	localMatch: LocalAlbumMatch | null,
 	navidromeMatch: NavidromeAlbumMatch | null,
-	plexMatch: PlexAlbumMatch | null,
 	canonicalTracks: Track[]
 ): void {
 	const opts = { startTrack: trackPosition, startDisc: discNumber, startTitle: title };
 	if (source === 'local') playSource(localMatch, launchLocalPlayback, album, canonicalTracks, opts);
-	else if (source === 'plex')
-		playSource(plexMatch, launchPlexPlayback, album, canonicalTracks, opts);
 	else playSource(navidromeMatch, launchNavidromePlayback, album, canonicalTracks, opts);
 }
 
@@ -149,21 +142,15 @@ function buildTrackQueueItem(
 	track: { position: number; disc_number?: number | null; title: string },
 	album: AlbumBasicInfo,
 	resolvedLocal: LocalTrackInfo | null,
-	resolvedNavidrome: NavidromeTrackInfo | null = null,
-	resolvedPlex: PlexTrackInfo | null = null
+	resolvedNavidrome: NavidromeTrackInfo | null = null
 ): QueueItem | null {
 	const sourceData: TrackSourceData = {
 		trackPosition: track.position,
 		discNumber: normalizeDiscNumber(track.disc_number),
 		trackTitle: track.title,
-		trackLength:
-			resolvedLocal?.duration_seconds ??
-			resolvedNavidrome?.duration_seconds ??
-			resolvedPlex?.duration_seconds ??
-			undefined,
+		trackLength: resolvedLocal?.duration_seconds ?? resolvedNavidrome?.duration_seconds ?? undefined,
 		localTrack: resolvedLocal,
-		navidromeTrack: resolvedNavidrome,
-		plexTrack: resolvedPlex
+		navidromeTrack: resolvedNavidrome
 	};
 	return buildQueueItem(getTrackMeta(album), sourceData);
 }
@@ -173,16 +160,9 @@ export function getTrackContextMenuItems(
 	album: AlbumBasicInfo,
 	resolvedLocal: LocalTrackInfo | null,
 	resolvedNavidrome: NavidromeTrackInfo | null,
-	resolvedPlex: PlexTrackInfo | null,
 	playlistModalRef: { open: (tracks: QueueItem[]) => void } | null
 ): MenuItem[] {
-	const queueItem = buildTrackQueueItem(
-		track,
-		album,
-		resolvedLocal,
-		resolvedNavidrome,
-		resolvedPlex
-	);
+	const queueItem = buildTrackQueueItem(track, album, resolvedLocal, resolvedNavidrome);
 	const hasSource = queueItem !== null;
 	const items: MenuItem[] = [
 		{
@@ -221,22 +201,16 @@ export function getTrackContextMenuItems(
 }
 
 function getSourceQueueItems(
-	source: 'local' | 'navidrome' | 'plex',
+	source: 'local' | 'navidrome',
 	album: AlbumBasicInfo,
 	localTracks: LocalTrackInfo[],
 	navidromeTracks: NavidromeTrackInfo[],
-	plexTracks: PlexTrackInfo[],
 	canonicalTracks: Track[]
 ): QueueItem[] {
 	const meta = getTrackMeta(album);
 	if (source === 'navidrome')
 		return buildQueueItemsFromNavidrome(
 			withCanonicalTrackTitles([...navidromeTracks].sort(compareDiscTrack), canonicalTracks),
-			meta
-		);
-	if (source === 'plex')
-		return buildQueueItemsFromPlex(
-			withCanonicalTrackTitles([...plexTracks].sort(compareDiscTrack), canonicalTracks),
 			meta
 		);
 	return buildQueueItemsFromLocal(
@@ -256,12 +230,11 @@ export function buildSourceCallbacks<
 		shuffle: boolean | undefined,
 		meta: PlaybackMeta
 	) => void,
-	source: 'local' | 'navidrome' | 'plex',
+	source: 'local' | 'navidrome',
 	albumGetter: () => AlbumBasicInfo | null,
 	tracksGetters: {
 		local: () => LocalTrackInfo[];
 		navidrome: () => NavidromeTrackInfo[];
-		plex: () => PlexTrackInfo[];
 	},
 	canonicalTracksGetter: () => Track[],
 	playlistModalRefGetter: () => { open: (tracks: QueueItem[]) => void } | null
@@ -283,7 +256,6 @@ export function buildSourceCallbacks<
 				a,
 				tracksGetters.local(),
 				tracksGetters.navidrome(),
-				tracksGetters.plex(),
 				canonicalTracksGetter()
 			);
 			if (items.length > 0) playerStore.addMultipleToQueue(items);
@@ -296,7 +268,6 @@ export function buildSourceCallbacks<
 				a,
 				tracksGetters.local(),
 				tracksGetters.navidrome(),
-				tracksGetters.plex(),
 				canonicalTracksGetter()
 			);
 			if (items.length > 0) playerStore.playMultipleNext(items);
@@ -309,7 +280,6 @@ export function buildSourceCallbacks<
 				a,
 				tracksGetters.local(),
 				tracksGetters.navidrome(),
-				tracksGetters.plex(),
 				canonicalTracksGetter()
 			);
 			if (items.length > 0) playlistModalRefGetter()?.open(items);

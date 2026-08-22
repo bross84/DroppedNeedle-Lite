@@ -1,12 +1,8 @@
 import type { QueueItem } from '$lib/player/types';
 import type { SourceType } from '$lib/player/types';
 import type { ReleaseGroup } from '$lib/types';
-import type { LocalAlbumMatch, NavidromeAlbumMatch, PlexAlbumMatch } from '$lib/types';
-import {
-	buildQueueItemsFromLocal,
-	buildQueueItemsFromNavidrome,
-	buildQueueItemsFromPlex
-} from '$lib/player/queueHelpers';
+import type { LocalAlbumMatch, NavidromeAlbumMatch } from '$lib/types';
+import { buildQueueItemsFromLocal, buildQueueItemsFromNavidrome } from '$lib/player/queueHelpers';
 import type { TrackMeta } from '$lib/player/queueHelpers';
 import { API } from '$lib/constants';
 import { api } from '$lib/api/client';
@@ -66,14 +62,6 @@ async function fetchAlbumTracksForSource(
 				const match = await api.global.get<NavidromeAlbumMatch>(url.toString(), { signal });
 				if (!match?.found || !match.tracks.length) return [];
 				return buildQueueItemsFromNavidrome(match.tracks, meta);
-			}
-			case 'plex': {
-				const url = new URL(API.plexLibrary.albumMatch(mbid), window.location.origin);
-				url.searchParams.set('name', release.title);
-				url.searchParams.set('artist', artistName);
-				const match = await api.global.get<PlexAlbumMatch>(url.toString(), { signal });
-				if (!match?.found || !match.tracks.length) return [];
-				return buildQueueItemsFromPlex(match.tracks, meta);
 			}
 		}
 	} catch {

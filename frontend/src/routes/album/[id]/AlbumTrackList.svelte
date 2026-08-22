@@ -6,9 +6,7 @@
 		LocalAlbumMatch,
 		LocalTrackInfo,
 		NavidromeAlbumMatch,
-		NavidromeTrackInfo,
-		PlexAlbumMatch,
-		PlexTrackInfo
+		NavidromeTrackInfo
 	} from '$lib/types';
 	import type { MenuItem } from '$lib/components/ContextMenu.svelte';
 	import type { RenderedTrackSection } from './albumTrackResolvers';
@@ -24,7 +22,6 @@
 	import ContextMenu from '$lib/components/ContextMenu.svelte';
 	import LocalFilesIcon from '$lib/components/LocalFilesIcon.svelte';
 	import NavidromeIcon from '$lib/components/NavidromeIcon.svelte';
-	import PlexIcon from '$lib/components/PlexIcon.svelte';
 	import LibraryFormatBadge from '$lib/components/library/LibraryFormatBadge.svelte';
 	import LibraryTrackRow from '$lib/components/library/LibraryTrackRow.svelte';
 	import { ChevronDown, TriangleAlert, TrendingUp, Check } from 'lucide-svelte';
@@ -44,19 +41,15 @@
 		trackLinkMap: Map<string, YouTubeTrackLink>;
 		localMatch: LocalAlbumMatch | null;
 		navidromeMatch: NavidromeAlbumMatch | null;
-		plexMatch: PlexAlbumMatch | null;
 		localTrackMap: Map<string, LocalTrackInfo>;
 		navidromeTrackMap: Map<string, NavidromeTrackInfo>;
-		plexTrackMap: Map<string, PlexTrackInfo>;
 		localTracks: LocalTrackInfo[];
 		navidromeTracks: NavidromeTrackInfo[];
-		plexTracks: PlexTrackInfo[];
 		trackLinks: YouTubeTrackLink[];
 		youtubeEnabled: boolean;
 		youtubeApiConfigured: boolean;
 		localfilesEnabled: boolean;
 		navidromeEnabled: boolean;
-		plexEnabled: boolean;
 		libraryTracksByRecording?: Map<string, LibraryFileMeta>;
 		libraryTracksByPosition?: Map<string, LibraryFileMeta>;
 		heldByRecording?: Map<string, HeldImport>;
@@ -64,7 +57,7 @@
 		trackDownloadTasks?: Map<string, DownloadTask>;
 		releaseGroupMbid?: string;
 		onPlaySourceTrack: (
-			source: 'local' | 'navidrome' | 'plex',
+			source: 'local' | 'navidrome',
 			trackPosition: number,
 			discNumber: number,
 			title: string
@@ -74,8 +67,7 @@
 		getTrackContextMenuItems: (
 			track: { position: number; disc_number?: number | null; title: string },
 			resolvedLocal: LocalTrackInfo | null,
-			resolvedNavidrome: NavidromeTrackInfo | null,
-			resolvedPlex: PlexTrackInfo | null
+			resolvedNavidrome: NavidromeTrackInfo | null
 		) => MenuItem[];
 	}
 
@@ -85,19 +77,15 @@
 		trackLinkMap,
 		localMatch,
 		navidromeMatch,
-		plexMatch,
 		localTrackMap,
 		navidromeTrackMap,
-		plexTrackMap,
 		localTracks,
 		navidromeTracks,
-		plexTracks,
 		trackLinks,
 		youtubeEnabled,
 		youtubeApiConfigured,
 		localfilesEnabled,
 		navidromeEnabled,
-		plexEnabled,
 		libraryTracksByRecording = new Map(),
 		libraryTracksByPosition = new Map(),
 		heldByRecording = new Map(),
@@ -188,13 +176,6 @@
 					navidromeTrackMap,
 					navidromeTracks
 				)}
-				{@const plexTrack = resolveSourceTrack(
-					trackDiscNumber,
-					track.position,
-					row.globalIndex,
-					plexTrackMap,
-					plexTracks
-				)}
 				{@const isCurrentlyPlaying =
 					playerStore.nowPlaying?.albumId === album.musicbrainz_id &&
 					(playerStore.currentQueueItem?.discNumber ?? 1) === trackDiscNumber &&
@@ -202,9 +183,7 @@
 					playerStore.isPlaying}
 				{@const showLocalBtn = localfilesEnabled && localMatch?.found}
 				{@const showNavidromeBtn = navidromeEnabled && navidromeMatch?.found}
-				{@const showPlexBtn = plexEnabled && plexMatch?.found}
-				{@const hasAnySource =
-					tl !== null || localTrack !== null || navidromeTrack !== null || plexTrack !== null}
+				{@const hasAnySource = tl !== null || localTrack !== null || navidromeTrack !== null}
 				{@const showPreview = !hasAnySource}
 				{@const libMeta =
 					(track.recording_id ? libraryTracksByRecording.get(track.recording_id) : undefined) ??
@@ -275,7 +254,7 @@
 							{formatDuration(track.length)}
 						</div>
 
-						{#if youtubeEnabled || showPreview || showLocalBtn || showNavidromeBtn || showPlexBtn || showRequest || showTrackDownload || heldMeta || showUpgrade}
+						{#if youtubeEnabled || showPreview || showLocalBtn || showNavidromeBtn || showRequest || showTrackDownload || heldMeta || showUpgrade}
 							<div class="flex items-center gap-1.5 shrink-0 ml-auto">
 								{#if showTrackDownload && trackTask}
 									<TrackDownloadStatus task={trackTask} />
@@ -377,23 +356,9 @@
 									</TrackSourceButton>
 								{/if}
 
-								{#if showPlexBtn}
-									<TrackSourceButton
-										available={plexTrack !== null}
-										sourceColor="rgb(var(--brand-plex))"
-										onclick={() =>
-											onPlaySourceTrack('plex', track.position, trackDiscNumber, track.title)}
-										ariaLabel={plexTrack ? 'Play on Plex' : 'Not available on Plex'}
-									>
-										{#snippet icon()}
-											<PlexIcon class="h-4 w-4" />
-										{/snippet}
-									</TrackSourceButton>
-								{/if}
-
 								<div>
 									<ContextMenu
-										items={getTrackContextMenuItems(track, localTrack, navidromeTrack, plexTrack)}
+										items={getTrackContextMenuItems(track, localTrack, navidromeTrack)}
 										position="end"
 										size="xs"
 									/>

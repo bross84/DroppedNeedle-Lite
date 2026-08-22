@@ -17,8 +17,6 @@ function listUrl(source: SourcePlaylistSource, limit: number): string {
 	switch (source) {
 		case 'navidrome':
 			return API.navidromeLibrary.playlists(limit);
-		case 'plex':
-			return API.plexLibrary.playlists(limit);
 	}
 }
 
@@ -26,8 +24,6 @@ function detailUrl(source: SourcePlaylistSource, playlistId: string): string {
 	switch (source) {
 		case 'navidrome':
 			return API.navidromeLibrary.playlistDetail(playlistId);
-		case 'plex':
-			return API.plexLibrary.playlistDetail(playlistId);
 	}
 }
 

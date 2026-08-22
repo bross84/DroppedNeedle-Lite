@@ -2,9 +2,9 @@ import { api } from '$lib/api/client';
 import { API } from '$lib/constants';
 import { playerStore } from '$lib/stores/player.svelte';
 
-// The web player reports presence only for native content. navidrome/plex
-// playback is surfaced to other users by the server-side poll of those upstream
-// servers, so reporting it here too would show a duplicate card.
+// The web player reports presence only for native content. navidrome
+// playback is surfaced to other users by the server-side poll of that upstream
+// server, so reporting it here too would show a duplicate card.
 const REPORTED_SOURCES = new Set(['local', 'youtube']);
 const HEARTBEAT_MS = 5_000;
 

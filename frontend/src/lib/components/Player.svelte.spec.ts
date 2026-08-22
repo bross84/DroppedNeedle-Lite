@@ -41,7 +41,7 @@ vi.mock('$lib/queries/lyrics/LyricsQuery.svelte', () => ({
 import { playerStore } from '$lib/stores/player.svelte';
 import Player from './Player.svelte';
 
-function makeTrack(sourceType: 'navidrome' | 'youtube' | 'local' | 'plex', id = 'v1') {
+function makeTrack(sourceType: 'navidrome' | 'youtube' | 'local', id = 'v1') {
 	return {
 		trackSourceId: id,
 		trackName: 'Test Track',
@@ -137,21 +137,6 @@ describe('Player.svelte lyrics button', () => {
 		};
 
 		playerStore.playQueue([makeTrack('youtube')]);
-		render(Player);
-
-		await expect.element(page.getByLabelText('Toggle lyrics')).not.toBeInTheDocument();
-	});
-
-	it('hides lyrics button for plex source', async () => {
-		mockQueryState = {
-			isSuccess: false,
-			isError: false,
-			isLoading: false,
-			isFetching: false,
-			data: undefined
-		};
-
-		playerStore.playQueue([makeTrack('plex')]);
 		render(Player);
 
 		await expect.element(page.getByLabelText('Toggle lyrics')).not.toBeInTheDocument();

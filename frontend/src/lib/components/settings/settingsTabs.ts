@@ -22,7 +22,6 @@ const settingsTabLoaders: Record<string, SettingsLoader> = {
 	'download-client': () => import('./SettingsDownloadClients.svelte'),
 	indexers: () => import('./SettingsIndexers.svelte'),
 	navidrome: () => import('./SettingsNavidrome.svelte'),
-	plex: () => import('./SettingsPlex.svelte'),
 	youtube: () => import('./SettingsYouTube.svelte'),
 	lastfm: () => import('./SettingsLastFmApp.svelte'),
 	spotify: () => import('./SettingsSpotify.svelte'),

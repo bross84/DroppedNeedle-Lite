@@ -14,8 +14,6 @@ import type {
 	LocalTrackInfo,
 	NavidromeAlbumMatch,
 	NavidromeTrackInfo,
-	PlexAlbumMatch,
-	PlexTrackInfo,
 	LastFmAlbumEnrichment,
 	LibraryAlbumStatus,
 	LibraryFileMeta,
@@ -40,7 +38,6 @@ import { compareDiscTrack, getDiscTrackKey } from '$lib/player/queueHelpers';
 import type { QueueItem } from '$lib/player/types';
 import { launchLocalPlayback } from '$lib/player/launchLocalPlayback';
 import { launchNavidromePlayback } from '$lib/player/launchNavidromePlayback';
-import { launchPlexPlayback } from '$lib/player/launchPlexPlayback';
 import { downloadFile } from '$lib/utils/downloadHelper';
 import type { MenuItem } from '$lib/components/ContextMenu.svelte';
 import {
@@ -51,7 +48,6 @@ import {
 	fetchYouTubeTrackLinks,
 	fetchLocalMatch,
 	fetchNavidromeMatch,
-	fetchPlexMatch,
 	fetchLastFm,
 	refreshAlbum
 } from './albumFetchers';
@@ -106,10 +102,8 @@ export function createAlbumPageState(albumIdGetter: () => string) {
 	let quota = $state<YouTubeQuotaStatus | null>(null);
 	let localMatch = $state<LocalAlbumMatch | null>(null);
 	let navidromeMatch = $state<NavidromeAlbumMatch | null>(null);
-	let plexMatch = $state<PlexAlbumMatch | null>(null);
 	let loadingLocal = $state(false);
 	let loadingNavidrome = $state(false);
-	let loadingPlex = $state(false);
 	let lastfmEnrichment = $state<LastFmAlbumEnrichment | null>(null);
 	let loadingLastfm = $state(true);
 	let renderedTrackSections = $state<RenderedTrackSection[]>([]);
@@ -191,10 +185,8 @@ export function createAlbumPageState(albumIdGetter: () => string) {
 	);
 	const localTracks = $derived([...(localMatch?.tracks ?? [])].sort(compareDiscTrack));
 	const navidromeTracks = $derived([...(navidromeMatch?.tracks ?? [])].sort(compareDiscTrack));
-	const plexTracks = $derived([...(plexMatch?.tracks ?? [])].sort(compareDiscTrack));
 	const localTrackMap = $derived(buildSortedTrackMap(localMatch?.tracks ?? []));
 	const navidromeTrackMap = $derived(buildSortedTrackMap(navidromeMatch?.tracks ?? []));
-	const plexTrackMap = $derived(buildSortedTrackMap(plexMatch?.tracks ?? []));
 	const inLibrary = $derived(
 		libraryStatus?.in_library ??
 			(libraryStore.isInLibrary(album?.musicbrainz_id) || album?.in_library || false)
@@ -294,10 +286,8 @@ export function createAlbumPageState(albumIdGetter: () => string) {
 		quota = null;
 		localMatch = null;
 		navidromeMatch = null;
-		plexMatch = null;
 		loadingLocal = false;
 		loadingNavidrome = false;
-		loadingPlex = false;
 		lastfmEnrichment = null;
 		loadingLastfm = true;
 		refreshing = false;
@@ -343,10 +333,8 @@ export function createAlbumPageState(albumIdGetter: () => string) {
 			if (cached && !albumSourceMatchCache.isStale(cached.timestamp)) {
 				localMatch = cached.data.local;
 				navidromeMatch = cached.data.navidrome;
-				plexMatch = cached.data.plex;
 				loadingLocal = false;
 				loadingNavidrome = false;
-				loadingPlex = false;
 				return false;
 			}
 			return true;
@@ -431,7 +419,7 @@ export function createAlbumPageState(albumIdGetter: () => string) {
 		loadingSetter: (v: boolean) => void,
 		label: string,
 		albumId: string,
-		cacheField: 'local' | 'navidrome' | 'plex'
+		cacheField: 'local' | 'navidrome'
 	) {
 		loadingSetter(true);
 		try {
@@ -440,8 +428,7 @@ export function createAlbumPageState(albumIdGetter: () => string) {
 			const cacheKey = sourceCacheKey(albumId);
 			const existing = albumSourceMatchCache.get(cacheKey)?.data ?? {
 				local: null,
-				navidrome: null,
-				plex: null
+				navidrome: null
 			};
 			albumSourceMatchCache.set({ ...existing, [cacheField]: result }, cacheKey);
 		} catch (e) {
@@ -496,7 +483,7 @@ export function createAlbumPageState(albumIdGetter: () => string) {
 		}
 	}
 
-	// name-based source matches (Navidrome, Plex) - need album title/artist from basic info
+	// name-based source matches (Navidrome) - need album title/artist from basic info
 	async function fetchNamedSourceMatches(albumId: string, signal: AbortSignal) {
 		try {
 			await integrationStore.ensureLoaded();
@@ -516,21 +503,6 @@ export function createAlbumPageState(albumIdGetter: () => string) {
 					'Navidrome',
 					albumId,
 					'navidrome'
-				);
-			if (integrations.plex)
-				void doFetchSourceMatch(
-					signal,
-					() =>
-						fetchPlexMatch(
-							albumId,
-							{ albumTitle: album?.title, artistName: album?.artist_name },
-							signal
-						),
-					(v) => (plexMatch = v),
-					(v) => (loadingPlex = v),
-					'Plex',
-					albumId,
-					'plex'
 				);
 		} catch {
 			return;
@@ -584,13 +556,13 @@ export function createAlbumPageState(albumIdGetter: () => string) {
 		void fetchNamedSourceMatches(albumId, signal);
 	}
 
-	// external servers (Navidrome/Plex) index newly-imported files on their own schedule, so
+	// external servers (Navidrome) index newly-imported files on their own schedule, so
 	// re-check a couple of times after a download lands, then stop. Local Files is the native library
 	// and is already fresh from the immediate refresh.
 	function scheduleExternalSourceRecheck(): void {
 		clearExternalRecheck();
 		const integrations = get(integrationStore);
-		if (!integrations.navidrome && !integrations.plex) return;
+		if (!integrations.navidrome) return;
 		for (const delay of [20_000, 50_000]) {
 			externalRecheckTimers.push(setTimeout(() => refreshSourcesAfterDownload(), delay));
 		}
@@ -713,14 +685,13 @@ export function createAlbumPageState(albumIdGetter: () => string) {
 
 	const tracksGetters = {
 		local: () => localTracksForPlayback,
-		navidrome: () => navidromeTracks,
-		plex: () => plexTracks
+		navidrome: () => navidromeTracks
 	};
 	const albumGetter = () => album;
 	const playlistRefGetter = () => playlistModalRef;
 
 	function playSourceTrack(
-		source: 'local' | 'navidrome' | 'plex',
+		source: 'local' | 'navidrome',
 		trackPosition: number,
 		discNumber: number,
 		title: string
@@ -734,7 +705,6 @@ export function createAlbumPageState(albumIdGetter: () => string) {
 			album,
 			localMatchForPlayback,
 			navidromeMatch,
-			plexMatch,
 			tracksInfo?.tracks ?? []
 		);
 	}
@@ -742,8 +712,7 @@ export function createAlbumPageState(albumIdGetter: () => string) {
 	function getTrackContextMenuItems(
 		track: { position: number; disc_number?: number | null; title: string },
 		resolvedLocal: LocalTrackInfo | null,
-		resolvedNavidrome: NavidromeTrackInfo | null = null,
-		resolvedPlex: PlexTrackInfo | null = null
+		resolvedNavidrome: NavidromeTrackInfo | null = null
 	): MenuItem[] {
 		if (!album) return [];
 		return getTrackContextMenuItemsImpl(
@@ -751,7 +720,6 @@ export function createAlbumPageState(albumIdGetter: () => string) {
 			album,
 			resolvedLocal,
 			resolvedNavidrome,
-			resolvedPlex,
 			playlistModalRef
 		);
 	}
@@ -778,15 +746,6 @@ export function createAlbumPageState(albumIdGetter: () => string) {
 		() => navidromeMatch,
 		launchNavidromePlayback,
 		'navidrome',
-		albumGetter,
-		tracksGetters,
-		() => tracksInfo?.tracks ?? [],
-		playlistRefGetter
-	);
-	const plexCallbacks: SourceCallbacks = buildSourceCallbacks(
-		() => plexMatch,
-		launchPlexPlayback,
-		'plex',
 		albumGetter,
 		tracksGetters,
 		() => tracksInfo?.tracks ?? [],
@@ -857,17 +816,11 @@ export function createAlbumPageState(albumIdGetter: () => string) {
 		get navidromeMatch() {
 			return navidromeMatch;
 		},
-		get plexMatch() {
-			return plexMatch;
-		},
 		get loadingLocal() {
 			return loadingLocal;
 		},
 		get loadingNavidrome() {
 			return loadingNavidrome;
-		},
-		get loadingPlex() {
-			return loadingPlex;
 		},
 		get lastfmEnrichment() {
 			return lastfmEnrichment;
@@ -887,17 +840,11 @@ export function createAlbumPageState(albumIdGetter: () => string) {
 		get navidromeTracks() {
 			return navidromeTracks;
 		},
-		get plexTracks() {
-			return plexTracks;
-		},
 		get localTrackMap() {
 			return localTrackMap;
 		},
 		get navidromeTrackMap() {
 			return navidromeTrackMap;
-		},
-		get plexTrackMap() {
-			return plexTrackMap;
 		},
 		get inLibrary() {
 			return inLibrary;
@@ -964,7 +911,6 @@ export function createAlbumPageState(albumIdGetter: () => string) {
 			return localDownloadCallback;
 		},
 		navidromeCallbacks,
-		plexCallbacks,
 		...eventHandlers,
 		retryTracks,
 		refreshAll,

@@ -61,13 +61,6 @@ describe('fetchLyrics', () => {
 		expect(mockGet).not.toHaveBeenCalled();
 	});
 
-	it('returns null for plex source type', async () => {
-		const np = makeNowPlaying({ sourceType: 'plex' });
-		const result = await fetchLyrics(np, signal);
-		expect(result).toBeNull();
-		expect(mockGet).not.toHaveBeenCalled();
-	});
-
 	it('normalizes local lyrics response', async () => {
 		mockGet.mockResolvedValueOnce({
 			text: 'Local lyrics',

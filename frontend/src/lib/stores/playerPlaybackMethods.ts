@@ -85,8 +85,7 @@ export function updateItemByPlaylistTrackId(
 	currentIndex: number,
 	newSourceType: SourceType,
 	newTrackSourceId: string,
-	newFormat?: string,
-	plexRatingKey?: string
+	newFormat?: string
 ): QueueItem[] | null {
 	const index = queue.findIndex((item) => item.playlistTrackId === playlistTrackId);
 	if (index < 0 || index === currentIndex) return null;
@@ -98,8 +97,7 @@ export function updateItemByPlaylistTrackId(
 		sourceType: newSourceType,
 		trackSourceId: newTrackSourceId,
 		streamUrl,
-		format: newFormat,
-		plexRatingKey: newSourceType === 'plex' ? plexRatingKey : undefined
+		format: newFormat
 	};
 	return newQueue;
 }

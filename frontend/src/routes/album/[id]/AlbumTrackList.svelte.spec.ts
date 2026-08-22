@@ -56,7 +56,6 @@ vi.mock('$lib/components/TrackSourceButton.svelte', emptyComponent);
 vi.mock('$lib/components/ContextMenu.svelte', emptyComponent);
 vi.mock('$lib/components/LocalFilesIcon.svelte', emptyComponent);
 vi.mock('$lib/components/NavidromeIcon.svelte', emptyComponent);
-vi.mock('$lib/components/PlexIcon.svelte', emptyComponent);
 vi.mock('$lib/components/library/LibraryTrackRow.svelte', emptyComponent);
 
 import AlbumTrackList from './AlbumTrackList.svelte';
@@ -167,20 +166,16 @@ function renderList(
 		trackLinkMap: new Map(),
 		localMatch: null,
 		navidromeMatch: null,
-		plexMatch: null,
 		localTrackMap: new Map(),
 		navidromeTrackMap: new Map(),
-		plexTrackMap: new Map(),
 		localTracks: [],
 		navidromeTracks: [],
-		plexTracks: [],
 		trackLinks: [],
 		youtubeEnabled: false,
 		youtubeApiConfigured: false,
 		previewCacheMap: new Map(),
 		localfilesEnabled: false,
 		navidromeEnabled: false,
-		plexEnabled: false,
 		libraryTracksByRecording: over.byRecording ?? byRecording,
 		libraryTracksByPosition: byPosition,
 		heldByRecording: over.heldByRecording ?? new Map(),

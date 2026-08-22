@@ -6,7 +6,6 @@
 	import { openGlobalPlaylistModal } from '$lib/stores/playlistModal.svelte';
 	import LocalFilesIcon from '$lib/components/LocalFilesIcon.svelte';
 	import NavidromeIcon from '$lib/components/NavidromeIcon.svelte';
-	import PlexIcon from '$lib/components/PlexIcon.svelte';
 	import { integrationStore } from '$lib/stores/integration';
 	import { playerStore } from '$lib/stores/player.svelte';
 	import { toastStore } from '$lib/stores/toast';
@@ -36,8 +35,7 @@
 
 	const PLAYBACK_SOURCES: { key: PlaybackSourceType; integrationKey: string }[] = [
 		{ key: 'local', integrationKey: 'localfiles' },
-		{ key: 'navidrome', integrationKey: 'navidrome' },
-		{ key: 'plex', integrationKey: 'plex' }
+		{ key: 'navidrome', integrationKey: 'navidrome' }
 	];
 
 	let availableSources = $derived.by(() => {
@@ -114,8 +112,6 @@
 		<LocalFilesIcon class={cls} />
 	{:else if source === 'navidrome'}
 		<NavidromeIcon class={cls} />
-	{:else if source === 'plex'}
-		<PlexIcon class={cls} />
 	{/if}
 {/snippet}
 

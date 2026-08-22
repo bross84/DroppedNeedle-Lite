@@ -6,7 +6,6 @@ interface IntegrationStatus {
 	download_client: boolean;
 	library: boolean;
 	navidrome: boolean;
-	plex: boolean;
 	youtube: boolean;
 	youtube_api: boolean;
 	localfiles: boolean;
@@ -18,7 +17,6 @@ function createIntegrationStore() {
 		download_client: false,
 		library: false,
 		navidrome: false,
-		plex: false,
 		youtube: false,
 		youtube_api: false,
 		localfiles: false,
@@ -39,7 +37,6 @@ function createIntegrationStore() {
 				download_client: false,
 				library: false,
 				navidrome: false,
-				plex: false,
 				youtube: false,
 				youtube_api: false,
 				localfiles: false,

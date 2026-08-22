@@ -7,10 +7,6 @@ export interface AdvancedSettingsForm {
 	cache_ttl_artist_discovery_non_library: number;
 	cache_ttl_search: number;
 	cache_ttl_local_files_recently_added: number;
-	cache_ttl_plex_albums: number;
-	cache_ttl_plex_search: number;
-	cache_ttl_plex_genres: number;
-	cache_ttl_plex_stats: number;
 	http_timeout: number;
 	http_connect_timeout: number;
 	http_max_connections: number;
@@ -47,7 +43,6 @@ export interface AdvancedSettingsForm {
 	frontend_ttl_discover_queue: number;
 	frontend_ttl_search: number;
 	frontend_ttl_local_files_sidebar: number;
-	frontend_ttl_plex_sidebar: number;
 	frontend_ttl_playlist_sources: number;
 	audiodb_enabled: boolean;
 	audiodb_api_key: string;

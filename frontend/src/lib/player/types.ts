@@ -7,7 +7,7 @@ export type PlaybackState =
 	| 'buffering'
 	| 'error';
 
-export type SourceType = 'youtube' | 'local' | 'navidrome' | 'plex';
+export type SourceType = 'youtube' | 'local' | 'navidrome';
 
 export type QueueOrigin = 'context' | 'manual';
 
@@ -83,8 +83,6 @@ export interface QueueItem {
 	availableSources?: SourceType[];
 	sourceIds?: Partial<Record<SourceType, string>>;
 	duration?: number;
-	/** Plex ratingKey used for scrobble and now-playing calls. Streaming uses part_key in trackSourceId. */
-	plexRatingKey?: string;
 	queueOrigin?: QueueOrigin;
 	/** Stable playlist-level track identifier that survives source changes. */
 	playlistTrackId?: string;

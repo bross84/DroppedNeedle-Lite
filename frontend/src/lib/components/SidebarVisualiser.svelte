@@ -2,8 +2,7 @@
 	import { nowPlayingMerged } from '$lib/stores/nowPlayingMerged.svelte';
 
 	const sourceHub: Record<string, string> = {
-		navidrome: '/library/navidrome',
-		plex: '/library/plex'
+		navidrome: '/library/navidrome'
 	};
 </script>
 

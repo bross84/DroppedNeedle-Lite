@@ -17,8 +17,6 @@ const CACHE_KEY_GROUPS = {
 		NAVIDROME_SIDEBAR: 'droppedneedle_navidrome_sidebar',
 		NAVIDROME_ALBUMS_LIST: 'droppedneedle_navidrome_albums_list',
 		NAVIDROME_FOLDER_SCOPE: 'droppedneedle_navidrome_folder_scope',
-		PLEX_SIDEBAR: 'droppedneedle_plex_sidebar',
-		PLEX_ALBUMS_LIST: 'droppedneedle_plex_albums_list',
 		LOCAL_FILES_ALBUMS_LIST: 'droppedneedle_local_files_albums_list'
 	},
 	detail: {
@@ -70,8 +68,6 @@ const CACHE_TTL_GROUPS = {
 		LOCAL_FILES_SIDEBAR: 2 * 60 * 1000,
 		NAVIDROME_SIDEBAR: 2 * 60 * 1000,
 		NAVIDROME_ALBUMS_LIST: 2 * 60 * 1000,
-		PLEX_SIDEBAR: 2 * 60 * 1000,
-		PLEX_ALBUMS_LIST: 2 * 60 * 1000,
 		LOCAL_FILES_ALBUMS_LIST: 2 * 60 * 1000,
 		PLAYLIST_SOURCES: 15 * 60 * 1000
 	},
@@ -636,11 +632,6 @@ export const API = {
 	settingsPrimarySource: () => '/api/v1/settings/primary-source',
 	settingsNavidrome: () => '/api/v1/settings/navidrome',
 	settingsNavidromeVerify: () => '/api/v1/settings/navidrome/verify',
-	settingsPlex: () => '/api/v1/settings/plex',
-	settingsPlexVerify: () => '/api/v1/settings/plex/verify',
-	settingsPlexLibraries: () => '/api/v1/settings/plex/libraries',
-	plexAuthPin: () => '/api/v1/plex/auth/pin',
-	plexAuthPoll: (pinId: number) => `/api/v1/plex/auth/poll?pin_id=${pinId}`,
 	settingsLocalFiles: () => '/api/v1/settings/local-files',
 	settingsLocalFilesVerify: () => '/api/v1/settings/local-files/verify',
 	settingsMusicbrainz: () => '/api/v1/settings/musicbrainz',
@@ -667,8 +658,6 @@ export const API = {
 		listenbrainz: () => '/api/v1/me/connections/listenbrainz',
 		navidrome: () => '/api/v1/me/connections/navidrome',
 		navidromeMusicFolderPreferences: () => '/api/v1/me/navidrome/music-folder-preferences',
-		plexAuthPin: () => '/api/v1/me/connections/plex/auth/pin',
-		plexAuthPoll: (pinId: number) => `/api/v1/me/connections/plex/auth/poll?pin_id=${pinId}`,
 		spotifyAuthUrl: () => '/api/v1/me/connections/spotify/auth/url',
 		spotifyPlaylists: () => '/api/v1/me/spotify/playlists',
 		spotifyImport: (playlistId: string) => `/api/v1/me/spotify/playlists/${playlistId}/import`,
@@ -706,10 +695,6 @@ export const API = {
 		navidromeScrobble: (id: string) => `/api/v1/stream/navidrome/${id}/scrobble`,
 		navidromeNowPlaying: (id: string) => `/api/v1/stream/navidrome/${id}/now-playing`,
 		navidromeStopped: (id: string) => `/api/v1/stream/navidrome/${id}/stopped`,
-		plex: (partKey: string) => `/api/v1/stream/plex/${partKey}`,
-		plexScrobble: (ratingKey: string) => `/api/v1/stream/plex/${ratingKey}/scrobble`,
-		plexNowPlaying: (ratingKey: string) => `/api/v1/stream/plex/${ratingKey}/now-playing`,
-		plexStopped: (ratingKey: string) => `/api/v1/stream/plex/${ratingKey}/stopped`,
 		local: (trackId: number | string) => `/api/v1/stream/local/${trackId}`
 	},
 	download: {
@@ -867,56 +852,6 @@ export const API = {
 			if (search) url += `&search=${encodeURIComponent(search)}`;
 			return url;
 		}
-	},
-	plexLibrary: {
-		albums: (
-			limit = 48,
-			offset = 0,
-			sortBy = 'name',
-			genre?: string,
-			sortOrder?: string,
-			mood?: string,
-			decade?: string
-		) => {
-			let url = `/api/v1/plex/albums?limit=${limit}&offset=${offset}&sort_by=${sortBy}`;
-			if (sortOrder) url += `&sort_order=${sortOrder}`;
-			if (genre) url += `&genre=${encodeURIComponent(genre)}`;
-			if (mood) url += `&mood=${encodeURIComponent(mood)}`;
-			if (decade) url += `&decade=${encodeURIComponent(decade)}`;
-			return url;
-		},
-		albumDetail: (id: string) => `/api/v1/plex/albums/${id}`,
-		search: (q: string) => `/api/v1/plex/search?q=${encodeURIComponent(q)}`,
-		recent: (limit = 20) => `/api/v1/plex/recent?limit=${limit}`,
-		genres: () => '/api/v1/plex/genres',
-		moods: () => '/api/v1/plex/moods',
-		stats: () => '/api/v1/plex/stats',
-		thumb: (ratingKey: string, size = 500) => `/api/v1/plex/thumb/${ratingKey}?size=${size}`,
-		albumMatch: (albumId: string) => `/api/v1/plex/album-match/${albumId}`,
-		hub: () => '/api/v1/plex/hub',
-		recentlyAdded: (limit = 20) => `/api/v1/plex/recently-added?limit=${limit}`,
-		playlists: (limit = 50) => `/api/v1/plex/playlists?limit=${limit}`,
-		playlistDetail: (id: string) => `/api/v1/plex/playlists/${id}`,
-		playlistImport: (id: string) => `/api/v1/plex/playlists/${id}/import`,
-		playlistImage: (playlistId: string, itemId: string, size = 500) =>
-			`/api/v1/plex/playlist-image/${playlistId}/${itemId}?size=${size}`,
-		discovery: (count = 10) => `/api/v1/plex/discovery?count=${count}`,
-		sessions: () => '/api/v1/plex/sessions',
-		history: (limit = 50, offset = 0) => `/api/v1/plex/history?limit=${limit}&offset=${offset}`,
-		analytics: () => '/api/v1/plex/analytics',
-		artistsBrowse: (limit = 48, offset = 0, sort = 'titleSort:asc', search = '') => {
-			let url = `/api/v1/plex/artists/browse?limit=${limit}&offset=${offset}&sort=${encodeURIComponent(sort)}`;
-			if (search) url += `&search=${encodeURIComponent(search)}`;
-			return url;
-		},
-		tracks: (limit = 48, offset = 0, sort = 'titleSort:asc', search = '') => {
-			let url = `/api/v1/plex/tracks?limit=${limit}&offset=${offset}&sort=${encodeURIComponent(sort)}`;
-			if (search) url += `&search=${encodeURIComponent(search)}`;
-			return url;
-		},
-		artistsIndex: () => '/api/v1/plex/artists/index',
-		genreSongs: (genre: string, limit = 50, offset = 0) =>
-			`/api/v1/plex/genres/songs?genre=${encodeURIComponent(genre)}&limit=${limit}&offset=${offset}`
 	},
 	version: {
 		info: () => '/api/v1/version',

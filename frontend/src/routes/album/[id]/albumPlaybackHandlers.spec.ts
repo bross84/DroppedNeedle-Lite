@@ -68,8 +68,7 @@ const canonicalTracks: Track[] = [
 
 const tracksGetters = {
 	local: () => localTracks,
-	navidrome: () => [],
-	plex: () => []
+	navidrome: () => []
 };
 
 describe('album playback canonical titles', () => {
@@ -83,7 +82,6 @@ describe('album playback canonical titles', () => {
 			'The Fisherman Will Be Bewildered',
 			album,
 			localMatch,
-			null,
 			null,
 			canonicalTracks
 		);

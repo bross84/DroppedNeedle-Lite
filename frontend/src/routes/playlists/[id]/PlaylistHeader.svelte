@@ -13,7 +13,6 @@
 	import type { MenuItem } from '$lib/components/ContextMenu.svelte';
 	import { Play, Shuffle, Pencil, Check, X, Sparkles, Globe, Lock } from 'lucide-svelte';
 	import NavidromeIcon from '$lib/components/NavidromeIcon.svelte';
-	import PlexIcon from '$lib/components/PlexIcon.svelte';
 	import { getSourceColor, getSourceLabel } from '$lib/utils/sources';
 
 	interface Props {
@@ -324,8 +323,6 @@
 				>
 					{#if sourceType === 'navidrome'}
 						<NavidromeIcon class="h-3 w-3" />
-					{:else if sourceType === 'plex'}
-						<PlexIcon class="h-3 w-3" />
 					{/if}
 					Imported from {sourceLabel}
 				</span>
