@@ -1,5 +1,4 @@
-"""Tests for peer-review fixes: route collision, byYear contract, timed lyrics,
-and Plex accountID removal."""
+"""Tests for peer-review fixes: route collision, byYear contract, timed lyrics."""
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -196,29 +195,3 @@ class TestNavidromeLyricsTimedPreservation:
         assert result is not None
         assert result.is_synced is False
         assert all(l.start_seconds is None for l in result.lines)
-
-
-class TestPlexHistoryNoHardcodedAccount:
-    """Verify that the Plex history endpoint does not hardcode accountID."""
-
-    @pytest.mark.asyncio
-    async def test_history_params_exclude_account_id(self):
-        from repositories.plex_repository import PlexRepository
-
-        repo = MagicMock(spec=PlexRepository)
-        repo._configured = True
-        repo._cache = MagicMock()
-        repo._cache.get = AsyncMock(return_value=None)
-        repo._cache.set = AsyncMock()
-        repo._request = AsyncMock(return_value={
-            "MediaContainer": {
-                "size": 0,
-                "totalSize": 0,
-                "Metadata": [],
-            }
-        })
-
-        await PlexRepository.get_listening_history(repo)
-        call_args = repo._request.call_args
-        params = call_args[1].get("params") or call_args[0][1] if len(call_args[0]) > 1 else call_args.kwargs.get("params")
-        assert "accountID" not in params

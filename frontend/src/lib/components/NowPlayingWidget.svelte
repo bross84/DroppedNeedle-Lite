@@ -24,7 +24,6 @@
 
 	const sourceLabels: Record<string, string> = {
 		navidrome: 'Navidrome',
-		plex: 'Plex',
 		local: 'DroppedNeedle',
 		youtube: 'YouTube'
 	};

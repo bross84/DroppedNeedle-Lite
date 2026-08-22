@@ -69,14 +69,6 @@
 		unit="min"
 	/>
 	<SettingsNumberField
-		label="Plex Sidebar"
-		description="Default: 2 minutes"
-		bind:value={data.frontend_ttl_plex_sidebar}
-		min={1}
-		max={60}
-		unit="min"
-	/>
-	<SettingsNumberField
 		label="Playlist Sources"
 		description="Default: 15 minutes"
 		bind:value={data.frontend_ttl_playlist_sources}

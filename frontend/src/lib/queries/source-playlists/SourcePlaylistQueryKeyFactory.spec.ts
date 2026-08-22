@@ -9,16 +9,13 @@ describe('SourcePlaylistQueryKeyFactory', () => {
 		);
 	});
 
-	it('separates providers and nests detail under the user and source prefix', () => {
-		expect(SourcePlaylistQueryKeyFactory.detail('alice', 'plex', 'playlist-1')).toEqual([
+	it('nests detail under the user and source prefix', () => {
+		expect(SourcePlaylistQueryKeyFactory.detail('alice', 'navidrome', 'playlist-1')).toEqual([
 			'source-playlists',
 			'alice',
-			'plex',
+			'navidrome',
 			'detail',
 			'playlist-1'
 		]);
-		expect(SourcePlaylistQueryKeyFactory.source('alice', 'navidrome')).not.toEqual(
-			SourcePlaylistQueryKeyFactory.source('alice', 'plex')
-		);
 	});
 });

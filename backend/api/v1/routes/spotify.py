@@ -10,7 +10,6 @@ from core.dependencies import (
     get_local_files_service,
     get_navidrome_library_service,
     get_navidrome_folder_scope_service,
-    get_plex_library_service,
     get_playlist_service,
     get_spotify_import_service,
     get_sse_publisher,
@@ -22,7 +21,7 @@ from services.spotify_import_service import SpotifyImportService, SpotifyNotLink
 from services.local_files_service import LocalFilesService
 from services.playlist_service import PlaylistService
 
-_LINK_SOURCE_PRIORITY = ["local", "navidrome", "plex"]
+_LINK_SOURCE_PRIORITY = ["local", "navidrome"]
 
 logger = logging.getLogger(__name__)
 
@@ -75,13 +74,11 @@ async def _background_import(
             if folder_resolution.scope.mode == "all"
             else folder_resolution.scope.folder_ids
         )
-        plex_service = get_plex_library_service()
         sources_map = await playlist_service.resolve_track_sources(
             playlist_id,
             requesting=current_user,
             local_service=local_service,
             nd_service=nd_service,
-            plex_service=plex_service,
             navidrome_folder_ids=navidrome_folder_ids,
         )
         for track_id, sources in sources_map.items():
@@ -97,7 +94,6 @@ async def _background_import(
                         source_type=best,
                         local_service=local_service,
                         nd_service=nd_service,
-                        plex_service=plex_service,
                         navidrome_folder_ids=navidrome_folder_ids,
                     )
                 except Exception:  # noqa: BLE001

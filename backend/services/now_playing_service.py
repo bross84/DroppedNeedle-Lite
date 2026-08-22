@@ -1,7 +1,7 @@
 """NowPlayingService - in-memory live presence registry.
 
 Holds the current playing session for every source (the native web player and the
-polled upstream Navidrome/Plex servers) and broadcasts a privacy-projected snapshot
+polled upstream Navidrome server) and broadcasts a privacy-projected snapshot
 over the SSE ``now-playing`` channel whenever it changes.
 
 Single-process invariant: correct only under ``uvicorn --workers 1`` (the current

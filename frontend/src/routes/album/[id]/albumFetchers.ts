@@ -6,7 +6,6 @@ import type {
 	YouTubeTrackLink,
 	LocalAlbumMatch,
 	NavidromeAlbumMatch,
-	PlexAlbumMatch,
 	LastFmAlbumEnrichment
 } from '$lib/types';
 import { api } from '$lib/api/client';
@@ -78,17 +77,6 @@ export async function fetchNavidromeMatch(
 	if (opts.albumTitle) matchUrl.searchParams.set('name', opts.albumTitle);
 	if (opts.artistName) matchUrl.searchParams.set('artist', opts.artistName);
 	return api.get<NavidromeAlbumMatch>(matchUrl.toString(), { signal });
-}
-
-export async function fetchPlexMatch(
-	albumId: string,
-	opts: { albumTitle?: string; artistName?: string },
-	signal?: AbortSignal
-): Promise<PlexAlbumMatch | null> {
-	const matchUrl = new URL(API.plexLibrary.albumMatch(albumId), window.location.origin);
-	if (opts.albumTitle) matchUrl.searchParams.set('name', opts.albumTitle);
-	if (opts.artistName) matchUrl.searchParams.set('artist', opts.artistName);
-	return api.get<PlexAlbumMatch>(matchUrl.toString(), { signal });
 }
 
 export async function fetchLastFm(

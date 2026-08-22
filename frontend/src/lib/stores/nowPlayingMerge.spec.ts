@@ -29,20 +29,25 @@ describe('mergeNowPlayingSessions', () => {
 
 	it('prepends the local overlay and de-dupes the upstream echo of the local track', () => {
 		const local = session({
-			id: 'local-plex-1',
-			source: 'plex',
+			id: 'local-navidrome-1',
+			source: 'navidrome',
 			track_name: 'Song',
 			user_name: 'Me',
 			_isLocal: true
 		});
 		const server = [
-			// the Plex poll echoes my own session (different username, same source+track)
-			session({ id: 'plex:s1', source: 'plex', track_name: 'Song', user_name: 'MePlex' }),
-			session({ id: 'plex:s2', source: 'plex', track_name: 'Other', user_name: 'Carol' })
+			// the Navidrome poll echoes my own session (different username, same source+track)
+			session({
+				id: 'navidrome:s1',
+				source: 'navidrome',
+				track_name: 'Song',
+				user_name: 'MeNavidrome'
+			}),
+			session({ id: 'navidrome:s2', source: 'navidrome', track_name: 'Other', user_name: 'Carol' })
 		];
 		const result = mergeNowPlayingSessions(local, server, 'me');
 		expect(result[0]._isLocal).toBe(true);
-		expect(result.map((s) => s.id)).toEqual(['local-plex-1', 'plex:s2']);
+		expect(result.map((s) => s.id)).toEqual(['local-navidrome-1', 'navidrome:s2']);
 	});
 
 	it('keeps other users, including redacted entries with identity + progress', () => {

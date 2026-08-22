@@ -353,7 +353,6 @@ class TestStringTrackNumberRegression:
         stale_data = (
             {"6": ("Speed Kills", "2608"), "1": ("Johnny", "2601")},
             {6: ("Speed Kills", "nd-456"), 1: ("Johnny", "nd-401")},
-            {},
         )
         await cache.set(
             "source_resolution:user:global:scope:all:mbid-abc",
@@ -361,8 +360,8 @@ class TestStringTrackNumberRegression:
             ttl_seconds=3600,
         )
 
-        local, nd, plex = await service._resolve_album_sources(
-            "mbid-abc", None, None, None,
+        local, nd = await service._resolve_album_sources(
+            "mbid-abc", None, None,
         )
 
         assert isinstance(next(iter(local)), tuple)
@@ -429,8 +428,8 @@ class TestResolveTrackSourcesConcurrency:
         async def _flaky(album_id, *args, **kwargs):
             if album_id == "mbid-a":
                 raise RuntimeError("boom")
-            # (local_by_num, nd_by_num, plex_by_num)
-            return ({(1, 1): ("Song B", "789")}, {}, {})
+            # (local_by_num, nd_by_num)
+            return ({(1, 1): ("Song B", "789")}, {})
 
         service._resolve_album_sources = AsyncMock(side_effect=_flaky)
 

@@ -6,15 +6,13 @@
 		YouTubeLink,
 		YouTubeQuotaStatus,
 		LocalAlbumMatch,
-		NavidromeAlbumMatch,
-		PlexAlbumMatch
+		NavidromeAlbumMatch
 	} from '$lib/types';
 	import type { SourceCallbacks } from './albumPageState.svelte';
 	import AlbumYouTubeBar from '$lib/components/AlbumYouTubeBar.svelte';
 	import AlbumSourceBar from '$lib/components/AlbumSourceBar.svelte';
 	import LocalFilesIcon from '$lib/components/LocalFilesIcon.svelte';
 	import NavidromeIcon from '$lib/components/NavidromeIcon.svelte';
-	import PlexIcon from '$lib/components/PlexIcon.svelte';
 
 	interface Props {
 		album: AlbumBasicInfo;
@@ -23,19 +21,15 @@
 		albumLink: YouTubeLink | null;
 		localMatch: LocalAlbumMatch | null;
 		navidromeMatch: NavidromeAlbumMatch | null;
-		plexMatch: PlexAlbumMatch | null;
 		loadingLocal: boolean;
 		loadingNavidrome: boolean;
-		loadingPlex: boolean;
 		youtubeEnabled: boolean;
 		youtubeApiConfigured: boolean;
 		localfilesEnabled: boolean;
 		navidromeEnabled: boolean;
-		plexEnabled: boolean;
 		localCallbacks: SourceCallbacks;
 		localDownloadCallback?: { callback: (() => void) | undefined };
 		navidromeCallbacks: SourceCallbacks;
-		plexCallbacks: SourceCallbacks;
 		onTrackLinksUpdate: (links: YouTubeTrackLink[]) => void;
 		onAlbumLinkUpdate: (link: YouTubeLink) => void;
 		onQuotaUpdate: (q: YouTubeQuotaStatus) => void;
@@ -48,19 +42,15 @@
 		albumLink,
 		localMatch,
 		navidromeMatch,
-		plexMatch,
 		loadingLocal,
 		loadingNavidrome,
-		loadingPlex,
 		youtubeEnabled,
 		youtubeApiConfigured,
 		localfilesEnabled,
 		navidromeEnabled,
-		plexEnabled,
 		localCallbacks,
 		localDownloadCallback,
 		navidromeCallbacks,
-		plexCallbacks,
 		onTrackLinksUpdate,
 		onAlbumLinkUpdate,
 		onQuotaUpdate
@@ -125,28 +115,6 @@
 		>
 			{#snippet icon()}
 				<NavidromeIcon class="h-5 w-5" />
-			{/snippet}
-		</AlbumSourceBar>
-	{/if}
-{/if}
-
-{#if plexEnabled}
-	{#if loadingPlex}
-		<div class="skeleton h-14 w-full rounded-box"></div>
-	{:else if plexMatch?.found}
-		<AlbumSourceBar
-			sourceLabel="Plex"
-			sourceColor="rgb(var(--brand-plex))"
-			trackCount={plexMatch.tracks.length}
-			totalTracks={tracksInfo.tracks.length}
-			onPlayAll={plexCallbacks.onPlayAll}
-			onShuffle={plexCallbacks.onShuffle}
-			onAddAllToQueue={plexCallbacks.onAddAllToQueue}
-			onPlayAllNext={plexCallbacks.onPlayAllNext}
-			onAddAllToPlaylist={plexCallbacks.onAddAllToPlaylist}
-		>
-			{#snippet icon()}
-				<PlexIcon class="h-5 w-5" />
 			{/snippet}
 		</AlbumSourceBar>
 	{/if}

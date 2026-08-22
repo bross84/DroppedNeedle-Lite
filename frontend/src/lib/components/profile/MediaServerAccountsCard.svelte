@@ -2,13 +2,10 @@
 	import { Loader2, ServerCog } from 'lucide-svelte';
 	import { ApiError } from '$lib/api/client';
 	import NavidromeIcon from '$lib/components/NavidromeIcon.svelte';
-	import PlexIcon from '$lib/components/PlexIcon.svelte';
 	import { getConnectionsQuery } from '$lib/queries/connections/ConnectionsQuery.svelte';
 	import {
 		createConnectNavidromeMutation,
-		createDisconnectMutation,
-		createPlexLinkPinMutation,
-		createPlexLinkPollMutation
+		createDisconnectMutation
 	} from '$lib/queries/connections/ConnectionsMutations.svelte';
 	import type { ProfileServiceConnection } from '$lib/queries/profile/types';
 
@@ -22,12 +19,9 @@
 	const connections = $derived(connectionsQuery.data?.connections ?? []);
 
 	const navidromeEnabled = $derived(services.some((s) => s.name === 'Navidrome' && s.enabled));
-	const plexEnabled = $derived(services.some((s) => s.name === 'Plex' && s.enabled));
-	const anyEnabled = $derived(navidromeEnabled || plexEnabled);
+	const anyEnabled = $derived(navidromeEnabled);
 
 	const connectNavidromeMutation = createConnectNavidromeMutation();
-	const plexPinMutation = createPlexLinkPinMutation();
-	const plexPollMutation = createPlexLinkPollMutation();
 	const disconnectMutation = createDisconnectMutation();
 
 	interface CredentialFormState {
@@ -42,9 +36,6 @@
 	}
 
 	let navidromeForm = $state(emptyForm());
-
-	let plexPinId = $state<number | null>(null);
-	let plexError = $state<string | null>(null);
 
 	function errorMessage(e: unknown, fallback: string): string {
 		return e instanceof ApiError ? e.message : fallback;
@@ -62,41 +53,6 @@
 			navidromeForm.error = errorMessage(e, 'Could not sign in to Navidrome.');
 		}
 	}
-
-	async function startPlexLink() {
-		plexError = null;
-		try {
-			const pin = await plexPinMutation.mutateAsync();
-			plexPinId = pin.pin_id;
-			window.open(pin.auth_url, '_blank', 'popup=yes,noopener,noreferrer');
-		} catch (e) {
-			plexError = errorMessage(e, 'Could not start Plex sign-in.');
-		}
-	}
-
-	function cancelPlexLink() {
-		plexPinId = null;
-		plexError = null;
-	}
-
-	// poll the pending pin until Plex reports the user approved it; the backend
-	// stores the link server-side, so completion just needs the query refresh
-	$effect(() => {
-		const pinId = plexPinId;
-		if (pinId === null) return;
-		const interval = setInterval(async () => {
-			try {
-				const result = await plexPollMutation.mutateAsync(pinId);
-				if (result.completed) {
-					plexPinId = null;
-				}
-			} catch (e) {
-				plexPinId = null;
-				plexError = errorMessage(e, 'Plex sign-in failed.');
-			}
-		}, 3000);
-		return () => clearInterval(interval);
-	});
 
 	async function disconnect(service: string) {
 		await disconnectMutation.mutateAsync(service);
@@ -116,12 +72,6 @@
 				label: 'Navidrome',
 				icon: NavidromeIcon,
 				tint: 'bg-green-500/10 text-green-400 ring-green-500/20'
-			},
-			plexEnabled && {
-				service: 'plex',
-				label: 'Plex',
-				icon: PlexIcon,
-				tint: 'bg-amber-500/10 text-amber-400 ring-amber-500/20'
 			}
 		].filter(Boolean) as Row[]
 	);
@@ -199,29 +149,6 @@
 									>
 										Connect
 									</button>
-								{:else if plexPinId !== null}
-									<div class="flex items-center gap-2">
-										<button
-											type="button"
-											class="btn btn-ghost btn-xs rounded-full"
-											onclick={cancelPlexLink}
-										>
-											Cancel
-										</button>
-										<span class="flex items-center gap-1 text-xs text-base-content/50">
-											<Loader2 class="h-3.5 w-3.5 animate-spin" />
-											Waiting for Plex…
-										</span>
-									</div>
-								{:else}
-									<button
-										type="button"
-										class="btn btn-primary btn-xs gap-1 rounded-full px-3 shadow-sm transition-transform hover:scale-[1.03]"
-										onclick={startPlexLink}
-										disabled={plexPinMutation.isPending}
-									>
-										Connect
-									</button>
 								{/if}
 							</div>
 						</div>
@@ -273,10 +200,6 @@
 									</button>
 								</div>
 							</div>
-						{/if}
-
-						{#if row.service === 'plex' && !linked && plexError}
-							<p class="mt-2 text-xs text-error">{plexError}</p>
 						{/if}
 					</div>
 				{/each}

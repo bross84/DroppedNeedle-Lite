@@ -101,7 +101,7 @@ class TestPutSectionPrefs:
         assert resp.status_code == 200
         sidebar = {s["key"]: s["enabled"] for s in resp.json()["pages"]["sidebar"]}
         assert sidebar["navidrome"] is False
-        assert sidebar["plex"] is True
+        assert sidebar["youtube"] is True
 
         # GET reflects the saved state, other pages untouched
         resp = client.get("/me/section-prefs")

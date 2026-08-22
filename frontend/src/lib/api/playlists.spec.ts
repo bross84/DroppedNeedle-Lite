@@ -277,8 +277,7 @@ describe('playlists API client', () => {
 				format: 'aac',
 				track_number: 3,
 				disc_number: null,
-				duration: 240,
-				plex_rating_key: null
+				duration: 240
 			});
 		});
 

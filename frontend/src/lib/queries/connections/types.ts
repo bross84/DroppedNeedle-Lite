@@ -37,13 +37,3 @@ export interface MediaServerConnectVars {
 	username: string;
 	password: string;
 }
-
-export interface PlexLinkPinResponse {
-	pin_id: number;
-	auth_url: string;
-}
-
-export interface PlexLinkPollResponse {
-	completed: boolean;
-	username: string;
-}

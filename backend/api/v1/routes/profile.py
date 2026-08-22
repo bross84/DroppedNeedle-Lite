@@ -110,15 +110,6 @@ async def get_profile(
         url=navidrome_conn.navidrome_url,
     ))
 
-    plex_conn = preferences.get_plex_connection()
-    services.append(ServiceConnection(
-        name="Plex",
-        enabled=plex_conn.enabled,
-        # the app-level Plex connection is token-based; there is no username to show
-        username="",
-        url=plex_conn.plex_url,
-    ))
-
     async def _fetch_local_stats() -> LibraryStats | None:
         try:
             s = await local_service.get_storage_stats()

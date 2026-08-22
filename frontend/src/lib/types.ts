@@ -808,106 +808,6 @@ export type NavidromePaginatedResponse = {
 	total: number;
 };
 
-export type PlexConnectionSettings = {
-	plex_url: string;
-	plex_token: string;
-	enabled: boolean;
-	login_enabled: boolean;
-	music_library_ids: string[];
-	scrobble_to_plex: boolean;
-};
-
-export type PlexTrackInfo = {
-	plex_id: string;
-	title: string;
-	track_number: number;
-	duration_seconds: number;
-	disc_number: number;
-	album_name: string;
-	artist_name: string;
-	codec?: string | null;
-	bitrate?: number | null;
-	audio_channels?: number | null;
-	container?: string | null;
-	part_key?: string | null;
-	image_url?: string | null;
-};
-
-export type PlexAlbumSummary = {
-	plex_id: string;
-	name: string;
-	artist_name: string;
-	year?: number | null;
-	track_count: number;
-	image_url?: string | null;
-	musicbrainz_id?: string | null;
-	artist_musicbrainz_id?: string | null;
-	last_viewed_at?: number;
-};
-
-export type PlexAlbumDetail = PlexAlbumSummary & {
-	tracks: PlexTrackInfo[];
-	genres: string[];
-};
-
-export type PlexAlbumMatch = {
-	found: boolean;
-	plex_album_id?: string | null;
-	tracks: PlexTrackInfo[];
-};
-
-export type PlexArtistSummary = {
-	plex_id: string;
-	name: string;
-	image_url?: string | null;
-	musicbrainz_id?: string | null;
-};
-
-export type PlexSearchResponse = {
-	albums: PlexAlbumSummary[];
-	artists: PlexArtistSummary[];
-	tracks: PlexTrackInfo[];
-};
-
-export type PlexLibraryStats = {
-	total_tracks: number;
-	total_albums: number;
-	total_artists: number;
-};
-
-export type PlexPaginatedResponse = {
-	items: PlexAlbumSummary[];
-	total: number;
-};
-
-export type PlexArtistPage = {
-	items: PlexArtistSummary[];
-	total: number;
-	offset: number;
-	limit: number;
-};
-
-export type PlexArtistIndexEntry = {
-	name: string;
-	artists: PlexArtistSummary[];
-};
-
-export type PlexArtistIndexResponse = {
-	index: PlexArtistIndexEntry[];
-};
-
-export type PlexTrackPage = {
-	items: PlexTrackInfo[];
-	total: number;
-	offset: number;
-	limit: number;
-};
-
-export type PlexLibrarySection = {
-	key: string;
-	title: string;
-};
-
 export type BrowseHeroCard = {
 	label: string;
 	value: number | null;
@@ -928,32 +828,6 @@ export type ArtistIndexArtist = {
 export type ArtistIndexEntry = {
 	name: string;
 	artists: ArtistIndexArtist[];
-};
-
-export type PlexHubResponse = {
-	stats: PlexLibraryStats | null;
-	recently_played: PlexAlbumSummary[];
-	recently_added: PlexAlbumSummary[];
-	all_albums_preview: PlexAlbumSummary[];
-	genres: string[];
-};
-
-export type PlexDiscoveryAlbum = {
-	plex_id: string;
-	name: string;
-	artist_name: string;
-	year?: number | null;
-	image_url?: string | null;
-};
-
-export type PlexDiscoveryHub = {
-	title: string;
-	hub_type: string;
-	albums: PlexDiscoveryAlbum[];
-};
-
-export type PlexDiscoveryResponse = {
-	hubs: PlexDiscoveryHub[];
 };
 
 export type NavidromeHubResponse = {
@@ -1211,7 +1085,7 @@ export type SourcePlaylistSummary = {
 	created_at?: string;
 };
 
-export type SourcePlaylistSource = 'navidrome' | 'plex';
+export type SourcePlaylistSource = 'navidrome';
 
 export type SourcePlaylistCollection = {
 	account_mode: 'linked' | 'shared';
@@ -1226,7 +1100,6 @@ export type SourcePlaylistTrack = {
 	album_name: string;
 	album_id: string;
 	artist_id?: string;
-	plex_rating_key?: string;
 	duration_seconds: number;
 	track_number: number;
 	disc_number: number;
@@ -1250,29 +1123,6 @@ export type SourceImportResult = {
 	tracks_imported: number;
 	tracks_failed: number;
 	already_imported: boolean;
-};
-
-export type PlexSessionInfo = {
-	session_id: string;
-	user_name: string;
-	track_title: string;
-	artist_name: string;
-	album_name: string;
-	cover_url: string;
-	player_device: string;
-	player_platform: string;
-	player_state: string;
-	is_direct_play: boolean;
-	progress_ms: number;
-	duration_ms: number;
-	audio_codec: string;
-	audio_channels: number;
-	bitrate: number;
-};
-
-export type PlexSessionsResponse = {
-	sessions: PlexSessionInfo[];
-	available: boolean;
 };
 
 export type NavidromeNowPlayingEntry = {
@@ -1301,7 +1151,7 @@ export type NowPlayingSession = {
 	cover_url: string;
 	device_name: string;
 	is_paused: boolean;
-	// upstream servers use 'navidrome'|'plex'; the web player adds
+	// upstream server uses 'navidrome'; the web player adds
 	// 'local'|'youtube'; connected apps report their client name (e.g. 'finamp')
 	source?: string;
 	progress_ms?: number;
@@ -1319,43 +1169,6 @@ export type NavidromeArtistInfo = {
 	biography: string;
 	image_url: string;
 	similar_artists: NavidromeArtistSummary[];
-};
-
-export type PlexHistoryEntry = {
-	rating_key: string;
-	track_title: string;
-	artist_name: string;
-	album_name: string;
-	cover_url: string;
-	viewed_at: string;
-	device_name: string;
-};
-
-export type PlexHistoryResponse = {
-	entries: PlexHistoryEntry[];
-	total: number;
-	limit: number;
-	offset: number;
-	available: boolean;
-};
-
-export type PlexAnalyticsItem = {
-	name: string;
-	subtitle: string;
-	play_count: number;
-	cover_url: string | null;
-};
-
-export type PlexAnalyticsResponse = {
-	top_artists: PlexAnalyticsItem[];
-	top_albums: PlexAnalyticsItem[];
-	top_tracks: PlexAnalyticsItem[];
-	total_listens: number;
-	listens_last_7_days: number;
-	listens_last_30_days: number;
-	total_hours: number;
-	is_complete: boolean;
-	entries_analyzed: number;
 };
 
 export type LyricLine = {
@@ -1983,7 +1796,6 @@ export interface HomeIntegrationStatus {
 	lastfm: boolean;
 	navidrome: boolean;
 	youtube_api: boolean;
-	plex: boolean;
 	library: boolean;
 	localfiles: boolean;
 }

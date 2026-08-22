@@ -4,7 +4,6 @@ from typing import Annotated, Literal
 import msgspec
 
 from api.v1.schemas.advanced_settings import _validate_range
-from api.v1.schemas.plex import PlexLibrarySectionInfo
 from infrastructure.msgspec_fastapi import AppStruct
 
 LASTFM_SECRET_MASK = "••••••••"
@@ -459,23 +458,6 @@ class PlexConnectionSettings(AppStruct):
 
     def __post_init__(self) -> None:
         self.plex_url = self.plex_url.rstrip("/") if self.plex_url else ""
-
-
-class PlexVerifyResponse(AppStruct):
-    valid: bool
-    message: str
-    libraries: list[PlexLibrarySectionInfo] = []
-
-
-class PlexOAuthPinResponse(AppStruct):
-    pin_id: int
-    pin_code: str
-    auth_url: str
-
-
-class PlexOAuthPollResponse(AppStruct):
-    completed: bool
-    auth_token: str = ""
 
 
 class ListenBrainzConnectionSettings(AppStruct):

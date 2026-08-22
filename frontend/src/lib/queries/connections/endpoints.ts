@@ -8,7 +8,5 @@ export const CONNECTIONS_ENDPOINTS = {
 	lastfmAuthSession: API.me.lastfmAuthSession(),
 	listenbrainz: API.me.listenbrainz(),
 	navidrome: API.me.navidrome(),
-	plexAuthPin: API.me.plexAuthPin(),
-	plexAuthPoll: (pinId: number) => API.me.plexAuthPoll(pinId),
 	spotifyAuthUrl: API.me.spotifyAuthUrl()
 } as const;

@@ -426,26 +426,6 @@ async def warm_navidrome_mbid_cache(service_getter=None) -> None:
             break
 
 
-async def warm_plex_mbid_cache(service_getter=None) -> None:
-    if service_getter is None:
-        from core.dependencies import get_plex_library_service
-
-        service_getter = get_plex_library_service
-
-    await asyncio.sleep(15)
-    while True:
-        try:
-            service = service_getter()
-            await service.warm_mbid_cache()
-            await service.persist_if_dirty()
-        except asyncio.CancelledError:
-            break
-        except Exception as e:
-            logger.error("Plex MBID cache warming failed: %s", e, exc_info=True)
-        try:
-            await asyncio.sleep(14400)
-        except asyncio.CancelledError:
-            break
 
 
 async def warm_artist_discovery_cache_periodically(

@@ -33,7 +33,6 @@ from core.dependencies import (
     get_navidrome_library_service,
     get_navidrome_folder_scope_service,
     get_navidrome_repository,
-    get_plex_library_service,
     get_playlist_service,
 )
 from core.exceptions import ExternalServiceError, ResourceNotFoundError
@@ -447,7 +446,6 @@ async def import_navidrome_playlist(
     service: NavidromeLibraryService = Depends(get_navidrome_library_service),
     playlist_service: PlaylistService = Depends(get_playlist_service),
     local_service=Depends(get_local_files_service),
-    plex_service=Depends(get_plex_library_service),
 ) -> NavidromeImportResult:
     try:
         result = await service.import_playlist(
@@ -469,7 +467,6 @@ async def import_navidrome_playlist(
             requesting=current_user,
             local_service=local_service,
             nd_service=service,
-            plex_service=plex_service,
             navidrome_folder_ids=music_folder_ids,
         )
     return result

@@ -1298,13 +1298,6 @@
 								><input
 									type="checkbox"
 									class="checkbox checkbox-xs"
-									bind:checked={draft.external_refresh.plex_enabled}
-								/><span>Plex</span></label
-							>
-							<label
-								><input
-									type="checkbox"
-									class="checkbox checkbox-xs"
 									bind:checked={draft.external_refresh.navidrome_enabled}
 								/><span>Navidrome</span></label
 							>

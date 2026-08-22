@@ -7,11 +7,8 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from api.v1.schemas.navidrome import NavidromeArtistInfoSchema, NavidromeTrackInfo
-from api.v1.schemas.plex import PlexAnalyticsResponse, PlexHistoryResponse
 from repositories.navidrome_models import SubsonicArtist, SubsonicArtistInfo, SubsonicSong
-from repositories.plex_models import PlexHistoryEntry
 from services.navidrome_library_service import NavidromeLibraryService
-from services.plex_library_service import PlexLibraryService
 
 
 def _make_navidrome_service() -> tuple[NavidromeLibraryService, MagicMock]:
@@ -32,42 +29,10 @@ def _make_navidrome_service() -> tuple[NavidromeLibraryService, MagicMock]:
     return service, repo
 
 
-def _make_plex_service() -> tuple[PlexLibraryService, MagicMock]:
-    repo = MagicMock()
-    repo.is_configured.return_value = True
-    repo.get_listening_history = AsyncMock(return_value=([], 0))
-    repo.get_music_libraries = AsyncMock(return_value=[])
-    prefs = MagicMock()
-    prefs.get_advanced_settings.return_value = MagicMock()
-    service = PlexLibraryService(plex_repo=repo, preferences_service=prefs)
-    return service, repo
-
-
 def _subsonic_song(id: str = "s1", title: str = "Song", artist: str = "Artist",
                    album: str = "Album", track: int = 1, duration: int = 200) -> SubsonicSong:
     return SubsonicSong(id=id, title=title, artist=artist, album=album,
                         track=track, duration=duration)
-
-
-def _plex_history_entry(
-    rating_key: str = "100",
-    track_title: str = "Song",
-    artist_name: str = "Artist",
-    album_name: str = "Album",
-    viewed_at: int = 1700000000,
-    duration_ms: int = 200000,
-) -> PlexHistoryEntry:
-    return PlexHistoryEntry(
-        rating_key=rating_key,
-        track_title=track_title,
-        artist_name=artist_name,
-        album_name=album_name,
-        album_rating_key="200",
-        viewed_at=viewed_at,
-        duration_ms=duration_ms,
-        device_name="Chrome",
-        player_platform="Web",
-    )
 
 
 class TestNavidromeTopSongs:
@@ -141,78 +106,3 @@ class TestNavidromeArtistInfo:
         repo.get_artist_info.side_effect = Exception("Fail")
         result = await service.get_artist_info("ar1")
         assert result is None
-
-
-class TestPlexHistory:
-    @pytest.mark.asyncio
-    async def test_returns_history_response(self):
-        service, repo = _make_plex_service()
-        repo.get_listening_history.return_value = (
-            [_plex_history_entry("100", "Song 1"), _plex_history_entry("101", "Song 2")],
-            50,
-        )
-        result = await service.get_history(limit=10)
-        assert isinstance(result, PlexHistoryResponse)
-        assert len(result.entries) == 2
-        assert result.total == 50
-        assert result.entries[0].track_title == "Song 1"
-
-    @pytest.mark.asyncio
-    async def test_returns_empty_history(self):
-        service, repo = _make_plex_service()
-        repo.get_listening_history.return_value = ([], 0)
-        result = await service.get_history()
-        assert result.entries == []
-        assert result.total == 0
-
-
-class TestPlexAnalytics:
-    @pytest.mark.asyncio
-    async def test_aggregation_with_entries(self):
-        import time
-
-        now_ts = int(time.time())
-        entries = [
-            _plex_history_entry("1", "Song A", "Artist X", "Album 1", now_ts, 180000),
-            _plex_history_entry("2", "Song A", "Artist X", "Album 1", now_ts, 180000),
-            _plex_history_entry("3", "Song B", "Artist Y", "Album 2", now_ts, 240000),
-        ]
-        service, repo = _make_plex_service()
-        repo.get_listening_history.return_value = (entries, 3)
-        result = await service.get_analytics()
-        assert isinstance(result, PlexAnalyticsResponse)
-        assert result.total_listens == 3
-        assert result.entries_analyzed == 3
-        assert result.is_complete is True
-        assert result.top_artists[0].name == "Artist X"
-        assert result.top_artists[0].play_count == 2
-        assert result.top_tracks[0].name == "Song A"
-        assert result.listens_last_7_days == 3
-        assert result.total_hours > 0
-
-    @pytest.mark.asyncio
-    async def test_empty_history_analytics(self):
-        service, repo = _make_plex_service()
-        repo.get_listening_history.return_value = ([], 0)
-        result = await service.get_analytics()
-        assert result.total_listens == 0
-        assert result.top_artists == []
-        assert result.is_complete is True
-
-    @pytest.mark.asyncio
-    async def test_incomplete_flag_set(self):
-        entries = [_plex_history_entry(str(i), f"Song {i}") for i in range(500)]
-        service, repo = _make_plex_service()
-
-        call_count = 0
-        async def mock_history(limit: int = 50, offset: int = 0):
-            nonlocal call_count
-            call_count += 1
-            if offset == 0:
-                return (entries, 10000)
-            return ([], 10000)
-
-        repo.get_listening_history = AsyncMock(side_effect=mock_history)
-        result = await service.get_analytics()
-        assert result.entries_analyzed == 500
-        assert result.is_complete is False

@@ -9,9 +9,7 @@ import type {
 	LastFmAuthSessionResponse,
 	LastFmAuthTokenResponse,
 	ListenBrainzConnectVars,
-	MediaServerConnectVars,
-	PlexLinkPinResponse,
-	PlexLinkPollResponse
+	MediaServerConnectVars
 } from './types';
 import type { SourcePlaylistSource } from '$lib/types';
 import { SourcePlaylistQueryKeyFactory } from '$lib/queries/source-playlists/SourcePlaylistQueryKeyFactory';
@@ -23,7 +21,7 @@ function invalidateConnections(): Promise<void> {
 }
 
 function isMediaSource(service: string): service is SourcePlaylistSource {
-	return service === 'navidrome' || service === 'plex';
+	return service === 'navidrome';
 }
 
 async function invalidateConnectionAndPlaylists(service?: string): Promise<void> {
@@ -81,21 +79,6 @@ export const createConnectNavidromeMutation = () =>
 		mutationFn: (vars: MediaServerConnectVars) =>
 			api.global.put<ConnectionStatusResponse>(CONNECTIONS_ENDPOINTS.navidrome, vars),
 		onSuccess: () => invalidateConnectionAndPlaylists('navidrome')
-	}));
-
-// Plex OAuth step 1: mint a pin + popup URL (no state change yet)
-export const createPlexLinkPinMutation = () =>
-	createMutation(() => ({
-		mutationFn: () => api.global.post<PlexLinkPinResponse>(CONNECTIONS_ENDPOINTS.plexAuthPin)
-	}));
-
-// Plex OAuth step 2: poll the pin; the backend persists the link on completion
-export const createPlexLinkPollMutation = () =>
-	createMutation(() => ({
-		mutationFn: (pinId: number) =>
-			api.global.get<PlexLinkPollResponse>(CONNECTIONS_ENDPOINTS.plexAuthPoll(pinId)),
-		onSuccess: (data: PlexLinkPollResponse) =>
-			data.completed ? invalidateConnectionAndPlaylists('plex') : Promise.resolve()
 	}));
 
 type ConnectionStatusResponse = { service: string; enabled: boolean; username: string };

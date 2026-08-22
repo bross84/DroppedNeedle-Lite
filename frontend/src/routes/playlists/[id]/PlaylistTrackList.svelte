@@ -181,8 +181,7 @@
 					track.id,
 					updated.source_type as SourceType,
 					updated.track_source_id,
-					updated.format ?? undefined,
-					updated.plex_rating_key ?? undefined
+					updated.format ?? undefined
 				);
 			}
 			onsourcechange?.();

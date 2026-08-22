@@ -130,8 +130,8 @@ export class YouTubePlaybackSource implements PlaybackSource {
 	 * once the window is minimised or closed. `visibilitychange` is the only signal that covers
 	 * both, so we pause on hidden and resume only what we ourselves paused.
 	 *
-	 * This lives in the YouTube source rather than the shared engine on purpose. Local files,
-	 * Navidrome and Plex all keep playing in the background as before.
+	 * This lives in the YouTube source rather than the shared engine on purpose. Local files
+	 * and Navidrome keep playing in the background as before.
 	 */
 	private attachVisibilityGuard(): void {
 		if (this.visibilityHandler || typeof document === 'undefined') return;

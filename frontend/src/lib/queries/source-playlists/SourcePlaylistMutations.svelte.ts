@@ -15,8 +15,6 @@ function importUrl(source: SourcePlaylistSource, playlistId: string): string {
 	switch (source) {
 		case 'navidrome':
 			return API.navidromeLibrary.playlistImport(playlistId);
-		case 'plex':
-			return API.plexLibrary.playlistImport(playlistId);
 	}
 }
 

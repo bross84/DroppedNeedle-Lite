@@ -1,4 +1,4 @@
-"""Route tests for discovery endpoints across Navidrome and Plex."""
+"""Route tests for discovery endpoints across Navidrome."""
 from __future__ import annotations
 
 import os
@@ -13,14 +13,10 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from api.v1.routes.navidrome_library import router as navidrome_router
-from api.v1.routes.plex_library import router as plex_router
 from api.v1.schemas.navidrome import NavidromeTrackInfo
-from api.v1.schemas.plex import PlexDiscoveryAlbum, PlexDiscoveryHub, PlexDiscoveryResponse
 from core.dependencies import (
     get_navidrome_folder_scope_service,
     get_navidrome_library_service,
-    get_plex_library_service,
-    get_plex_repository,
 )
 from infrastructure.persistence.navidrome_folder_preferences_store import (
     NavidromeFolderPreference,
@@ -79,44 +75,3 @@ class TestNavidromeRandomRoute:
         resp = self.client.get("/navidrome/random")
         assert resp.status_code == 200
         assert resp.json() == []
-
-
-class TestPlexDiscoveryRoute:
-    @pytest.fixture
-    def _setup(self):
-        self.mock_svc = MagicMock()
-        self.mock_svc.get_discovery_hubs = AsyncMock(return_value=PlexDiscoveryResponse(
-            hubs=[PlexDiscoveryHub(
-                title="Recommended",
-                hub_type="album",
-                albums=[PlexDiscoveryAlbum(
-                    plex_id="p1", name="Album", artist_name="Artist",
-                    year=2024, image_url="/cover",
-                )],
-            )]
-        ))
-        self.mock_repo = MagicMock()
-        app = FastAPI()
-        app.include_router(plex_router)
-        app.dependency_overrides[get_plex_library_service] = lambda: self.mock_svc
-        app.dependency_overrides[get_plex_repository] = lambda: self.mock_repo
-        self.client = TestClient(app)
-
-    def test_discovery_returns_hubs(self, _setup):
-        resp = self.client.get("/plex/discovery")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert len(data["hubs"]) == 1
-        assert data["hubs"][0]["title"] == "Recommended"
-        assert data["hubs"][0]["albums"][0]["plex_id"] == "p1"
-
-    def test_discovery_empty(self, _setup):
-        self.mock_svc.get_discovery_hubs = AsyncMock(return_value=PlexDiscoveryResponse(hubs=[]))
-        resp = self.client.get("/plex/discovery")
-        assert resp.status_code == 200
-        assert resp.json()["hubs"] == []
-
-    def test_discovery_custom_count(self, _setup):
-        resp = self.client.get("/plex/discovery?count=5")
-        assert resp.status_code == 200
-        self.mock_svc.get_discovery_hubs.assert_awaited_once_with(count=5)

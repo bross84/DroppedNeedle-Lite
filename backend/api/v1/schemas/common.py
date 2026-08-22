@@ -14,7 +14,6 @@ class IntegrationStatus(AppStruct):
     lastfm: bool
     navidrome: bool = False
     youtube_api: bool = False
-    plex: bool = False
     library: bool = False
 
 

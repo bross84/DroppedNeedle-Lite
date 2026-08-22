@@ -284,7 +284,6 @@ describe('playlistTrackToQueueItem', () => {
 		disc_number: 2,
 		duration: 240,
 		created_at: '2026-01-01T00:00:00Z',
-		plex_rating_key: null,
 		library_file_id: null
 	};
 

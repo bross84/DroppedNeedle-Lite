@@ -185,7 +185,7 @@ describe('NativeAudioSource', () => {
 	});
 
 	it('seekTo is no-op when stream is not seekable', () => {
-		const source = new NativeAudioSource('plex', { url: '/transcode.opus', seekable: false });
+		const source = new NativeAudioSource('navidrome', { url: '/transcode.opus', seekable: false });
 		hoisted.audio.currentTime = 5;
 
 		source.seekTo(60);

@@ -12,7 +12,6 @@ const { integrationState, prefsState, authState } = vi.hoisted(() => ({
 		loaded: true,
 		youtube: false,
 		navidrome: false,
-		plex: false,
 		localfiles: false,
 		download_client: false
 	},
@@ -49,7 +48,7 @@ vi.mock('$lib/queries/section-prefs/SectionPrefsQuery.svelte', () => ({
 import SidebarServices from './SidebarServices.svelte';
 
 function sidebarPrefs(disabledKeys: string[]): { pages: Record<string, SectionPrefItem[]> } {
-	const keys = ['youtube', 'navidrome', 'plex', 'localfiles'];
+	const keys = ['youtube', 'navidrome', 'localfiles'];
 	return {
 		pages: {
 			sidebar: keys.map((key) => ({
@@ -71,7 +70,6 @@ describe('SidebarServices', () => {
 			loaded: true,
 			youtube: false,
 			navidrome: false,
-			plex: false,
 			localfiles: false,
 			download_client: false
 		});
@@ -105,17 +103,17 @@ describe('SidebarServices', () => {
 		render(SidebarServices);
 
 		// other hints remain, the hidden one is gone entirely
-		await expect.element(page.getByText('Plex')).toBeInTheDocument();
+		await expect.element(page.getByText('Navidrome')).toBeInTheDocument();
 		await expect.element(page.getByText('YouTube')).not.toBeInTheDocument();
 	});
 
 	it('fails open while prefs have not loaded', async () => {
-		integrationState.plex = true;
+		integrationState.youtube = true;
 		prefsState.data = undefined;
 		prefsState.isLoading = true;
 		render(SidebarServices);
 
-		await expect.element(page.getByRole('link', { name: 'Plex' })).toBeInTheDocument();
+		await expect.element(page.getByRole('link', { name: 'YouTube' })).toBeInTheDocument();
 	});
 
 	it('shows no connect hints to non-admins', async () => {
