@@ -9,6 +9,8 @@ from fastapi.testclient import TestClient
 from api.v1.schemas.home import HomeAlbum, HomeSection
 from api.v1.routes.discover import router
 from core.dependencies import get_discover_service
+from middleware import _get_current_user
+from tests.helpers import mock_user
 
 
 def _make_radio_section(source: str = "listenbrainz", count: int = 3) -> HomeSection:
@@ -42,6 +44,7 @@ def client(mock_discover_service):
     app = FastAPI()
     app.include_router(router)
     app.dependency_overrides[get_discover_service] = lambda: mock_discover_service
+    app.dependency_overrides[_get_current_user] = mock_user
     return TestClient(app)
 
 

@@ -76,10 +76,11 @@ async def refresh_discover_data(
 
 @router.post("/radio", response_model=HomeSection)
 async def discover_radio(
+    current_user: CurrentUserDep,
     body: RadioRequest = MsgSpecBody(RadioRequest),
     service: DiscoverService = Depends(get_discover_service),
 ) -> HomeSection:
-    return await service.generate_radio(body)
+    return await service.generate_radio(body, current_user.id)
 
 
 @router.post("/radio/plan", response_model=RadioPlanResponse)

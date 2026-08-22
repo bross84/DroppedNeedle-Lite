@@ -394,7 +394,7 @@ def _miss_service(built_at: dict):
     svc._integration.get_discover_cache_key.return_value = (
         "discover_response:u1:True:False"
     )
-    svc._integration.get_integration_status.return_value = MagicMock()
+    svc._integration.get_integration_status_for_user.return_value = MagicMock()
     svc._build_service_prompts = MagicMock(return_value=[])
     svc._trigger_warm = MagicMock()
     svc._built_at = built_at

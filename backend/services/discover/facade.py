@@ -230,10 +230,10 @@ class DiscoverService:
     ) -> RadioPlanResponse:
         return await self._radio_plan.build_plan(user_id, request)
 
-    async def generate_radio(self, request: Any) -> HomeSection:
+    async def generate_radio(self, request: Any, user_id: str) -> HomeSection:
         if self._radio is None:
             raise HTTPException(status_code=501, detail="Radio service not configured")
-        return await self._radio.generate_radio(request)
+        return await self._radio.generate_radio(request, user_id)
 
     async def get_playlist_suggestions(
         self,

@@ -107,6 +107,8 @@ def _make_radio_service(
     album_discovery: AsyncMock | None = None,
     genre_index: AsyncMock | None = None,
     integration: IntegrationHelpers | None = None,
+    client_factory: AsyncMock | None = None,
+    lb_enabled: bool = True,
 ) -> DiscoverRadioService:
     if lb_repo is None:
         lb_repo = AsyncMock()
@@ -130,6 +132,9 @@ def _make_radio_service(
     if integration is None:
         prefs = _make_prefs()
         integration = IntegrationHelpers(prefs)
+    if client_factory is None:
+        client_factory = AsyncMock()
+        client_factory.is_listenbrainz_linked = AsyncMock(return_value=lb_enabled)
 
     return DiscoverRadioService(
         lb_repo=lb_repo,
@@ -138,6 +143,7 @@ def _make_radio_service(
         album_discovery=album_discovery,
         genre_index=genre_index,
         integration=integration,
+        client_factory=client_factory,
     )
 
 
@@ -192,7 +198,7 @@ class TestArtistSeed:
         service = _make_radio_service(lb_repo=lb_repo)
         request = RadioRequest(seed_type="artist", seed_id="valid-mbid")
 
-        result = await service.generate_radio(request)
+        result = await service.generate_radio(request, "test-user")
 
         assert result.type == "albums"
         assert result.title.startswith("Radio: ")
@@ -209,7 +215,7 @@ class TestArtistSeed:
         request = RadioRequest(seed_type="artist", seed_id="bad-mbid")
 
         with pytest.raises(HTTPException) as exc_info:
-            await service.generate_radio(request)
+            await service.generate_radio(request, "test-user")
         assert exc_info.value.status_code == 404
 
     @pytest.mark.asyncio
@@ -226,7 +232,7 @@ class TestArtistSeed:
         service = _make_radio_service(lb_repo=lb_repo)
         request = RadioRequest(seed_type="artist", seed_id="valid-mbid")
 
-        result = await service.generate_radio(request)
+        result = await service.generate_radio(request, "test-user")
 
         assert result.type == "albums"
         assert result.items == []
@@ -261,7 +267,7 @@ class TestAlbumSeed:
         service = _make_radio_service(mb_repo=mb_repo, album_discovery=album_discovery)
         request = RadioRequest(seed_type="album", seed_id="seed-album-mbid")
 
-        result = await service.generate_radio(request)
+        result = await service.generate_radio(request, "test-user")
 
         assert result.type == "albums"
         assert result.title == "Radio: Seed Album"
@@ -279,7 +285,7 @@ class TestAlbumSeed:
         request = RadioRequest(seed_type="album", seed_id="bad-mbid")
 
         with pytest.raises(HTTPException) as exc_info:
-            await service.generate_radio(request)
+            await service.generate_radio(request, "test-user")
         assert exc_info.value.status_code == 404
 
     @pytest.mark.asyncio
@@ -304,7 +310,7 @@ class TestAlbumSeed:
         service = _make_radio_service(mb_repo=mb_repo, album_discovery=album_discovery)
         request = RadioRequest(seed_type="album", seed_id="seed-mbid")
 
-        result = await service.generate_radio(request)
+        result = await service.generate_radio(request, "test-user")
 
         mbids = [item.mbid for item in result.items if isinstance(item, HomeAlbum)]
         assert "seed-mbid" not in mbids
@@ -330,7 +336,7 @@ class TestGenreSeed:
         service = _make_radio_service(genre_index=genre_index)
         request = RadioRequest(seed_type="genre", seed_id="indie rock")
 
-        result = await service.generate_radio(request)
+        result = await service.generate_radio(request, "test-user")
 
         assert result.type == "albums"
         assert result.title == "Radio: Indie Rock"
@@ -345,7 +351,7 @@ class TestGenreSeed:
         request = RadioRequest(seed_type="genre", seed_id="nonexistent genre")
 
         with pytest.raises(HTTPException) as exc_info:
-            await service.generate_radio(request)
+            await service.generate_radio(request, "test-user")
         assert exc_info.value.status_code == 422
 
     @pytest.mark.asyncio
@@ -363,7 +369,7 @@ class TestGenreSeed:
         service = _make_radio_service(genre_index=genre_index)
         request = RadioRequest(seed_type="genre", seed_id="rock")
 
-        await service.generate_radio(request)
+        await service.generate_radio(request, "test-user")
 
         call_args = mock_pools.call_args
         seeds_passed = call_args[0][0]
@@ -377,7 +383,7 @@ class TestInputValidation:
         request = RadioRequest(seed_type="artist", seed_id="")
 
         with pytest.raises(HTTPException) as exc_info:
-            await service.generate_radio(request)
+            await service.generate_radio(request, "test-user")
         assert exc_info.value.status_code == 400
 
     @pytest.mark.asyncio
@@ -386,7 +392,7 @@ class TestInputValidation:
         request = RadioRequest(seed_type="artist", seed_id="   ")
 
         with pytest.raises(HTTPException) as exc_info:
-            await service.generate_radio(request)
+            await service.generate_radio(request, "test-user")
         assert exc_info.value.status_code == 400
 
 
@@ -406,7 +412,7 @@ class TestCountAndSource:
         service = _make_radio_service(lb_repo=lb_repo)
         request = RadioRequest(seed_type="artist", seed_id="valid-mbid", count=5)
 
-        result = await service.generate_radio(request)
+        result = await service.generate_radio(request, "test-user")
 
         assert len(result.items) <= 5
         mock_select.assert_called_once_with(mock_pools.return_value, 5)
@@ -425,7 +431,7 @@ class TestCountAndSource:
         service = _make_radio_service(lb_repo=lb_repo)
         request = RadioRequest(seed_type="artist", seed_id="valid-mbid", source=None)
 
-        result = await service.generate_radio(request)
+        result = await service.generate_radio(request, "test-user")
 
         assert result.source == "listenbrainz"
 
@@ -518,10 +524,10 @@ class TestGenerateRadioFallbackWhenSourceDisabled:
     async def test_generate_radio_returns_fallback_section_when_source_disabled(self) -> None:
         prefs = _make_prefs(lb_enabled=False, lfm_enabled=False)
         integration = IntegrationHelpers(prefs)
-        service = _make_radio_service(integration=integration)
+        service = _make_radio_service(integration=integration, lb_enabled=False)
         request = RadioRequest(seed_type="artist", seed_id="valid-mbid", source="listenbrainz")
 
-        result = await service.generate_radio(request)
+        result = await service.generate_radio(request, "test-user")
 
         assert result.items == []
         assert result.fallback_message == "listenbrainz is not enabled"

@@ -372,7 +372,9 @@ class DiscoverHomepageService:
             self._trigger_warm(user_id)
             building = True
         return DiscoverResponse(
-            integration_status=self._integration.get_integration_status(),
+            integration_status=self._integration.get_integration_status_for_user(
+                lb_enabled, lfm_enabled
+            ),
             service_prompts=self._build_service_prompts(lb_enabled, lfm_enabled),
             refresh_started_at=getattr(self, "_refresh_started_at", {}).get(user_id),
             section_status=self._build_section_status(None, updating=building),
@@ -581,7 +583,9 @@ class DiscoverHomepageService:
             await self._cache_empty_build_marker(
                 cache_key,
                 DiscoverResponse(
-                    integration_status=self._integration.get_integration_status(),
+                    integration_status=self._integration.get_integration_status_for_user(
+                        lb_enabled, lfm_enabled
+                    ),
                     service_prompts=self._build_service_prompts(
                         lb_enabled, lfm_enabled
                     ),
@@ -976,7 +980,9 @@ class DiscoverHomepageService:
         )
 
         response = DiscoverResponse(
-            integration_status=self._integration.get_integration_status(),
+            integration_status=self._integration.get_integration_status_for_user(
+                lb_enabled, lfm_enabled
+            ),
             service_status=degraded or None,
         )
 
