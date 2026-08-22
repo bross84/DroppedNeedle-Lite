@@ -48,13 +48,6 @@ def _make_prefs(
     prefs.get_primary_music_source.return_value = PrimaryMusicSourceSettings(source=primary_source)
     prefs.get_advanced_settings.return_value = AdvancedSettings()
 
-    jf_settings = MagicMock()
-    jf_settings.enabled = False
-    jf_settings.jellyfin_url = ""
-    jf_settings.api_key = ""
-    jf_settings.user_id = ""
-    prefs.get_jellyfin_connection.return_value = jf_settings
-
     download_client = MagicMock()
     download_client.enabled = False
     download_client.url = ""
@@ -97,7 +90,6 @@ def _make_service(
     lfm_repo.get_similar_artists = AsyncMock(return_value=[])
     lfm_repo.get_artist_top_albums = AsyncMock(return_value=[])
 
-    jf_repo = AsyncMock()
     library_repo = AsyncMock()
     mb_repo = AsyncMock()
     mb_repo.search_release_groups_by_tag = AsyncMock(return_value=[])
@@ -123,7 +115,6 @@ def _make_service(
 
     service = DiscoverService(
         listenbrainz_repo=lb_repo,
-        jellyfin_repo=jf_repo,
         library_repo=library_repo,
         musicbrainz_repo=mb_repo,
         preferences_service=prefs,

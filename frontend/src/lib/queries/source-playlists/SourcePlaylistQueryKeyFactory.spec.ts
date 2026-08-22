@@ -4,8 +4,8 @@ import { SourcePlaylistQueryKeyFactory } from './SourcePlaylistQueryKeyFactory';
 
 describe('SourcePlaylistQueryKeyFactory', () => {
 	it('separates persisted playlist data by DroppedNeedle user', () => {
-		expect(SourcePlaylistQueryKeyFactory.list('alice', 'jellyfin', 200)).not.toEqual(
-			SourcePlaylistQueryKeyFactory.list('bob', 'jellyfin', 200)
+		expect(SourcePlaylistQueryKeyFactory.list('alice', 'navidrome', 200)).not.toEqual(
+			SourcePlaylistQueryKeyFactory.list('bob', 'navidrome', 200)
 		);
 	});
 

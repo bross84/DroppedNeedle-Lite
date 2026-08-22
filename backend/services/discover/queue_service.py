@@ -13,7 +13,6 @@ from api.v1.schemas.discover import (
 from infrastructure.persistence import LibraryDB, MBIDStore
 from repositories.protocols import (
     ListenBrainzRepositoryProtocol,
-    JellyfinRepositoryProtocol,
     MusicBrainzRepositoryProtocol,
     LastFmRepositoryProtocol,
 )
@@ -46,7 +45,6 @@ class DiscoverQueueService:
     def __init__(
         self,
         listenbrainz_repo: ListenBrainzRepositoryProtocol,
-        jellyfin_repo: JellyfinRepositoryProtocol,
         musicbrainz_repo: MusicBrainzRepositoryProtocol,
         integration: IntegrationHelpers,
         mbid_resolution: MbidResolutionService,
@@ -58,7 +56,6 @@ class DiscoverQueueService:
         ownership_service: "LibraryOwnershipService | None" = None,
     ) -> None:
         self._lb_repo = listenbrainz_repo
-        self._jf_repo = jellyfin_repo
         self._mb_repo = musicbrainz_repo
         self._integration = integration
         self._mbid = mbid_resolution
@@ -111,7 +108,6 @@ class DiscoverQueueService:
             lfm_enabled,
             resolved_source,
         ) = await self._resolve_user_music(user_id, None)
-        jf_enabled = self._integration.is_jellyfin_enabled()
         library_configured = self._integration.is_library_configured()
 
         ignored_mbids: set[str] = set()
@@ -132,13 +128,12 @@ class DiscoverQueueService:
             )
         )
 
-        has_services = lb_enabled or jf_enabled or (lfm_enabled and lfm_username)
+        has_services = lb_enabled or (lfm_enabled and lfm_username)
         if has_services:
             items = await self._build_personalized_queue(
                 count,
                 lb_enabled,
                 username,
-                jf_enabled,
                 ignored_mbids,
                 library_album_mbids,
                 listened_release_group_mbids,
@@ -194,7 +189,6 @@ class DiscoverQueueService:
         self,
         lb_enabled: bool,
         username: str | None,
-        jf_enabled: bool,
         resolved_source: str = "listenbrainz",
         lfm_enabled: bool = False,
         lfm_username: str | None = None,
@@ -249,34 +243,6 @@ class DiscoverQueueService:
                             seen_mbids.add(mbid)
                 except Exception as e:  # noqa: BLE001
                     logger.warning(f"Failed to get LB top artists ({range_}): {e}")
-
-        if resolved_source != "lastfm" and len(seeds) < 3 and jf_enabled:
-            for fetch_fn in (
-                lambda: self._jf_repo.get_most_played_artists(limit=10),
-                lambda: self._jf_repo.get_favorite_artists(limit=10),
-            ):
-                if len(seeds) >= 3:
-                    break
-                try:
-                    jf_items = await fetch_fn()
-                    for item in jf_items:
-                        if len(seeds) >= 3:
-                            break
-                        mbid = None
-                        if item.provider_ids:
-                            mbid = item.provider_ids.get("MusicBrainzArtist")
-                        if mbid and mbid not in seen_mbids:
-                            seeds.append(
-                                ListenBrainzArtist(
-                                    artist_name=item.artist_name or item.name,
-                                    listen_count=item.play_count,
-                                    artist_mbids=[mbid],
-                                )
-                            )
-                            seen_mbids.add(mbid)
-                except Exception as e:  # noqa: BLE001
-                    logger.warning(f"Failed to get Jellyfin seed artists: {e}")
-                    continue
 
         return seeds
 
@@ -495,7 +461,6 @@ class DiscoverQueueService:
         count: int,
         lb_enabled: bool,
         username: str | None,
-        jf_enabled: bool,
         ignored_mbids: set[str],
         library_album_mbids: set[str],
         listened_release_group_mbids: set[str],
@@ -507,7 +472,6 @@ class DiscoverQueueService:
         seed_artists = await self._get_seed_artists(
             lb_enabled,
             username,
-            jf_enabled,
             resolved_source=resolved_source,
             lfm_enabled=lfm_enabled,
             lfm_username=lfm_username,

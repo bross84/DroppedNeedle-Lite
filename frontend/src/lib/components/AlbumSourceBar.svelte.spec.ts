@@ -10,7 +10,7 @@ const iconSnippet = createRawSnippet(() => ({
 
 function makeProps(overrides: Record<string, unknown> = {}) {
 	return {
-		sourceLabel: 'Jellyfin',
+		sourceLabel: 'Navidrome',
 		sourceColor: '#00a4dc',
 		trackCount: 10,
 		totalTracks: 12,
@@ -30,7 +30,7 @@ function renderBar(overrides: Record<string, unknown> = {}) {
 describe('AlbumSourceBar.svelte', () => {
 	it('renders source label and track count', async () => {
 		renderBar();
-		await expect.element(page.getByText('Jellyfin')).toBeVisible();
+		await expect.element(page.getByText('Navidrome')).toBeVisible();
 		await expect.element(page.getByText('10/12')).toBeVisible();
 	});
 

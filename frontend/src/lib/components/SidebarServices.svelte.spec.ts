@@ -11,7 +11,6 @@ const { integrationState, prefsState, authState } = vi.hoisted(() => ({
 	integrationState: {
 		loaded: true,
 		youtube: false,
-		jellyfin: false,
 		navidrome: false,
 		plex: false,
 		localfiles: false,
@@ -50,7 +49,7 @@ vi.mock('$lib/queries/section-prefs/SectionPrefsQuery.svelte', () => ({
 import SidebarServices from './SidebarServices.svelte';
 
 function sidebarPrefs(disabledKeys: string[]): { pages: Record<string, SectionPrefItem[]> } {
-	const keys = ['youtube', 'jellyfin', 'navidrome', 'plex', 'localfiles'];
+	const keys = ['youtube', 'navidrome', 'plex', 'localfiles'];
 	return {
 		pages: {
 			sidebar: keys.map((key) => ({
@@ -71,7 +70,6 @@ describe('SidebarServices', () => {
 		Object.assign(integrationState, {
 			loaded: true,
 			youtube: false,
-			jellyfin: false,
 			navidrome: false,
 			plex: false,
 			localfiles: false,
@@ -83,22 +81,22 @@ describe('SidebarServices', () => {
 	});
 
 	it('renders a link for a connected service', async () => {
-		integrationState.jellyfin = true;
+		integrationState.navidrome = true;
 		prefsState.data = sidebarPrefs([]);
 		render(SidebarServices);
 
-		const link = page.getByRole('link', { name: 'Jellyfin' });
+		const link = page.getByRole('link', { name: 'Navidrome' });
 		await expect.element(link).toBeInTheDocument();
 	});
 
 	it('hides a connected service the user disabled', async () => {
-		integrationState.jellyfin = true;
+		integrationState.youtube = true;
 		integrationState.navidrome = true;
-		prefsState.data = sidebarPrefs(['jellyfin']);
+		prefsState.data = sidebarPrefs(['youtube']);
 		render(SidebarServices);
 
 		await expect.element(page.getByRole('link', { name: 'Navidrome' })).toBeInTheDocument();
-		await expect.element(page.getByText('Jellyfin')).not.toBeInTheDocument();
+		await expect.element(page.getByText('YouTube')).not.toBeInTheDocument();
 	});
 
 	it('hides the admin connect hint for a disabled service', async () => {
@@ -125,6 +123,6 @@ describe('SidebarServices', () => {
 		render(SidebarServices);
 
 		await expect.element(page.getByText('YouTube')).not.toBeInTheDocument();
-		await expect.element(page.getByText('Jellyfin')).not.toBeInTheDocument();
+		await expect.element(page.getByText('Navidrome')).not.toBeInTheDocument();
 	});
 });

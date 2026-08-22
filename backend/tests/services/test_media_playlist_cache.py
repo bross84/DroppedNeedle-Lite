@@ -10,14 +10,6 @@ from services.media_playlist_cache import invalidate_media_playlist_cache
     ("service", "expected"),
     [
         (
-            "jellyfin",
-            [
-                "jellyfin_playlists:user:user-a",
-                "jellyfin_playlist:user:user-a",
-                "jellyfin_playlist-meta:user:user-a",
-            ],
-        ),
-        (
             "navidrome",
             [
                 "navidrome:playlists:user:user-a",

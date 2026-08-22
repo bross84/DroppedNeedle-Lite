@@ -12,7 +12,6 @@ class SetupStatusResponse(AppStruct):
 class AuthProvidersResponse(AppStruct):
     local: bool
     plex: bool
-    jellyfin: bool
     oidc: bool
 
 
@@ -138,11 +137,6 @@ class PlexPollResponse(AppStruct):
     completed: bool
     token: str | None = None
     user: UserResponse | None = None
-
-
-class JellyfinLoginRequest(AppStruct):
-    username: str
-    password: str
 
 
 class OIDCAuthorizeResponse(AppStruct):

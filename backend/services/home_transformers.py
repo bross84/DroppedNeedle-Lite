@@ -16,15 +16,10 @@ from repositories.listenbrainz_models import (
 from repositories.protocols import (
     ListenBrainzArtist,
     ListenBrainzReleaseGroup,
-    JellyfinRepositoryProtocol,
 )
-from repositories.jellyfin_models import JellyfinItem
 
 
 class HomeDataTransformers:
-    def __init__(self, jellyfin_repo: JellyfinRepositoryProtocol | None = None):
-        self._jf_repo = jellyfin_repo
-
     @staticmethod
     def _cover_url(release_mbid: str | None) -> str | None:
         if release_mbid:
@@ -88,32 +83,6 @@ class HomeDataTransformers:
             release_date=None,
             listen_count=release.listen_count,
             in_library=in_library,
-        )
-
-    def jf_item_to_artist(
-        self, item: JellyfinItem, library_mbids: set[str]
-    ) -> HomeArtist | None:
-        mbid = None
-        if item.provider_ids:
-            mbid = item.provider_ids.get("MusicBrainzArtist")
-
-        artist_name = item.artist_name or item.name
-        if not artist_name:
-            return None
-
-        image_url = None
-        if self._jf_repo:
-            if item.artist_id:
-                image_url = self._jf_repo.get_image_url(item.artist_id, item.image_tag)
-            else:
-                image_url = self._jf_repo.get_image_url(item.id, item.image_tag)
-
-        return HomeArtist(
-            mbid=mbid,
-            name=artist_name,
-            image_url=image_url,
-            listen_count=item.play_count,
-            in_library=mbid.lower() in library_mbids if mbid else False,
         )
 
     def lastfm_artist_to_home(

@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { ChevronDown, Check } from 'lucide-svelte';
 	import { getSourceLabel, getSourceColor } from '$lib/utils/sources';
-	import JellyfinIcon from '$lib/components/JellyfinIcon.svelte';
 	import LocalFilesIcon from '$lib/components/LocalFilesIcon.svelte';
 	import YouTubeIcon from '$lib/components/YouTubeIcon.svelte';
 	import NavidromeIcon from '$lib/components/NavidromeIcon.svelte';
@@ -40,9 +39,7 @@
 <svelte:window onclick={handleClickOutside} />
 
 {#snippet sourceIcon(source: string, cls: string)}
-	{#if source === 'jellyfin'}
-		<JellyfinIcon class={cls} />
-	{:else if source === 'navidrome'}
+	{#if source === 'navidrome'}
 		<NavidromeIcon class={cls} />
 	{:else if source === 'local'}
 		<LocalFilesIcon class={cls} />

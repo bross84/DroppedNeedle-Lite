@@ -23,7 +23,6 @@ from repositories.protocols import LibraryRepositoryProtocol
 from repositories.musicbrainz_repository import MusicBrainzRepository
 from repositories.wikidata_repository import WikidataRepository
 from repositories.listenbrainz_repository import ListenBrainzRepository
-from repositories.jellyfin_repository import JellyfinRepository
 from repositories.coverart_repository import CoverArtRepository
 from repositories.youtube import YouTubeRepository
 from repositories.lastfm_repository import LastFmRepository
@@ -106,10 +105,8 @@ from services.discover_service import DiscoverService
 from services.discover_queue_manager import DiscoverQueueManager
 from services.youtube_service import YouTubeService
 from services.requests_page_service import RequestsPageService
-from services.jellyfin_playback_service import JellyfinPlaybackService
 from services.local_files_service import LocalFilesService
 from services.compat.native_lyrics_service import NativeLyricsService
-from services.jellyfin_library_service import JellyfinLibraryService
 from services.navidrome_library_service import NavidromeLibraryService
 from services.navidrome_playback_service import NavidromePlaybackService
 from services.plex_library_service import PlexLibraryService
@@ -135,7 +132,6 @@ from .repo_providers import (
     get_musicbrainz_repository,
     get_wikidata_repository,
     get_listenbrainz_repository,
-    get_jellyfin_repository,
     get_coverart_repository,
     get_youtube_repo,
     get_lastfm_repository,
@@ -204,9 +200,7 @@ from .service_providers import (
     get_youtube_service,
     get_lastfm_auth_service,
     get_scrobble_service,
-    get_jellyfin_playback_service,
     get_local_files_service,
-    get_jellyfin_library_service,
     get_navidrome_library_service,
     get_navidrome_playback_service,
     get_plex_library_service,
@@ -361,7 +355,6 @@ WikidataRepositoryDep = Annotated[WikidataRepository, Depends(get_wikidata_repos
 ListenBrainzRepositoryDep = Annotated[
     ListenBrainzRepository, Depends(get_listenbrainz_repository)
 ]
-JellyfinRepositoryDep = Annotated[JellyfinRepository, Depends(get_jellyfin_repository)]
 CoverArtRepositoryDep = Annotated[CoverArtRepository, Depends(get_coverart_repository)]
 SearchServiceDep = Annotated[SearchService, Depends(get_search_service)]
 SearchEnrichmentServiceDep = Annotated[
@@ -398,15 +391,9 @@ WantedWatcherServiceDep = Annotated[
 RequestsPageServiceDep = Annotated[
     RequestsPageService, Depends(get_requests_page_service)
 ]
-JellyfinPlaybackServiceDep = Annotated[
-    JellyfinPlaybackService, Depends(get_jellyfin_playback_service)
-]
 LocalFilesServiceDep = Annotated[LocalFilesService, Depends(get_local_files_service)]
 NativeLyricsServiceDep = Annotated[
     NativeLyricsService, Depends(get_native_lyrics_service)
-]
-JellyfinLibraryServiceDep = Annotated[
-    JellyfinLibraryService, Depends(get_jellyfin_library_service)
 ]
 LastFmRepositoryDep = Annotated[LastFmRepository, Depends(get_lastfm_repository)]
 LastFmAuthServiceDep = Annotated[LastFmAuthService, Depends(get_lastfm_auth_service)]

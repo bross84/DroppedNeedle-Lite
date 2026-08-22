@@ -111,25 +111,6 @@ describe('fetchLyrics', () => {
 		expect(mockGet.mock.calls[0][0]).toContain('/api/v1/navidrome/lyrics/track-1');
 	});
 
-	it('normalizes Jellyfin response correctly (lyrics_text → text)', async () => {
-		mockGet.mockResolvedValueOnce({
-			lyrics_text: 'Jellyfin lyrics here',
-			is_synced: false,
-			lines: [{ text: 'line one', start_seconds: null }]
-		});
-
-		const np = makeNowPlaying({ sourceType: 'jellyfin' });
-		const result = await fetchLyrics(np, signal);
-
-		expect(result).toEqual({
-			text: 'Jellyfin lyrics here',
-			is_synced: false,
-			lines: [{ text: 'line one', start_seconds: null }]
-		});
-		expect(mockGet).toHaveBeenCalledOnce();
-		expect(mockGet.mock.calls[0][0]).toBe('/api/v1/jellyfin/lyrics/track-1');
-	});
-
 	it('returns null on 404 (lyrics not available)', async () => {
 		mockGet.mockRejectedValueOnce(new ApiError(404, 'Not found'));
 
@@ -149,7 +130,7 @@ describe('fetchLyrics', () => {
 	it('re-throws network errors', async () => {
 		mockGet.mockRejectedValueOnce(new TypeError('Failed to fetch'));
 
-		const np = makeNowPlaying({ sourceType: 'jellyfin' });
+		const np = makeNowPlaying({ sourceType: 'navidrome' });
 		await expect(fetchLyrics(np, signal)).rejects.toThrow('Failed to fetch');
 	});
 
@@ -166,32 +147,10 @@ describe('fetchLyrics', () => {
 		});
 	});
 
-	it('handles missing fields in Jellyfin response gracefully', async () => {
-		mockGet.mockResolvedValueOnce({});
-
-		const np = makeNowPlaying({ sourceType: 'jellyfin' });
-		const result = await fetchLyrics(np, signal);
-
-		expect(result).toEqual({
-			text: '',
-			is_synced: false,
-			lines: []
-		});
-	});
-
 	it('passes signal to api.global.get for Navidrome', async () => {
 		mockGet.mockResolvedValueOnce({ text: '', is_synced: false, lines: [] });
 
 		const np = makeNowPlaying({ sourceType: 'navidrome' });
-		await fetchLyrics(np, signal);
-
-		expect(mockGet).toHaveBeenCalledWith(expect.any(String), { signal });
-	});
-
-	it('passes signal to api.global.get for Jellyfin', async () => {
-		mockGet.mockResolvedValueOnce({ lyrics_text: '', is_synced: false, lines: [] });
-
-		const np = makeNowPlaying({ sourceType: 'jellyfin' });
 		await fetchLyrics(np, signal);
 
 		expect(mockGet).toHaveBeenCalledWith(expect.any(String), { signal });

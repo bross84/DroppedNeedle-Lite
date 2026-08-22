@@ -7,7 +7,7 @@ export type PlaybackState =
 	| 'buffering'
 	| 'error';
 
-export type SourceType = 'youtube' | 'local' | 'jellyfin' | 'navidrome' | 'plex';
+export type SourceType = 'youtube' | 'local' | 'navidrome' | 'plex';
 
 export type QueueOrigin = 'context' | 'manual';
 
@@ -65,7 +65,7 @@ export type PlaybackMeta = {
 };
 
 export interface QueueItem {
-	/** Source-specific item identifier (Jellyfin item ID, local file ID, or YouTube video ID). */
+	/** Source-specific item identifier (local file ID or YouTube video ID). */
 	trackSourceId: string;
 	trackName: string;
 	artistName: string;
@@ -83,7 +83,6 @@ export interface QueueItem {
 	availableSources?: SourceType[];
 	sourceIds?: Partial<Record<SourceType, string>>;
 	duration?: number;
-	playSessionId?: string;
 	/** Plex ratingKey used for scrobble and now-playing calls. Streaming uses part_key in trackSourceId. */
 	plexRatingKey?: string;
 	queueOrigin?: QueueOrigin;

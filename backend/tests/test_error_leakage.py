@@ -27,8 +27,8 @@ def _build_app() -> FastAPI:
     @app.get("/raise-circuit")
     async def raise_circuit():
         raise CircuitOpenError(
-            "Circuit breaker 'jellyfin' is OPEN",
-            breaker_name="jellyfin",
+            "Circuit breaker 'navidrome' is OPEN",
+            breaker_name="navidrome",
         )
 
     app.add_exception_handler(ExternalServiceError, external_service_error_handler)
@@ -73,7 +73,7 @@ async def test_circuit_open_error_hides_details():
 
     body = resp.json()
     assert resp.status_code == 503
-    assert body["error"]["message"] == "Jellyfin is temporarily unavailable due to repeated connection failures. Check your settings or wait for the service to recover."
+    assert body["error"]["message"] == "Navidrome is temporarily unavailable due to repeated connection failures. Check your settings or wait for the service to recover."
     assert "circuit breaker" not in resp.text.lower() or "CIRCUIT_BREAKER_OPEN" in resp.text
 
 

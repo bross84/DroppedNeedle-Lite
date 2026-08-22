@@ -1,16 +1,10 @@
 import type { QueueItem } from '$lib/player/types';
 import type { SourceType } from '$lib/player/types';
 import type { ReleaseGroup } from '$lib/types';
-import type {
-	JellyfinAlbumMatch,
-	LocalAlbumMatch,
-	NavidromeAlbumMatch,
-	PlexAlbumMatch
-} from '$lib/types';
+import type { LocalAlbumMatch, NavidromeAlbumMatch, PlexAlbumMatch } from '$lib/types';
 import {
 	buildQueueItemsFromLocal,
 	buildQueueItemsFromNavidrome,
-	buildQueueItemsFromJellyfin,
 	buildQueueItemsFromPlex
 } from '$lib/player/queueHelpers';
 import type { TrackMeta } from '$lib/player/queueHelpers';
@@ -72,14 +66,6 @@ async function fetchAlbumTracksForSource(
 				const match = await api.global.get<NavidromeAlbumMatch>(url.toString(), { signal });
 				if (!match?.found || !match.tracks.length) return [];
 				return buildQueueItemsFromNavidrome(match.tracks, meta);
-			}
-			case 'jellyfin': {
-				const match = await api.global.get<JellyfinAlbumMatch>(
-					API.jellyfinLibrary.albumMatch(mbid),
-					{ signal }
-				);
-				if (!match?.found || !match.tracks.length) return [];
-				return buildQueueItemsFromJellyfin(match.tracks, meta);
 			}
 			case 'plex': {
 				const url = new URL(API.plexLibrary.albumMatch(mbid), window.location.origin);

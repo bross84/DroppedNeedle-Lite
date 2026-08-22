@@ -1,5 +1,4 @@
 <script lang="ts">
-	import JellyfinIcon from '$lib/components/JellyfinIcon.svelte';
 	import PlexIcon from '$lib/components/PlexIcon.svelte';
 	import { UserRound } from 'lucide-svelte';
 	import { getImportCandidatesQuery } from '$lib/queries/auth/ImportCandidatesQuery.svelte';
@@ -9,7 +8,7 @@
 		$props();
 
 	let dialogEl: HTMLDialogElement | undefined = $state();
-	let activeProvider = $state<'jellyfin' | 'plex'>('jellyfin');
+	const activeProvider = 'plex';
 	let selected = $state<string[]>([]);
 	let broken = $state<string[]>([]);
 	let resultMsg = $state<string | null>(null);
@@ -33,14 +32,6 @@
 		if (open) dialogEl?.showModal();
 		else dialogEl?.close();
 	});
-
-	function switchProvider(provider: 'jellyfin' | 'plex') {
-		if (provider === activeProvider) return;
-		activeProvider = provider;
-		selected = [];
-		resultMsg = null;
-		resultError = null;
-	}
 
 	function toggle(uid: string) {
 		selected = selected.includes(uid) ? selected.filter((u) => u !== uid) : [...selected, uid];
@@ -74,27 +65,13 @@
 	<div class="modal-box max-w-2xl">
 		<h3 class="text-lg font-bold">Import Users</h3>
 		<p class="text-sm text-base-content/60 mt-0.5">
-			Pre-provision accounts from your media server. Each imported user signs in with their own
-			Jellyfin or Plex login - no password is set here.
+			Pre-provision accounts from your media server. Each imported user signs in with their own Plex
+			login - no password is set here.
 		</p>
 
-		<div role="tablist" class="tabs tabs-boxed mt-4">
-			<button
-				role="tab"
-				class="tab gap-2 {activeProvider === 'jellyfin' ? 'tab-active' : ''}"
-				onclick={() => switchProvider('jellyfin')}
-			>
-				<JellyfinIcon class="h-4 w-4 text-info" />
-				Jellyfin
-			</button>
-			<button
-				role="tab"
-				class="tab gap-2 {activeProvider === 'plex' ? 'tab-active' : ''}"
-				onclick={() => switchProvider('plex')}
-			>
-				<PlexIcon class="h-4 w-4" style="color: rgb(var(--brand-plex))" />
-				Plex
-			</button>
+		<div class="flex items-center gap-2 mt-4">
+			<PlexIcon class="h-4 w-4" style="color: rgb(var(--brand-plex))" />
+			<span class="text-sm font-medium">Plex</span>
 		</div>
 
 		<div class="mt-4 max-h-80 overflow-y-auto space-y-1.5">
@@ -112,8 +89,7 @@
 				<div class="alert alert-error py-2 text-sm">Couldn't load accounts from this service.</div>
 			{:else if candidates.length === 0}
 				<div class="text-center py-10 text-sm text-base-content/50">
-					No {activeProvider === 'plex' ? 'Plex' : 'Jellyfin'} accounts found. Check that this service
-					is configured.
+					No Plex accounts found. Check that this service is configured.
 				</div>
 			{:else}
 				{#each candidates as candidate (candidate.provider_uid)}

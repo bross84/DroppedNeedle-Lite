@@ -18,7 +18,6 @@ from api.v1.schemas.profile import (
 )
 from core.dependencies import (
     get_preferences_service,
-    get_jellyfin_library_service,
     get_local_files_service,
     get_navidrome_library_service,
     get_compat_avatar_service,
@@ -30,7 +29,6 @@ from infrastructure.msgspec_fastapi import MsgSpecBody, MsgSpecRoute
 from middleware import CurrentUserDep
 from services.auth_service import AuthService
 from services.preferences_service import PreferencesService
-from services.jellyfin_library_service import JellyfinLibraryService
 from services.local_files_service import LocalFilesService
 from services.navidrome_library_service import NavidromeLibraryService
 from services.compat.avatar_service import CompatAvatarService
@@ -83,19 +81,10 @@ async def get_profile(
     current_user: CurrentUserDep,
     auth: AuthService = Depends(get_auth_service),
     preferences: PreferencesService = Depends(get_preferences_service),
-    jellyfin_service: JellyfinLibraryService = Depends(get_jellyfin_library_service),
     local_service: LocalFilesService = Depends(get_local_files_service),
     navidrome_service: NavidromeLibraryService = Depends(get_navidrome_library_service),
 ) -> ProfileResponse:
     services: list[ServiceConnection] = []
-
-    jellyfin_conn = preferences.get_jellyfin_connection()
-    services.append(ServiceConnection(
-        name="Jellyfin",
-        enabled=jellyfin_conn.enabled,
-        username=jellyfin_conn.user_id,
-        url=jellyfin_conn.jellyfin_url,
-    ))
 
     lb_conn = preferences.get_listenbrainz_connection()
     services.append(ServiceConnection(
@@ -130,16 +119,6 @@ async def get_profile(
         url=plex_conn.plex_url,
     ))
 
-    async def _fetch_jellyfin_stats() -> LibraryStats | None:
-        if not jellyfin_conn.enabled:
-            return None
-        try:
-            s = await jellyfin_service.get_stats()
-            return LibraryStats(source="Jellyfin", total_tracks=s.total_tracks, total_albums=s.total_albums, total_artists=s.total_artists)
-        except Exception as e:  # noqa: BLE001
-            logger.warning("Failed to fetch Jellyfin stats for profile: %s", e)
-            return None
-
     async def _fetch_local_stats() -> LibraryStats | None:
         try:
             s = await local_service.get_storage_stats()
@@ -160,7 +139,7 @@ async def get_profile(
             logger.warning("Failed to fetch Navidrome stats for profile: %s", e)
             return None
 
-    results = await asyncio.gather(_fetch_jellyfin_stats(), _fetch_local_stats(), _fetch_navidrome_stats())
+    results = await asyncio.gather(_fetch_local_stats(), _fetch_navidrome_stats())
     library_stats_list = [r for r in results if r is not None]
 
     provider_names = await auth.get_provider_names_for_users([current_user.id])

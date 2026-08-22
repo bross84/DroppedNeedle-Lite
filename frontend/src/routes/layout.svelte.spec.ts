@@ -222,7 +222,6 @@ import type { QueueItem } from '$lib/player/types';
 type IntegrationState = {
 	download_client: boolean;
 	library: boolean;
-	jellyfin: boolean;
 	listenbrainz: boolean;
 	youtube: boolean;
 	localfiles: boolean;
@@ -233,7 +232,6 @@ type IntegrationState = {
 const integrationState: IntegrationState = {
 	download_client: false,
 	library: true,
-	jellyfin: false,
 	listenbrainz: false,
 	youtube: false,
 	localfiles: false,
@@ -283,7 +281,6 @@ describe('+layout.svelte sidebar', () => {
 		Object.assign(integrationState, {
 			download_client: false,
 			library: true,
-			jellyfin: false,
 			listenbrainz: false,
 			youtube: false,
 			localfiles: false,

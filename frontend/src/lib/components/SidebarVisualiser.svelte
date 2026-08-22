@@ -2,7 +2,6 @@
 	import { nowPlayingMerged } from '$lib/stores/nowPlayingMerged.svelte';
 
 	const sourceHub: Record<string, string> = {
-		jellyfin: '/library/jellyfin',
 		navidrome: '/library/navidrome',
 		plex: '/library/plex'
 	};

@@ -23,7 +23,6 @@ _PREFERENCES_OWNED_CONFIG_KEYS = frozenset(
         "get_it",
         "home_settings",
         "indexers",
-        "jellyfin_settings",
         "lastfm_settings",
         "library_scan_schedule",
         "library_settings",
@@ -55,8 +54,6 @@ class Settings(BaseSettings):
         extra="allow"
     )
     
-    jellyfin_url: str = Field(default="http://jellyfin:8096")
-
     contact_email: str = Field(
         default="contact@droppedneedle.com",
         description="Contact email for MusicBrainz API User-Agent. Override with your own if desired."
@@ -116,11 +113,6 @@ class Settings(BaseSettings):
             )
         return normalised
 
-    @field_validator("jellyfin_url")
-    @classmethod
-    def validate_url(cls, v: str) -> str:
-        return v.rstrip("/")
-
     @model_validator(mode='after')
     def validate_config(self) -> Self:
         if self.cache_dir == Path("/app/cache"):
@@ -132,10 +124,6 @@ class Settings(BaseSettings):
 
         errors = []
         warnings = []
-
-        url = getattr(self, 'jellyfin_url', '')
-        if url and not url.startswith(('http://', 'https://')):
-            errors.append("jellyfin_url must start with http:// or https://")
 
         if self.http_max_connections < self.http_max_keepalive * 2:
             warnings.append(
@@ -193,10 +181,6 @@ class Settings(BaseSettings):
 
             # field validators TypeAdapter doesn't invoke
             try:
-                if 'jellyfin_url' in validated_values:
-                    validated_values['jellyfin_url'] = type(self).validate_url(
-                        validated_values['jellyfin_url']
-                    )
                 if 'log_level' in validated_values:
                     validated_values['log_level'] = type(self).validate_log_level(
                         validated_values['log_level']
@@ -223,22 +207,14 @@ class Settings(BaseSettings):
         """Cross-field validation against candidate merged state without mutating self."""
         errors = []
 
-        def _get(field: str) -> object:
-            return overrides.get(field, getattr(self, field))
-
-        url = _get('jellyfin_url')
-        if url and not str(url).startswith(('http://', 'https://')):
-            errors.append("jellyfin_url must start with http:// or https://")
-
         if errors:
             raise ConfigurationError(
                 f"Critical configuration errors: {'; '.join(errors)}"
             )
-    
+
     def _create_default_config(self) -> None:
         self.config_file_path.parent.mkdir(parents=True, exist_ok=True)
         config_data = {
-            "jellyfin_url": self.jellyfin_url,
             "contact_email": self.contact_email,
             "port": self.port,
             "audiodb_api_key": self.audiodb_api_key,
@@ -260,7 +236,6 @@ class Settings(BaseSettings):
                 config_data = loaded if isinstance(loaded, dict) else {}
             
             config_data.update({
-                "jellyfin_url": self.jellyfin_url,
                 "contact_email": self.contact_email,
                 "port": self.port,
                 "audiodb_api_key": self.audiodb_api_key,

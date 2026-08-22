@@ -25,7 +25,7 @@ from api.v1.schemas.playlists import (
     UpdateTrackRequest,
 )
 from api.v1.schemas.request import BatchRequestResponse
-from core.dependencies import JellyfinLibraryServiceDep, LocalFilesServiceDep, NavidromeLibraryServiceDep, PlexLibraryServiceDep, PlaylistServiceDep, get_navidrome_folder_scope_service, get_request_service
+from core.dependencies import LocalFilesServiceDep, NavidromeLibraryServiceDep, PlexLibraryServiceDep, PlaylistServiceDep, get_navidrome_folder_scope_service, get_request_service
 from core.dependencies.type_aliases import CurrentUserDep
 from core.exceptions import PlaylistNotFoundError
 from infrastructure.msgspec_fastapi import MsgSpecBody, MsgSpecRoute
@@ -326,7 +326,6 @@ async def update_track(
     service: PlaylistServiceDep,
     current_user: CurrentUserDep,
     navidrome_folder_ids: UserNavidromeFolderIdsDep,
-    jf_service: JellyfinLibraryServiceDep,
     local_service: LocalFilesServiceDep,
     nd_service: NavidromeLibraryServiceDep,
     plex_service: PlexLibraryServiceDep,
@@ -336,7 +335,6 @@ async def update_track(
         playlist_id, current_user, track_id,
         source_type=body.source_type,
         available_sources=body.available_sources,
-        jf_service=jf_service,
         local_service=local_service,
         nd_service=nd_service,
         plex_service=plex_service,
@@ -354,13 +352,12 @@ async def resolve_sources(
     service: PlaylistServiceDep,
     current_user: CurrentUserDep,
     navidrome_folder_ids: UserNavidromeFolderIdsDep,
-    jf_service: JellyfinLibraryServiceDep,
     local_service: LocalFilesServiceDep,
     nd_service: NavidromeLibraryServiceDep,
     plex_service: PlexLibraryServiceDep,
 ) -> ResolveSourcesResponse:
     sources = await service.resolve_track_sources(
-        playlist_id, requesting=current_user, jf_service=jf_service, local_service=local_service,
+        playlist_id, requesting=current_user, local_service=local_service,
         nd_service=nd_service, plex_service=plex_service,
         navidrome_folder_ids=navidrome_folder_ids,
     )

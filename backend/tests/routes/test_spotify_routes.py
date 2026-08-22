@@ -23,7 +23,6 @@ async def test_background_import_signals_completion_over_sse(monkeypatch):
     # The active catalog services are injected. Only external media sources retain
     # process-global getters because they are shared by both application entrypoints.
     for getter in (
-        "get_jellyfin_library_service",
         "get_navidrome_library_service",
         "get_plex_library_service",
     ):

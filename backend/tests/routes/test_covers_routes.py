@@ -19,7 +19,7 @@ def mock_cover_repo():
         return_value=(b"rg-image", "image/jpeg", "library")
     )
     mock.get_release_cover = AsyncMock(
-        return_value=(b"rel-image", "image/jpeg", "jellyfin")
+        return_value=(b"rel-image", "image/jpeg", "navidrome")
     )
     mock.get_artist_image = AsyncMock(
         return_value=(b"artist-image", "image/png", "wikidata")
@@ -72,7 +72,7 @@ def test_release_uses_dynamic_source_header(client):
     )
 
     assert response.status_code == 200
-    assert response.headers["x-cover-source"] == "jellyfin"
+    assert response.headers["x-cover-source"] == "navidrome"
 
 
 def test_caa_fallback_is_not_browser_immutable(client, mock_cover_repo):

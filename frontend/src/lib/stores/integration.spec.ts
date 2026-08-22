@@ -18,11 +18,11 @@ describe('integrationStore', () => {
 	});
 
 	it('applies fetched flags and marks the store loaded on success', async () => {
-		apiGet.mockResolvedValueOnce({ jellyfin: true, localfiles: true });
+		apiGet.mockResolvedValueOnce({ navidrome: true, localfiles: true });
 		await integrationStore.ensureLoaded();
 		const state = get(integrationStore);
 		expect(state.loaded).toBe(true);
-		expect(state.jellyfin).toBe(true);
+		expect(state.navidrome).toBe(true);
 		expect(state.localfiles).toBe(true);
 	});
 
@@ -31,11 +31,11 @@ describe('integrationStore', () => {
 		await integrationStore.ensureLoaded();
 		expect(get(integrationStore).loaded).toBe(false);
 
-		apiGet.mockResolvedValueOnce({ jellyfin: true });
+		apiGet.mockResolvedValueOnce({ navidrome: true });
 		await integrationStore.ensureLoaded();
 		const state = get(integrationStore);
 		expect(state.loaded).toBe(true);
-		expect(state.jellyfin).toBe(true);
+		expect(state.navidrome).toBe(true);
 		expect(apiGet).toHaveBeenCalledTimes(2);
 	});
 
@@ -58,16 +58,16 @@ describe('integrationStore', () => {
 	});
 
 	it('reset clears flags and allows a reload', async () => {
-		apiGet.mockResolvedValue({ jellyfin: true });
+		apiGet.mockResolvedValue({ navidrome: true });
 		await integrationStore.ensureLoaded();
 
 		integrationStore.reset();
 		const state = get(integrationStore);
 		expect(state.loaded).toBe(false);
-		expect(state.jellyfin).toBe(false);
+		expect(state.navidrome).toBe(false);
 
 		await integrationStore.ensureLoaded();
 		expect(apiGet).toHaveBeenCalledTimes(2);
-		expect(get(integrationStore).jellyfin).toBe(true);
+		expect(get(integrationStore).navidrome).toBe(true);
 	});
 });

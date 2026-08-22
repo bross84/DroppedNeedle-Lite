@@ -38,7 +38,6 @@ from api.v1.routes import (
     home,
     import_drop,
     indexers,
-    jellyfin_library,
     lastfm,
     library_management,
     library_operations_target,
@@ -394,7 +393,6 @@ def _include_complete_target_routes(app: FastAPI) -> None:
         cache_status.router,
         requests_page.router,
         stream.router,
-        jellyfin_library.router,
         navidrome_library.router,
         navidrome_preferences.router,
         plex_library.router,
@@ -726,7 +724,6 @@ def create_production_target_application() -> FastAPI:
             "/api/v1/auth/login": (2.0, 5),
             "/api/v1/auth/setup": (1.0, 3),
             "/api/v1/auth/plex/poll": (5.0, 10),
-            "/api/v1/auth/jellyfin/login": (2.0, 5),
         },
     )
     if get_settings().debug:

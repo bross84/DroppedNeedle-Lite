@@ -22,11 +22,6 @@ def _make_prefs() -> MagicMock:
     )
     prefs.is_lastfm_enabled.return_value = False
     prefs.get_primary_music_source.return_value = PrimaryMusicSourceSettings(source="listenbrainz")
-    jf = MagicMock()
-    jf.enabled = False
-    jf.jellyfin_url = ""
-    jf.api_key = ""
-    prefs.get_jellyfin_connection.return_value = jf
     download_client = MagicMock()
     download_client.enabled = False
     download_client.url = ""
@@ -48,7 +43,6 @@ def _make_service(
     mb_repo = AsyncMock()
     service = DiscoverService(
         listenbrainz_repo=AsyncMock(),
-        jellyfin_repo=AsyncMock(),
         library_repo=AsyncMock(),
         musicbrainz_repo=mb_repo,
         preferences_service=_make_prefs(),

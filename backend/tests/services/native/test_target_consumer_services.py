@@ -1091,7 +1091,6 @@ async def test_target_home_projects_identified_and_local_only_catalog_rows(
     disabled = SimpleNamespace(
         enabled=False,
         username="",
-        jellyfin_url="",
         api_key="",
         navidrome_url="",
         password="",
@@ -1102,7 +1101,6 @@ async def test_target_home_projects_identified_and_local_only_catalog_rows(
     )
     preferences = SimpleNamespace(
         get_listenbrainz_connection=lambda: disabled,
-        get_jellyfin_connection=lambda: disabled,
         get_youtube_connection=lambda: disabled,
         get_navidrome_connection=lambda: disabled,
         get_plex_connection=lambda: disabled,
@@ -1114,7 +1112,6 @@ async def test_target_home_projects_identified_and_local_only_catalog_rows(
     listenbrainz.get_sitewide_top_release_groups.return_value = []
     service = HomeService(
         listenbrainz_repo=listenbrainz,
-        jellyfin_repo=AsyncMock(),
         library_repo=repository,
         musicbrainz_repo=AsyncMock(),
         preferences_service=preferences,

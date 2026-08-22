@@ -4,7 +4,6 @@ import { createMutation } from '@tanstack/svelte-query';
 import { AUTH_ENDPOINTS } from './endpoints';
 import type {
 	AuthSessionResponse,
-	JellyfinLoginVars,
 	LocalLoginVars,
 	OidcAuthorizeResponse,
 	OidcExchangeVars,
@@ -32,12 +31,6 @@ export const createPasswordRecoveryCodeMutation = () =>
 	createMutation(() => ({
 		mutationFn: (userId: string) =>
 			api.post<PasswordRecoveryCodeResponse>(API.auth.adminPasswordRecovery(userId))
-	}));
-
-export const createJellyfinLoginMutation = () =>
-	createMutation(() => ({
-		mutationFn: (vars: JellyfinLoginVars) =>
-			api.global.post<AuthSessionResponse>(AUTH_ENDPOINTS.jellyfinLogin, vars)
 	}));
 
 export const createSetupMutation = () =>

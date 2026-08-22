@@ -2,7 +2,6 @@
 	import { onMount } from 'svelte';
 	import { api } from '$lib/api/client';
 	import { authStore } from '$lib/stores/authStore.svelte';
-	import JellyfinIcon from '$lib/components/JellyfinIcon.svelte';
 	import PlexIcon from '$lib/components/PlexIcon.svelte';
 	import SettingsImportUsers from '$lib/components/settings/SettingsImportUsers.svelte';
 	import {
@@ -304,7 +303,6 @@
 
 	const providerLabel: Record<string, string> = {
 		local: 'Email',
-		jellyfin: 'Jellyfin',
 		plex: 'Plex',
 		oidc: 'SSO'
 	};
@@ -521,9 +519,7 @@
 						<div class="flex items-center gap-1.5 shrink-0">
 							{#each user.providers as provider (provider)}
 								<div class="tooltip" data-tip={providerLabel[provider] ?? provider}>
-									{#if provider === 'jellyfin'}
-										<JellyfinIcon class="h-3.5 w-3.5 text-info" />
-									{:else if provider === 'plex'}
+									{#if provider === 'plex'}
 										<PlexIcon class="h-3.5 w-3.5" style="color: rgb(var(--brand-plex))" />
 									{:else if provider === 'oidc'}
 										<KeyRound class="h-3.5 w-3.5 text-base-content/40" />

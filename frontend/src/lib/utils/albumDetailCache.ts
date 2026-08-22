@@ -7,7 +7,6 @@ import type {
 	SimilarAlbumsResponse,
 	YouTubeLink,
 	YouTubeTrackLink,
-	JellyfinAlbumMatch,
 	LocalAlbumMatch,
 	NavidromeAlbumMatch,
 	PlexAlbumMatch
@@ -27,7 +26,6 @@ type AlbumYouTubeCachePayload = {
 };
 
 type AlbumSourceMatchCachePayload = {
-	jellyfin: JellyfinAlbumMatch | null;
 	local: LocalAlbumMatch | null;
 	navidrome: NavidromeAlbumMatch | null;
 	plex: PlexAlbumMatch | null;

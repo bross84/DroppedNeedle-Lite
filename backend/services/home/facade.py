@@ -22,7 +22,6 @@ from api.v1.schemas.home import (
 from api.v1.schemas.library import LibraryAlbum
 from repositories.protocols import (
     ListenBrainzRepositoryProtocol,
-    JellyfinRepositoryProtocol,
     LibraryRepositoryProtocol,
     MusicBrainzRepositoryProtocol,
     LastFmRepositoryProtocol,
@@ -74,7 +73,6 @@ class HomeService:
     def __init__(
         self,
         listenbrainz_repo: ListenBrainzRepositoryProtocol,
-        jellyfin_repo: JellyfinRepositoryProtocol,
         library_repo: LibraryRepositoryProtocol,
         musicbrainz_repo: MusicBrainzRepositoryProtocol,
         preferences_service: PreferencesService,
@@ -90,7 +88,6 @@ class HomeService:
         workload_gate: "BackgroundWorkloadGate | None" = None,
     ):
         self._lb_repo = listenbrainz_repo
-        self._jf_repo = jellyfin_repo
         self._library_repo = library_repo
         self._mb_repo = musicbrainz_repo
         self._preferences = preferences_service
@@ -103,7 +100,7 @@ class HomeService:
         self._ownership = ownership_service
         self._genre_artwork = genre_artwork_service
         self._workload_gate = workload_gate
-        self._transformers = HomeDataTransformers(jellyfin_repo)
+        self._transformers = HomeDataTransformers()
 
         self._helpers = HomeIntegrationHelpers(preferences_service)
         # SWR bookkeeping: per-user in-flight guard + last build-attempt times
@@ -180,7 +177,6 @@ class HomeService:
     def get_integration_status(self) -> HomeIntegrationStatus:
         return HomeIntegrationStatus(
             listenbrainz=self._helpers.is_listenbrainz_enabled(),
-            jellyfin=self._helpers.is_jellyfin_enabled(),
             download_client=self._helpers.is_download_client_configured(),
             library=self._helpers.is_library_configured(),
             youtube=self._helpers.is_youtube_enabled(),

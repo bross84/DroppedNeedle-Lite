@@ -8,7 +8,6 @@ from infrastructure.cache.cache_keys import (
     DISCOVER_RESPONSE_PREFIX,
     GENRE_ARTIST_PREFIX,
     HOME_RESPONSE_PREFIX,
-    JELLYFIN_PREFIX,
     LB_PREFIX,
     LFM_PREFIX,
     LIBRARY_ARTIST_ALBUMS_PREFIX,
@@ -60,7 +59,6 @@ async def test_clear_home_cache():
         f"{HOME_RESPONSE_PREFIX}page1",
         f"{DISCOVER_RESPONSE_PREFIX}rock",
         f"{GENRE_ARTIST_PREFIX}pop",
-        f"{JELLYFIN_PREFIX}lib",
         f"{LB_PREFIX}stats",
         f"{LFM_PREFIX}chart",
     ]
@@ -129,79 +127,6 @@ async def test_unrelated_keys_survive():
 
     for key in survivor_keys:
         assert await cache.get(key) == "v", f"Key {key!r} was incorrectly cleared"
-
-
-@pytest.mark.asyncio(loop_scope="function")
-async def test_jellyfin_settings_change_clears_user_import_service():
-    """Phase 6: configuring Jellyfin must rebuild the import service singleton so a
-    newly-configured server is enumerable without an app restart."""
-    from unittest.mock import patch, MagicMock, AsyncMock
-
-    service, _cache = await _build_service()
-    mbid = MagicMock()
-    mbid.clear_jellyfin_mbid_index = AsyncMock()
-    import_fn = MagicMock()
-    auth_fn = MagicMock()
-
-    with (
-        patch("core.dependencies.get_jellyfin_repository", MagicMock()),
-        patch("core.dependencies.get_jellyfin_playback_service", MagicMock()),
-        patch("core.dependencies.get_jellyfin_library_service", MagicMock()),
-        patch("core.dependencies.get_home_service", MagicMock()),
-        patch("core.dependencies.get_home_charts_service", MagicMock()),
-        patch("core.dependencies.get_mbid_store", MagicMock(return_value=mbid)),
-        patch("core.dependencies.auth_providers.get_user_import_service", import_fn),
-        patch(
-            "core.dependencies.auth_providers.get_jellyfin_user_auth_service", auth_fn
-        ),
-    ):
-        await service.on_jellyfin_settings_changed()
-
-    import_fn.cache_clear.assert_called_once()
-    auth_fn.cache_clear.assert_called_once()
-
-
-@pytest.mark.asyncio(loop_scope="function")
-async def test_jellyfin_and_cover_changes_rebuild_every_target_cover_consumer():
-    from unittest.mock import AsyncMock, MagicMock, patch
-
-    service, _cache = await _build_service()
-    target_names = (
-        "get_target_coverart_repository",
-        "get_target_consumer_composition",
-        "get_target_search_service",
-        "get_target_genre_cover_prewarm_service",
-        "get_target_home_service",
-        "get_target_home_charts_service",
-        "get_target_wrapped_service",
-        "get_target_discover_service",
-        "get_target_discover_queue_manager",
-    )
-    target_providers = {name: MagicMock() for name in target_names}
-    mbid = MagicMock()
-    mbid.clear_jellyfin_mbid_index = AsyncMock()
-
-    with (
-        patch("core.dependencies.get_jellyfin_repository", MagicMock()),
-        patch("core.dependencies.get_jellyfin_playback_service", MagicMock()),
-        patch("core.dependencies.get_jellyfin_library_service", MagicMock()),
-        patch("core.dependencies.get_home_service", MagicMock()),
-        patch("core.dependencies.get_home_charts_service", MagicMock()),
-        patch("core.dependencies.get_coverart_repository", MagicMock()),
-        patch("core.dependencies.get_mbid_store", MagicMock(return_value=mbid)),
-        patch("core.dependencies.auth_providers.get_user_import_service", MagicMock()),
-        patch(
-            "core.dependencies.auth_providers.get_jellyfin_user_auth_service",
-            MagicMock(),
-        ),
-        patch.multiple("core.dependencies", **target_providers),
-    ):
-        await service.on_jellyfin_settings_changed()
-        await service.on_coverart_settings_changed()
-
-    for name, provider in target_providers.items():
-        minimum = 2 if name != "get_target_home_service" else 1
-        assert provider.cache_clear.call_count >= minimum, name
 
 
 @pytest.mark.asyncio(loop_scope="function")

@@ -307,7 +307,7 @@ class TestSourceTypeValidation:
     @pytest.mark.asyncio
     async def test_valid_source_types_in_add_tracks(self, tmp_path):
         service, repo = _make_service(tmp_path)
-        for st in ("local", "jellyfin", "youtube", ""):
+        for st in ("local", "youtube", ""):
             tracks = [{"track_name": "T", "artist_name": "A", "album_name": "AL", "source_type": st}]
             result = await service.add_tracks("p-1", _OWNER, tracks)
             assert len(result) == 1
@@ -344,13 +344,6 @@ class TestCheckTrackMembership:
         ], None)
 
 
-def _jf_match(tracks):
-    return SimpleNamespace(
-        found=True,
-        tracks=[SimpleNamespace(title=t[0], track_number=t[1], jellyfin_id=t[2]) for t in tracks],
-    )
-
-
 def _local_match(tracks):
     return SimpleNamespace(
         found=True,
@@ -371,22 +364,6 @@ def _make_track_with_album(id="t-1", track_name="Track", track_number=1, album_i
 
 class TestResolveTrackSources:
     @pytest.mark.asyncio
-    async def test_resolves_jellyfin_and_local(self, tmp_path):
-        service, repo = _make_service(tmp_path)
-        track = _make_track_with_album(id="t-1", track_name="Song One", track_number=1)
-        repo.get_tracks = MagicMock(return_value=[track])
-
-        jf_svc = AsyncMock()
-        jf_svc.match_album_by_mbid.return_value = _jf_match([("Song One", 1, "jf-id-1")])
-        local_svc = AsyncMock()
-        local_svc.match_album_by_mbid.return_value = _local_match([("Song One", 1, 42)])
-
-        result = await service.resolve_track_sources("p-1", jf_service=jf_svc, local_service=local_svc)
-        assert "t-1" in result
-        assert "jellyfin" in result["t-1"]
-        assert "local" in result["t-1"]
-
-    @pytest.mark.asyncio
     async def test_no_album_id_returns_current_source(self, tmp_path):
         service, repo = _make_service(tmp_path)
         track = _make_track(id="t-1")
@@ -400,7 +377,7 @@ class TestResolveTrackSources:
         )
         repo.get_tracks = MagicMock(return_value=[track])
 
-        result = await service.resolve_track_sources("p-1", jf_service=AsyncMock(), local_service=AsyncMock())
+        result = await service.resolve_track_sources("p-1", local_service=AsyncMock())
         assert result["t-1"] == ["youtube"]
 
     @pytest.mark.asyncio
@@ -410,47 +387,8 @@ class TestResolveTrackSources:
         result = await service.resolve_track_sources("p-1")
         assert result == {}
 
-    @pytest.mark.asyncio
-    async def test_service_error_skips_source(self, tmp_path):
-        service, repo = _make_service(tmp_path)
-        track = _make_track_with_album()
-        repo.get_tracks = MagicMock(return_value=[track])
-
-        jf_svc = AsyncMock()
-        jf_svc.match_album_by_mbid.side_effect = RuntimeError("connection failed")
-        local_svc = AsyncMock()
-        local_svc.match_album_by_mbid.return_value = SimpleNamespace(found=False)
-
-        result = await service.resolve_track_sources("p-1", jf_service=jf_svc, local_service=local_svc)
-        assert "t-1" in result
-        assert "jellyfin" not in result["t-1"]
-
 
 class TestResolveNewSourceId:
-    @pytest.mark.asyncio
-    async def test_switch_to_jellyfin(self, tmp_path):
-        service, repo = _make_service(tmp_path)
-        track = _make_track_with_album(track_name="Track Title", source_type="local")
-        repo.get_track = MagicMock(return_value=track)
-        repo.update_track_source = MagicMock(return_value=PlaylistTrackRecord(
-            id="t-1", playlist_id="p-1", position=0,
-            track_name="Track Title", artist_name="Artist", album_name="Album",
-            album_id="mb-album-1", artist_id=None, track_source_id="jf-id-1",
-            cover_url=None, source_type="jellyfin", available_sources=None,
-            format=None, track_number=1, disc_number=None, duration=None,
-            created_at="2025-01-01T00:00:00+00:00",
-        ))
-
-        jf_svc = AsyncMock()
-        jf_svc.match_album_by_mbid.return_value = _jf_match([("Track Title", 1, "jf-id-1")])
-        local_svc = AsyncMock()
-
-        result = await service.update_track_source(
-            "p-1", _OWNER, "t-1", source_type="jellyfin",
-            jf_service=jf_svc, local_service=local_svc,
-        )
-        assert result.track_source_id == "jf-id-1"
-
     @pytest.mark.asyncio
     async def test_no_album_id_raises(self, tmp_path):
         service, repo = _make_service(tmp_path)
@@ -466,8 +404,8 @@ class TestResolveNewSourceId:
 
         with pytest.raises(SourceResolutionError, match="missing album_id"):
             await service.update_track_source(
-                "p-1", _OWNER, "t-1", source_type="jellyfin",
-                jf_service=AsyncMock(), local_service=AsyncMock(),
+                "p-1", _OWNER, "t-1", source_type="navidrome",
+                local_service=AsyncMock(),
             )
 
     @pytest.mark.asyncio
@@ -476,12 +414,12 @@ class TestResolveNewSourceId:
         track = _make_track_with_album(track_name="My Song", source_type="local")
         repo.get_track = MagicMock(return_value=track)
 
-        jf_svc = AsyncMock()
-        jf_svc.match_album_by_mbid.return_value = SimpleNamespace(found=False)
+        nd_svc = AsyncMock()
+        nd_svc.get_album_match = AsyncMock(return_value=SimpleNamespace(found=False))
         local_svc = AsyncMock()
 
-        with pytest.raises(SourceResolutionError, match="not found in Jellyfin"):
+        with pytest.raises(SourceResolutionError, match="not found in Navidrome"):
             await service.update_track_source(
-                "p-1", _OWNER, "t-1", source_type="jellyfin",
-                jf_service=jf_svc, local_service=local_svc,
+                "p-1", _OWNER, "t-1", source_type="navidrome",
+                local_service=local_svc, nd_service=nd_svc,
             )

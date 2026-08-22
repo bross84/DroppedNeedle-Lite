@@ -70,12 +70,6 @@ def _make_local_service(found=True, tracks=None):
     return local
 
 
-def _make_jf_service(found=False):
-    jf = AsyncMock()
-    jf.match_album_by_mbid = AsyncMock(return_value=SimpleNamespace(found=found, tracks=[]))
-    return jf
-
-
 class TestResolveAlbumSourcesPassesMetadata:
     """Verify _resolve_album_sources passes album_name/artist_name to Navidrome."""
 
@@ -85,7 +79,7 @@ class TestResolveAlbumSourcesPassesMetadata:
         nd = _make_nd_service()
 
         await service._resolve_album_sources(
-            "mbid-abc", None, None, nd,
+            "mbid-abc", None, nd,
             album_name="Sheet Music", artist_name="10cc",
         )
 
@@ -143,7 +137,7 @@ async def test_passes_empty_strings_when_not_provided(tmp_path):
     service, _ = _make_service(tmp_path)
     nd = _make_nd_service()
 
-    await service._resolve_album_sources("mbid-abc", None, None, nd)
+    await service._resolve_album_sources("mbid-abc", None, nd)
 
     nd.get_album_match.assert_called_once_with(
         album_id="mbid-abc",
@@ -164,10 +158,9 @@ class TestResolveTrackSourcesDiscovery:
 
         nd = _make_nd_service()
         local = _make_local_service()
-        jf = _make_jf_service()
 
         result = await service.resolve_track_sources(
-            "p-1", jf_service=jf, local_service=local, nd_service=nd,
+            "p-1", local_service=local, nd_service=nd,
         )
 
         assert "t-1" in result
@@ -240,7 +233,7 @@ class TestResolveTrackSourcesPersistence:
     async def test_skips_persist_when_resolved_is_subset(self, tmp_path):
         """Superset guard: don't overwrite if resolution lost a source (e.g. service down)."""
         service, repo = _make_service(tmp_path)
-        track = _make_track(available_sources=["jellyfin", "local", "navidrome"])
+        track = _make_track(available_sources=["plex", "local", "navidrome"])
         repo.get_tracks = MagicMock(return_value=[track])
 
         nd = _make_nd_service()
@@ -312,10 +305,9 @@ class TestStringTrackNumberRegression:
         local = _make_local_service(tracks=[
             SimpleNamespace(track_number="1", title="Wall Street Shuffle", track_file_id=789),
         ])
-        jf = _make_jf_service()
 
         result = await service.resolve_track_sources(
-            "p-1", jf_service=jf, local_service=local, nd_service=nd,
+            "p-1", local_service=local, nd_service=nd,
         )
 
         assert "t-1" in result
@@ -341,7 +333,7 @@ class TestStringTrackNumberRegression:
 
         await service.update_track_source(
             "p-1", _OWNER, "t-1", source_type="local",
-            jf_service=None, local_service=local, nd_service=nd,
+            local_service=local, nd_service=nd,
         )
 
         repo.update_track_source.assert_called_once()
@@ -359,9 +351,9 @@ class TestStringTrackNumberRegression:
         cache = InMemoryCache()
         service._cache = cache
         stale_data = (
-            {},
             {"6": ("Speed Kills", "2608"), "1": ("Johnny", "2601")},
             {6: ("Speed Kills", "nd-456"), 1: ("Johnny", "nd-401")},
+            {},
         )
         await cache.set(
             "source_resolution:user:global:scope:all:mbid-abc",
@@ -369,7 +361,7 @@ class TestStringTrackNumberRegression:
             ttl_seconds=3600,
         )
 
-        jf, local, nd, plex = await service._resolve_album_sources(
+        local, nd, plex = await service._resolve_album_sources(
             "mbid-abc", None, None, None,
         )
 
@@ -437,8 +429,8 @@ class TestResolveTrackSourcesConcurrency:
         async def _flaky(album_id, *args, **kwargs):
             if album_id == "mbid-a":
                 raise RuntimeError("boom")
-            # (jf_by_num, local_by_num, nd_by_num, plex_by_num)
-            return ({}, {(1, 1): ("Song B", "789")}, {}, {})
+            # (local_by_num, nd_by_num, plex_by_num)
+            return ({(1, 1): ("Song B", "789")}, {}, {})
 
         service._resolve_album_sources = AsyncMock(side_effect=_flaky)
 
@@ -482,68 +474,3 @@ class TestResolveTrackSourcesConcurrency:
         assert sorted(result["t-b"]) == ["navidrome"]
 
 
-class TestGuidAlbumIdFallback:
-    """Pre-fix Jellyfin imports stored the Jellyfin album GUID as album_id, which
-    the MBID-keyed matchers can never hit. Resolution re-keys the GUID to the
-    album's MusicBrainz id via Jellyfin provider ids (no migration, #150)."""
-
-    @pytest.mark.asyncio
-    async def test_guid_album_id_resolves_local_source(self, tmp_path):
-        service, repo = _make_service(tmp_path)
-        track = _make_track(
-            album_id="jf-guid-1",
-            source_type="jellyfin",
-            available_sources=["jellyfin"],
-        )
-        repo.get_tracks = MagicMock(return_value=[track])
-
-        jf = _make_jf_service(found=False)
-        jf.resolve_album_mbid = AsyncMock(return_value="mbid-abc")
-        local = _make_local_service()
-
-        result = await service.resolve_track_sources(
-            "p-1", jf_service=jf, local_service=local,
-        )
-
-        local.match_album_by_mbid.assert_called_once_with("mbid-abc")
-        assert sorted(result["t-1"]) == ["jellyfin", "local"]
-        repo.batch_link_library_files.assert_called_once_with("p-1", {"t-1": "789"})
-        updates = repo.batch_update_available_sources.call_args[0][1]
-        assert sorted(updates["t-1"]) == ["jellyfin", "local"]
-
-    @pytest.mark.asyncio
-    async def test_guid_fallback_does_not_poison_mbid_cache_key(self, tmp_path):
-        cache = AsyncMock()
-        cache.get = AsyncMock(return_value=None)
-        repo = MagicMock()
-        service = PlaylistService(repo=repo, cache_dir=tmp_path, cache=cache)
-        jf = _make_jf_service(found=False)
-        jf.resolve_album_mbid = AsyncMock(return_value="mbid-abc")
-
-        await service._resolve_album_sources("jf-guid-1", jf, None)
-
-        set_key = cache.set.call_args[0][0]
-        assert "jf-guid-1" in set_key
-        assert "mbid-abc" not in set_key
-
-    @pytest.mark.asyncio
-    async def test_no_fallback_when_mbid_match_found(self, tmp_path):
-        service, _ = _make_service(tmp_path)
-        jf = _make_jf_service(found=False)
-        jf.match_album_by_mbid = AsyncMock(
-            return_value=SimpleNamespace(
-                found=True,
-                tracks=[
-                    SimpleNamespace(
-                        track_number=1, title="Wall Street Shuffle", jellyfin_id="jf-9"
-                    )
-                ],
-            )
-        )
-        jf.resolve_album_mbid = AsyncMock(return_value="mbid-other")
-        local = _make_local_service()
-
-        await service._resolve_album_sources("mbid-abc", jf, local)
-
-        jf.resolve_album_mbid.assert_not_called()
-        local.match_album_by_mbid.assert_called_once_with("mbid-abc")

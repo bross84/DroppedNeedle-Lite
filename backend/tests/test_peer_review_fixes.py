@@ -1,5 +1,5 @@
-"""Tests for peer-review fixes: route collision, byYear contract, audio-only filter,
-favorites/expanded error handling, timed lyrics, and Plex accountID removal."""
+"""Tests for peer-review fixes: route collision, byYear contract, timed lyrics,
+and Plex accountID removal."""
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -9,7 +9,6 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from api.v1.routes.navidrome_library import router as navidrome_router
-from api.v1.routes.jellyfin_library import router as jellyfin_router
 from api.v1.schemas.navidrome import (
     NavidromeArtistIndexResponse,
     NavidromeArtistIndexEntry,
@@ -17,9 +16,7 @@ from api.v1.schemas.navidrome import (
     NavidromeAlbumSummary,
     NavidromeAlbumPage,
 )
-from api.v1.schemas.jellyfin import JellyfinFavoritesExpanded
 from core.dependencies import (
-    get_jellyfin_library_service,
     get_navidrome_folder_scope_service,
     get_navidrome_library_service,
 )
@@ -53,14 +50,6 @@ def _navidrome_app(mock_service) -> TestClient:
         _all_folder_scope_service
     )
     override_user_auth(app)
-    return TestClient(app)
-
-
-def _jellyfin_app(mock_service) -> TestClient:
-    """Router already has prefix=/jellyfin, so routes are at /jellyfin/..."""
-    app = FastAPI()
-    app.include_router(jellyfin_router)
-    app.dependency_overrides[get_jellyfin_library_service] = lambda: mock_service
     return TestClient(app)
 
 
@@ -132,63 +121,6 @@ class TestNavidromeByYearSort:
         call_kwargs = mock.get_albums.call_args.kwargs
         assert "from_year" not in call_kwargs
         assert "to_year" not in call_kwargs
-
-
-class TestJellyfinPlaylistAudioFilter:
-    """Verify that non-audio items are filtered out of playlist responses."""
-
-    @pytest.mark.asyncio
-    async def test_get_playlist_items_filters_non_audio(self):
-        from repositories.jellyfin_models import JellyfinItem
-        from repositories.jellyfin_repository import JellyfinRepository
-
-        repo = MagicMock(spec=JellyfinRepository)
-        repo._configured = True
-        repo._user_id = "u1"
-        repo._cache_scope = "shared"
-        repo._cache = MagicMock()
-        repo._cache.get = AsyncMock(return_value=None)
-        repo._cache.set = AsyncMock()
-
-        mixed_items = {
-            "Items": [
-                {"Id": "a1", "Name": "Song 1", "Type": "Audio", "RunTimeTicks": 1800000000},
-                {"Id": "v1", "Name": "Video", "Type": "Video", "RunTimeTicks": 9000000000},
-                {"Id": "a2", "Name": "Song 2", "Type": "Audio", "RunTimeTicks": 2000000000},
-            ]
-        }
-        repo._get = AsyncMock(return_value=mixed_items)
-
-        result = await JellyfinRepository.get_playlist_items(repo, "pl-1")
-        assert len(result) == 2
-        assert all(item.type == "Audio" for item in result)
-        assert result[0].name == "Song 1"
-        assert result[1].name == "Song 2"
-
-
-class TestJellyfinFavoritesExpandedErrorHandling:
-    """Verify that unexpected errors in favorites/expanded return a proper HTTP error."""
-
-    def test_unexpected_error_returns_500(self):
-        mock = MagicMock()
-        mock.get_favorites_expanded = AsyncMock(side_effect=RuntimeError("unexpected"))
-        client = _jellyfin_app(mock)
-        resp = client.get("/jellyfin/favorites/expanded")
-        assert resp.status_code == 500
-
-    def test_external_service_error_returns_502(self):
-        mock = MagicMock()
-        mock.get_favorites_expanded = AsyncMock(side_effect=ExternalServiceError("Jellyfin down"))
-        client = _jellyfin_app(mock)
-        resp = client.get("/jellyfin/favorites/expanded")
-        assert resp.status_code == 502
-
-    def test_success_returns_200(self):
-        mock = MagicMock()
-        mock.get_favorites_expanded = AsyncMock(return_value=JellyfinFavoritesExpanded(albums=[], artists=[]))
-        client = _jellyfin_app(mock)
-        resp = client.get("/jellyfin/favorites/expanded")
-        assert resp.status_code == 200
 
 
 class TestNavidromeLyricsTimedPreservation:

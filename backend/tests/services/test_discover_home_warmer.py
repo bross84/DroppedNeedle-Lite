@@ -204,7 +204,6 @@ def _homepage() -> DiscoverHomepageService:
     svc._lfm_repo = MagicMock()
     svc._mbid = MagicMock()
     svc._integration = MagicMock()
-    svc._integration.is_jellyfin_enabled.return_value = False
     svc._integration.get_discover_cache_key = MagicMock(return_value="discover:u1")
     svc._resolve_user_music = AsyncMock(
         return_value=(None, None, "lbuser", "lfmuser", True, True, "listenbrainz")

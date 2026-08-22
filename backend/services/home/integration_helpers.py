@@ -35,10 +35,6 @@ class HomeIntegrationHelpers:
         lb_settings = self._preferences.get_listenbrainz_connection()
         return lb_settings.enabled and bool(lb_settings.username)
 
-    def is_jellyfin_enabled(self) -> bool:
-        jf_settings = self._preferences.get_jellyfin_connection()
-        return jf_settings.enabled and bool(jf_settings.jellyfin_url) and bool(jf_settings.api_key)
-
     def is_download_client_configured(self) -> bool:
         # Any acquisition source counts - slskd (Soulseek) OR SABnzbd (Usenet). A
         # Usenet-only setup must not show the "connect a download client" prompt.

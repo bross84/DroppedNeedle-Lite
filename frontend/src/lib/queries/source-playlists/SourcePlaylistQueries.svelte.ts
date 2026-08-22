@@ -15,8 +15,6 @@ type Getter<T> = () => T;
 
 function listUrl(source: SourcePlaylistSource, limit: number): string {
 	switch (source) {
-		case 'jellyfin':
-			return API.jellyfinLibrary.playlists(limit);
 		case 'navidrome':
 			return API.navidromeLibrary.playlists(limit);
 		case 'plex':
@@ -26,8 +24,6 @@ function listUrl(source: SourcePlaylistSource, limit: number): string {
 
 function detailUrl(source: SourcePlaylistSource, playlistId: string): string {
 	switch (source) {
-		case 'jellyfin':
-			return API.jellyfinLibrary.playlistDetail(playlistId);
 		case 'navidrome':
 			return API.navidromeLibrary.playlistDetail(playlistId);
 		case 'plex':

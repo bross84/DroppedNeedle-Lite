@@ -6,7 +6,6 @@ from api.v1.schemas.common import IntegrationStatus
 def test_integration_status_has_download_client_and_library_not_lidarr():
     status = IntegrationStatus(
         listenbrainz=False,
-        jellyfin=False,
         download_client=False,
         youtube=False,
         lastfm=False,

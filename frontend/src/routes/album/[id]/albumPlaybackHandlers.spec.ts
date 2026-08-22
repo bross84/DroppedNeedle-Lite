@@ -67,7 +67,6 @@ const canonicalTracks: Track[] = [
 ];
 
 const tracksGetters = {
-	jellyfin: () => [],
 	local: () => localTracks,
 	navidrome: () => [],
 	plex: () => []
@@ -83,7 +82,6 @@ describe('album playback canonical titles', () => {
 			1,
 			'The Fisherman Will Be Bewildered',
 			album,
-			null,
 			localMatch,
 			null,
 			null,

@@ -5,7 +5,6 @@
 		YouTubeTrackLink,
 		YouTubeLink,
 		YouTubeQuotaStatus,
-		JellyfinAlbumMatch,
 		LocalAlbumMatch,
 		NavidromeAlbumMatch,
 		PlexAlbumMatch
@@ -13,7 +12,6 @@
 	import type { SourceCallbacks } from './albumPageState.svelte';
 	import AlbumYouTubeBar from '$lib/components/AlbumYouTubeBar.svelte';
 	import AlbumSourceBar from '$lib/components/AlbumSourceBar.svelte';
-	import JellyfinIcon from '$lib/components/JellyfinIcon.svelte';
 	import LocalFilesIcon from '$lib/components/LocalFilesIcon.svelte';
 	import NavidromeIcon from '$lib/components/NavidromeIcon.svelte';
 	import PlexIcon from '$lib/components/PlexIcon.svelte';
@@ -23,21 +21,17 @@
 		tracksInfo: AlbumTracksInfo;
 		trackLinks: YouTubeTrackLink[];
 		albumLink: YouTubeLink | null;
-		jellyfinMatch: JellyfinAlbumMatch | null;
 		localMatch: LocalAlbumMatch | null;
 		navidromeMatch: NavidromeAlbumMatch | null;
 		plexMatch: PlexAlbumMatch | null;
-		loadingJellyfin: boolean;
 		loadingLocal: boolean;
 		loadingNavidrome: boolean;
 		loadingPlex: boolean;
 		youtubeEnabled: boolean;
 		youtubeApiConfigured: boolean;
-		jellyfinEnabled: boolean;
 		localfilesEnabled: boolean;
 		navidromeEnabled: boolean;
 		plexEnabled: boolean;
-		jellyfinCallbacks: SourceCallbacks;
 		localCallbacks: SourceCallbacks;
 		localDownloadCallback?: { callback: (() => void) | undefined };
 		navidromeCallbacks: SourceCallbacks;
@@ -52,21 +46,17 @@
 		tracksInfo,
 		trackLinks,
 		albumLink,
-		jellyfinMatch,
 		localMatch,
 		navidromeMatch,
 		plexMatch,
-		loadingJellyfin,
 		loadingLocal,
 		loadingNavidrome,
 		loadingPlex,
 		youtubeEnabled,
 		youtubeApiConfigured,
-		jellyfinEnabled,
 		localfilesEnabled,
 		navidromeEnabled,
 		plexEnabled,
-		jellyfinCallbacks,
 		localCallbacks,
 		localDownloadCallback,
 		navidromeCallbacks,
@@ -92,28 +82,6 @@
 		{onAlbumLinkUpdate}
 		{onQuotaUpdate}
 	/>
-{/if}
-
-{#if jellyfinEnabled}
-	{#if loadingJellyfin}
-		<div class="skeleton h-14 w-full rounded-box"></div>
-	{:else if jellyfinMatch?.found}
-		<AlbumSourceBar
-			sourceLabel="Jellyfin"
-			sourceColor="rgb(var(--brand-jellyfin))"
-			trackCount={jellyfinMatch.tracks.length}
-			totalTracks={tracksInfo.tracks.length}
-			onPlayAll={jellyfinCallbacks.onPlayAll}
-			onShuffle={jellyfinCallbacks.onShuffle}
-			onAddAllToQueue={jellyfinCallbacks.onAddAllToQueue}
-			onPlayAllNext={jellyfinCallbacks.onPlayAllNext}
-			onAddAllToPlaylist={jellyfinCallbacks.onAddAllToPlaylist}
-		>
-			{#snippet icon()}
-				<JellyfinIcon class="h-5 w-5" />
-			{/snippet}
-		</AlbumSourceBar>
-	{/if}
 {/if}
 
 {#if localfilesEnabled}

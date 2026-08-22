@@ -6,9 +6,9 @@ import type { NowPlayingSession } from '$lib/types';
 
 // The viewer's own current web-player track is rendered from local state (always
 // un-redacted and instant), while every other session comes from the server feed.
-// jellyfin/navidrome/plex web playback is surfaced by the server-side poll, so the
+// navidrome/plex web playback is surfaced by the server-side poll, so the
 // local overlay also covers it and we de-dupe the echo below.
-const LOCAL_SOURCES = new Set(['jellyfin', 'navidrome', 'plex', 'local', 'youtube']);
+const LOCAL_SOURCES = new Set(['navidrome', 'plex', 'local', 'youtube']);
 
 function buildLocalSession(): NowPlayingSession | null {
 	const state = playerStore.playbackState;

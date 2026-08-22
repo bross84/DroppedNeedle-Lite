@@ -16,12 +16,10 @@ from infrastructure.cache.memory_cache import CacheInterface
 from infrastructure.persistence import DiscoverySnapshotStore
 from infrastructure.persistence.native_library_store import NativeLibraryStore
 from models.library_management import (
-    EXTERNAL_REFRESH_NOT_CONFIGURED,
     EXTERNAL_REFRESH_PROTOCOL_UNAVAILABLE,
     LibraryManagementExternalRefreshDelivery,
 )
 from models.library_management_planning import PinnedLibraryManagementProfile
-from repositories.protocols import JellyfinRepositoryProtocol
 from services.preferences_service import PreferencesService
 
 logger = logging.getLogger(__name__)
@@ -37,7 +35,6 @@ class LibraryManagementPostCommitService:
         memory_cache: CacheInterface,
         disk_cache: DiskMetadataCache,
         discovery_snapshots: DiscoverySnapshotStore,
-        jellyfin_getter: Callable[[], JellyfinRepositoryProtocol],
         reconcile_album: Callable[[str], Awaitable[object]] | None = None,
     ) -> None:
         self._store = store
@@ -45,7 +42,6 @@ class LibraryManagementPostCommitService:
         self._memory_cache = memory_cache
         self._disk_cache = disk_cache
         self._discovery_snapshots = discovery_snapshots
-        self._jellyfin_getter = jellyfin_getter
         self._reconcile_album = reconcile_album
 
     async def after_commit(
@@ -139,22 +135,14 @@ class LibraryManagementPostCommitService:
         now = time.time()
         max_attempts = external.retry_attempts + 1
         enabled_targets = (
-            ("jellyfin", external.jellyfin_enabled),
             ("plex", external.plex_enabled),
             ("navidrome", external.navidrome_enabled),
         )
         for target, enabled in enabled_targets:
             if not enabled:
                 continue
-            failure_code = None
-            state = "pending"
-            if target == "jellyfin":
-                if not self._jellyfin_getter().is_configured():
-                    state = "unavailable"
-                    failure_code = EXTERNAL_REFRESH_NOT_CONFIGURED
-            else:
-                state = "unavailable"
-                failure_code = EXTERNAL_REFRESH_PROTOCOL_UNAVAILABLE
+            state = "unavailable"
+            failure_code = EXTERNAL_REFRESH_PROTOCOL_UNAVAILABLE
             await self._store.ensure_library_management_external_refresh(
                 LibraryManagementExternalRefreshDelivery(
                     id=str(uuid.uuid5(_DELIVERY_NAMESPACE, f"{operation_id}:{target}")),

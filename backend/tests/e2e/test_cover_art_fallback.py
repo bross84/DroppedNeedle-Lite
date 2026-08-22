@@ -1,7 +1,7 @@
 """End-to-end cover-art fallback chain, validated after Lidarr removal.
 
 The album cover chain (``AlbumCoverFetcher.fetch_release_group_cover``) is, in order:
-AudioDB -> local sources (library / Jellyfin) -> Cover Art Archive -> best release.
+AudioDB -> local library -> Cover Art Archive -> best release.
 With Lidarr gone the library source is ``None``; these tests prove the chain still
 resolves a cover (first success wins) for an album that has no embedded art, with no
 network calls (the HTTP getter and AudioDB service are mocked).
@@ -48,7 +48,6 @@ async def test_falls_back_to_cover_art_archive_without_lidarr(tmp_path: Path):
         http_get_fn=http_get,
         write_cache_fn=AsyncMock(),
         library_repo=None,  # Lidarr removed
-        jellyfin_repo=None,
         audiodb_service=audiodb,
     )
 
@@ -77,7 +76,6 @@ async def test_audiodb_wins_and_short_circuits_the_chain(tmp_path: Path):
         http_get_fn=http_get,
         write_cache_fn=AsyncMock(),
         library_repo=None,
-        jellyfin_repo=None,
         audiodb_service=audiodb,
     )
 
@@ -103,7 +101,6 @@ async def test_no_source_resolves_returns_none(tmp_path: Path):
         http_get_fn=http_get,
         write_cache_fn=AsyncMock(),
         library_repo=None,
-        jellyfin_repo=None,
         audiodb_service=audiodb,
     )
 

@@ -8,10 +8,8 @@ import pytest
 
 from repositories.plex_models import PlexSession
 from repositories.navidrome_models import SubsonicNowPlayingEntry
-from repositories.jellyfin_models import JellyfinSession
 from services.plex_library_service import PlexLibraryService
 from services.navidrome_library_service import NavidromeLibraryService
-from services.jellyfin_library_service import JellyfinLibraryService
 
 
 def _make_plex_service() -> tuple[PlexLibraryService, MagicMock]:
@@ -106,55 +104,6 @@ def _navidrome_entry(**overrides) -> SubsonicNowPlayingEntry:
     )
     defaults.update(overrides)
     return SubsonicNowPlayingEntry(**defaults)
-
-
-def _make_jellyfin_service() -> tuple[JellyfinLibraryService, MagicMock]:
-    repo = MagicMock()
-    repo.get_sessions = AsyncMock(return_value=[])
-    repo.get_recently_played = AsyncMock(return_value=[])
-    repo.get_favorites = AsyncMock(return_value=[])
-    repo.get_albums = AsyncMock(return_value=[])
-    repo.get_artists = AsyncMock(return_value=[])
-    repo.get_album = AsyncMock()
-    repo.get_album_tracks = AsyncMock(return_value=[])
-    repo.search = AsyncMock()
-    repo.get_genres = AsyncMock(return_value=[])
-    repo.get_recently_added = AsyncMock(return_value=[])
-    repo.get_most_played_artists = AsyncMock(return_value=[])
-    repo.get_most_played_albums = AsyncMock(return_value=[])
-    repo.get_playlists = AsyncMock(return_value=[])
-    repo.get_playlist = AsyncMock()
-    repo.get_image_url = MagicMock(return_value="https://jellyfin/Items/img/Primary")
-
-    prefs = MagicMock()
-    prefs.get_jellyfin_connection_raw.return_value = MagicMock(enabled=True)
-
-    svc = JellyfinLibraryService(jellyfin_repo=repo, preferences_service=prefs)
-    return svc, repo
-
-
-def _jellyfin_session(**overrides) -> JellyfinSession:
-    defaults = dict(
-        session_id="jsess1",
-        user_name="carol",
-        device_name="Chrome",
-        client_name="Jellyfin Web",
-        now_playing_name="Song J",
-        now_playing_artist="Artist J",
-        now_playing_album="Album J",
-        now_playing_album_id="jalb1",
-        now_playing_item_id="jitem1",
-        now_playing_image_tag="tag1",
-        position_ticks=600_000_000,
-        runtime_ticks=3_000_000_000,
-        is_paused=False,
-        is_muted=False,
-        play_method="DirectPlay",
-        audio_codec="aac",
-        bitrate=256,
-    )
-    defaults.update(overrides)
-    return JellyfinSession(**defaults)
 
 
 class TestPlexGetSessions:
@@ -256,83 +205,12 @@ class TestNavidromeGetNowPlaying:
         assert result.entries[1].user_name == "charlie"
 
 
-class TestJellyfinGetSessions:
-    @pytest.mark.asyncio
-    async def test_returns_mapped_sessions(self):
-        svc, repo = _make_jellyfin_service()
-        repo.get_sessions.return_value = [_jellyfin_session()]
-
-        result = await svc.get_sessions()
-
-        assert len(result.sessions) == 1
-        s = result.sessions[0]
-        assert s.session_id == "jsess1"
-        assert s.user_name == "carol"
-        assert s.track_name == "Song J"
-        assert s.artist_name == "Artist J"
-        assert s.device_name == "Chrome"
-        assert s.cover_url == "/api/v1/jellyfin/image/jitem1"
-        assert s.is_paused is False
-        assert s.play_method == "DirectPlay"
-
-    @pytest.mark.asyncio
-    async def test_ticks_to_seconds_conversion(self):
-        svc, repo = _make_jellyfin_service()
-        repo.get_sessions.return_value = [
-            _jellyfin_session(
-                position_ticks=600_000_000,
-                runtime_ticks=3_000_000_000,
-            )
-        ]
-
-        result = await svc.get_sessions()
-
-        s = result.sessions[0]
-        assert s.position_seconds == pytest.approx(60.0, rel=1e-3)
-        assert s.duration_seconds == pytest.approx(300.0, rel=1e-3)
-
-    @pytest.mark.asyncio
-    async def test_empty_sessions(self):
-        svc, repo = _make_jellyfin_service()
-        repo.get_sessions.return_value = []
-
-        result = await svc.get_sessions()
-
-        assert result.sessions == []
-
-    @pytest.mark.asyncio
-    async def test_error_returns_empty(self):
-        svc, repo = _make_jellyfin_service()
-        repo.get_sessions.side_effect = RuntimeError("conn refused")
-
-        result = await svc.get_sessions()
-
-        assert result.sessions == []
-
-    @pytest.mark.asyncio
-    async def test_zero_ticks_returns_zero_seconds(self):
-        svc, repo = _make_jellyfin_service()
-        repo.get_sessions.return_value = [
-            _jellyfin_session(
-                position_ticks=0,
-                runtime_ticks=0,
-            )
-        ]
-
-        result = await svc.get_sessions()
-
-        s = result.sessions[0]
-        assert s.position_seconds == 0.0
-        assert s.duration_seconds == 0.0
-
-
 # Live presence registry (NowPlayingService) + external poller
 
 from types import SimpleNamespace  # noqa: E402
 
 from services.now_playing_service import ExternalSession, NowPlayingService  # noqa: E402
 from services import now_playing_poller as poller  # noqa: E402
-from api.v1.schemas.jellyfin import JellyfinSessionInfo, JellyfinSessionsResponse  # noqa: E402
 from api.v1.schemas.navidrome import (  # noqa: E402
     NavidromeNowPlayingEntrySchema,
     NavidromeNowPlayingResponse,
@@ -429,10 +307,10 @@ async def test_presence_reconcile_external_replaces_and_noops_when_empty():
     sse = _RecordingSSE()
     svc = NowPlayingService(sse, _FakePrefs())
     # empty + nothing existing -> no publish (idle integration doesn't churn)
-    await svc.reconcile_source("jellyfin", [])
+    await svc.reconcile_source("navidrome", [])
     assert sse.published == []
     session = ExternalSession(
-        key="jellyfin:s1",
+        key="navidrome:s1",
         user_name="Bob",
         device_name="TV",
         track_name="T",
@@ -443,11 +321,11 @@ async def test_presence_reconcile_external_replaces_and_noops_when_empty():
         progress_ms=0,
         duration_ms=1000,
     )
-    await svc.reconcile_source("jellyfin", [session])
+    await svc.reconcile_source("navidrome", [session])
     assert len(svc.snapshot()) == 1
     # external sessions carry no user_id, so they're never redacted
     assert svc.snapshot()[0].redacted is False
-    await svc.reconcile_source("jellyfin", [])
+    await svc.reconcile_source("navidrome", [])
     assert svc.snapshot() == []
 
 
@@ -472,31 +350,6 @@ async def test_presence_set_visibility_changes_projection_live():
     assert svc.snapshot()[0].track_name == ""
     await svc.set_visibility("u1", "offline")
     assert svc.snapshot() == []
-
-
-def test_poller_map_jellyfin_skips_empty_and_converts_units():
-    resp = JellyfinSessionsResponse(
-        sessions=[
-            JellyfinSessionInfo(
-                session_id="s1",
-                user_name="Al",
-                device_name="TV",
-                track_name="T",
-                artist_name="A",
-                album_name="Alb",
-                cover_url="/c",
-                is_paused=True,
-                position_seconds=12.5,
-                duration_seconds=200.0,
-            ),
-            JellyfinSessionInfo(session_id="s2", track_name=""),
-        ]
-    )
-    out = poller.map_jellyfin(resp)
-    assert len(out) == 1
-    assert out[0].key == "jellyfin:s1"
-    assert out[0].progress_ms == 12500 and out[0].duration_ms == 200000
-    assert out[0].is_paused is True
 
 
 def test_poller_map_navidrome_builds_cover_and_progress():
@@ -551,22 +404,21 @@ async def test_poller_gates_each_source_on_integration_status():
     now_playing = AsyncMock()
     home = MagicMock()
     home.get_integration_status.return_value = SimpleNamespace(
-        jellyfin=True, navidrome=False, plex=False
+        navidrome=True, plex=False
     )
-    jelly = MagicMock()
-    jelly.get_sessions = AsyncMock(return_value=JellyfinSessionsResponse(sessions=[]))
     nav = MagicMock()
-    nav.get_now_playing = AsyncMock()
+    nav.get_now_playing = AsyncMock(
+        return_value=NavidromeNowPlayingResponse(entries=[])
+    )
     plex = MagicMock()
     plex.get_sessions = AsyncMock()
 
-    await poller.poll_external_once(now_playing, home, jelly, nav, plex)
+    await poller.poll_external_once(now_playing, home, nav, plex)
 
-    jelly.get_sessions.assert_awaited_once()
+    nav.get_now_playing.assert_awaited_once()
     # disabled sources are reconciled to empty without an upstream fetch
-    nav.get_now_playing.assert_not_awaited()
     plex.get_sessions.assert_not_awaited()
-    assert now_playing.reconcile_source.await_count == 3
+    assert now_playing.reconcile_source.await_count == 2
 
 
 @pytest.mark.asyncio
@@ -574,7 +426,7 @@ async def test_presence_loop_resolves_rebuilt_services_each_cycle(monkeypatch):
     import asyncio
 
     now_playing = AsyncMock()
-    instances = [MagicMock() for _ in range(4)]
+    instances = [MagicMock() for _ in range(3)]
     getters = [MagicMock(return_value=instance) for instance in instances]
     poll_once = AsyncMock()
 

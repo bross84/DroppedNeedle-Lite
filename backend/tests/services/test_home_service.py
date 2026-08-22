@@ -35,12 +35,6 @@ def _make_prefs(
     prefs.is_lastfm_enabled.return_value = lfm_enabled
     prefs.get_primary_music_source.return_value = PrimaryMusicSourceSettings(source=primary_source)
 
-    jf_settings = MagicMock()
-    jf_settings.enabled = False
-    jf_settings.jellyfin_url = ""
-    jf_settings.api_key = ""
-    prefs.get_jellyfin_connection.return_value = jf_settings
-
     download_client = MagicMock()
     download_client.enabled = False
     download_client.url = ""
@@ -81,7 +75,6 @@ def _make_service(
     lfm_repo.get_user_recent_tracks = AsyncMock(return_value=[])
     lfm_repo.get_user_loved_tracks = AsyncMock(return_value=[])
 
-    jf_repo = AsyncMock()
     library_repo = AsyncMock()
     library_repo.get_library = AsyncMock(return_value=[])
     library_repo.get_artists_from_library = AsyncMock(return_value=[])
@@ -108,7 +101,6 @@ def _make_service(
 
     service = HomeService(
         listenbrainz_repo=lb_repo,
-        jellyfin_repo=jf_repo,
         library_repo=library_repo,
         musicbrainz_repo=mb_repo,
         preferences_service=prefs,
@@ -378,7 +370,7 @@ class TestWhatsHotAlwaysBuilt:
 
         built = HomeResponse(
             integration_status=HomeIntegrationStatus(
-                listenbrainz=True, jellyfin=False, download_client=False,
+                listenbrainz=True, download_client=False,
                 youtube=False, lastfm=True,
             ),
             trending_artists=HomeSection(

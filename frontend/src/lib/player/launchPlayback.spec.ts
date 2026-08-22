@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { LocalTrackInfo, JellyfinTrackInfo } from '$lib/types';
+import type { LocalTrackInfo } from '$lib/types';
 import type { PlaybackMeta, QueueItem } from '$lib/player/types';
 
 vi.mock('$lib/stores/player.svelte', () => ({
@@ -9,15 +9,13 @@ vi.mock('$lib/stores/player.svelte', () => ({
 vi.mock('$lib/constants', () => ({
 	API: {
 		stream: {
-			local: (id: number | string) => `/api/v1/stream/local/${id}`,
-			jellyfin: (id: string) => `/api/v1/stream/jellyfin/${id}`
+			local: (id: number | string) => `/api/v1/stream/local/${id}`
 		}
 	}
 }));
 
 import { playerStore } from '$lib/stores/player.svelte';
 import { launchLocalPlayback } from './launchLocalPlayback';
-import { launchJellyfinPlayback } from './launchJellyfinPlayback';
 
 const meta: PlaybackMeta = {
 	albumId: 'album-1',
@@ -92,122 +90,5 @@ describe('launchLocalPlayback', () => {
 		launchLocalPlayback(tracks, 1, true, meta);
 
 		expect(playerStore.playQueue).toHaveBeenCalledWith(expect.any(Array), 1, true);
-	});
-});
-
-describe('launchJellyfinPlayback', () => {
-	beforeEach(() => vi.clearAllMocks());
-
-	it('maps JellyfinTrackInfo[] to QueueItem[] with sourceType jellyfin', () => {
-		const tracks: JellyfinTrackInfo[] = [
-			{
-				jellyfin_id: 'jf-abc',
-				title: 'Jelly Song',
-				track_number: 3,
-				duration_seconds: 240,
-				album_name: 'Test Album',
-				artist_name: 'Test Artist',
-				codec: 'FLAC'
-			}
-		];
-
-		launchJellyfinPlayback(tracks, 0, false, meta);
-
-		const call = vi.mocked(playerStore.playQueue).mock.calls[0];
-		const items: QueueItem[] = call[0];
-
-		expect(items).toHaveLength(1);
-		expect(items[0]).toEqual(
-			expect.objectContaining({
-				trackSourceId: 'jf-abc',
-				trackName: 'Jelly Song',
-				sourceType: 'jellyfin',
-				format: 'flac'
-			})
-		);
-	});
-
-	it('always sets a non-null coverUrl on queue items', () => {
-		const tracks: JellyfinTrackInfo[] = [
-			{
-				jellyfin_id: 'jf-abc',
-				title: 'Song',
-				track_number: 1,
-				duration_seconds: 120,
-				album_name: 'Album',
-				artist_name: 'Artist',
-				codec: 'mp3'
-			}
-		];
-		const metaWithNullCover: PlaybackMeta = { ...meta, coverUrl: null };
-
-		launchJellyfinPlayback(tracks, 0, false, metaWithNullCover);
-
-		const items: QueueItem[] = vi.mocked(playerStore.playQueue).mock.calls[0][0];
-		expect(items[0].coverUrl).toBeTruthy();
-		expect(typeof items[0].coverUrl).toBe('string');
-	});
-
-	it('aligns streamUrl format parameter with QueueItem format', () => {
-		const tracks: JellyfinTrackInfo[] = [
-			{
-				jellyfin_id: 'jf-abc',
-				title: 'Jelly Song',
-				track_number: 3,
-				duration_seconds: 240,
-				album_name: 'Test Album',
-				artist_name: 'Test Artist',
-				codec: 'FLAC'
-			}
-		];
-
-		launchJellyfinPlayback(tracks, 0, false, meta);
-
-		const call = vi.mocked(playerStore.playQueue).mock.calls[0];
-		const item: QueueItem = call[0][0];
-
-		expect(item.streamUrl).toBe('/api/v1/stream/jellyfin/jf-abc');
-		expect(item.format).toBe('flac');
-	});
-
-	it('falls back to aac when codec is null', () => {
-		const tracks: JellyfinTrackInfo[] = [
-			{
-				jellyfin_id: 'jf-xyz',
-				title: 'No Codec',
-				track_number: 1,
-				duration_seconds: 180,
-				album_name: 'Test Album',
-				artist_name: 'Test Artist',
-				codec: null
-			}
-		];
-
-		launchJellyfinPlayback(tracks, 0, false, meta);
-
-		const call = vi.mocked(playerStore.playQueue).mock.calls[0];
-		const items: QueueItem[] = call[0];
-
-		expect(items[0].format).toBe('aac');
-	});
-
-	it('falls back to aac when codec is undefined', () => {
-		const tracks: JellyfinTrackInfo[] = [
-			{
-				jellyfin_id: 'jf-xyz',
-				title: 'No Codec',
-				track_number: 1,
-				duration_seconds: 180,
-				album_name: 'Test Album',
-				artist_name: 'Test Artist'
-			}
-		];
-
-		launchJellyfinPlayback(tracks, 0, false, meta);
-
-		const call = vi.mocked(playerStore.playQueue).mock.calls[0];
-		const items: QueueItem[] = call[0];
-
-		expect(items[0].format).toBe('aac');
 	});
 });

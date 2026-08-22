@@ -1,6 +1,5 @@
 import type { QueueItem, SourceType } from '$lib/player/types';
 import type {
-	JellyfinTrackInfo,
 	LocalTrackInfo,
 	NativeTrackListItem,
 	NavidromeTrackInfo,
@@ -34,7 +33,6 @@ export interface TrackSourceData {
 	discNumber?: number;
 	trackTitle: string;
 	trackLength?: number;
-	jellyfinTrack?: JellyfinTrackInfo | null;
 	navidromeTrack?: NavidromeTrackInfo | null;
 	localTrack?: LocalTrackInfo | null;
 	plexTrack?: PlexTrackInfo | null;
@@ -84,15 +82,6 @@ export function selectBestSource(
 			format
 		};
 	}
-	if (data.jellyfinTrack) {
-		const format = normalizeCodec(data.jellyfinTrack.codec);
-		return {
-			sourceType: 'jellyfin',
-			trackSourceId: data.jellyfinTrack.jellyfin_id,
-			streamUrl: API.stream.jellyfin(data.jellyfinTrack.jellyfin_id),
-			format
-		};
-	}
 	if (data.plexTrack) {
 		if (!data.plexTrack.part_key) return null;
 		const format = normalizeCodec(data.plexTrack.codec);
@@ -110,7 +99,6 @@ export function getAvailableSources(data: TrackSourceData): SourceType[] {
 	const sources: SourceType[] = [];
 	if (data.localTrack) sources.push('local');
 	if (data.navidromeTrack) sources.push('navidrome');
-	if (data.jellyfinTrack) sources.push('jellyfin');
 	if (data.plexTrack?.part_key) sources.push('plex');
 	return sources;
 }
@@ -124,7 +112,6 @@ export function buildQueueItem(meta: TrackMeta, data: TrackSourceData): QueueIte
 	const sourceIds: Partial<Record<import('$lib/player/types').SourceType, string>> = {};
 	if (data.localTrack) sourceIds.local = String(data.localTrack.track_file_id);
 	if (data.navidromeTrack) sourceIds.navidrome = data.navidromeTrack.navidrome_id;
-	if (data.jellyfinTrack) sourceIds.jellyfin = data.jellyfinTrack.jellyfin_id;
 	if (data.plexTrack?.part_key) sourceIds.plex = data.plexTrack.part_key;
 
 	return {
@@ -145,32 +132,6 @@ export function buildQueueItem(meta: TrackMeta, data: TrackSourceData): QueueIte
 		duration: data.trackLength,
 		plexRatingKey: data.plexTrack?.plex_id
 	};
-}
-
-export function buildQueueItemsFromJellyfin(
-	tracks: JellyfinTrackInfo[],
-	meta: TrackMeta
-): QueueItem[] {
-	const normalizedCoverUrl = getCoverUrl(meta.coverUrl, meta.albumId);
-	return tracks.map((t) => {
-		const format = normalizeCodec(t.codec);
-		return {
-			trackSourceId: t.jellyfin_id,
-			trackName: t.title,
-			artistName: meta.artistName,
-			trackNumber: t.track_number,
-			discNumber: normalizeDiscNumber(t.disc_number),
-			albumId: meta.albumId,
-			albumName: meta.albumName,
-			coverUrl: normalizedCoverUrl,
-			sourceType: 'jellyfin' as const,
-			artistId: meta.artistId,
-			streamUrl: API.stream.jellyfin(t.jellyfin_id),
-			format,
-			availableSources: ['jellyfin'] as SourceType[],
-			duration: t.duration_seconds
-		};
-	});
 }
 
 export function buildQueueItemsFromNavidrome(
@@ -273,7 +234,6 @@ export function buildQueueItemsFromYouTube(
 function resolveStreamUrl(sourceType: string, trackSourceId: string): string | undefined {
 	if (sourceType === 'local') return API.stream.local(trackSourceId);
 	if (sourceType === 'navidrome') return API.stream.navidrome(trackSourceId);
-	if (sourceType === 'jellyfin') return API.stream.jellyfin(trackSourceId);
 	if (sourceType === 'plex') return API.stream.plex(trackSourceId);
 	return undefined;
 }
@@ -352,24 +312,6 @@ export function buildDiscoveryQueueFromLocal(tracks: NativeTrackListItem[]): Que
 		format: (t.format ?? '').toLowerCase(),
 		availableSources: ['local'] as SourceType[],
 		duration: t.duration_seconds ?? undefined
-	}));
-}
-
-export function buildDiscoveryQueueFromJellyfin(tracks: JellyfinTrackInfo[]): QueueItem[] {
-	return tracks.map((t) => ({
-		trackSourceId: t.jellyfin_id,
-		trackName: t.title,
-		artistName: t.artist_name,
-		trackNumber: t.track_number,
-		discNumber: normalizeDiscNumber(t.disc_number),
-		albumId: t.album_id ?? '',
-		albumName: t.album_name,
-		coverUrl: t.image_url ?? null,
-		sourceType: 'jellyfin' as const,
-		streamUrl: API.stream.jellyfin(t.jellyfin_id),
-		format: normalizeCodec(t.codec),
-		availableSources: ['jellyfin'] as SourceType[],
-		duration: t.duration_seconds
 	}));
 }
 

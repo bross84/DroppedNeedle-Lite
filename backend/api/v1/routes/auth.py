@@ -13,7 +13,6 @@ from api.v1.schemas.auth import (
     ImportCandidateListResponse,
     ImportUsersRequest,
     ImportUsersResponse,
-    JellyfinLoginRequest,
     LoginRequest,
     OIDCAuthorizeResponse,
     OIDCExchangeRequest,
@@ -34,13 +33,12 @@ from api.v1.schemas.auth import (
     user_to_response,
 )
 from core.dependencies import get_quota_service
-from core.dependencies.auth_providers import get_auth_service, get_plex_user_auth_service, get_jellyfin_user_auth_service, get_oidc_user_auth_service, get_user_import_service
+from core.dependencies.auth_providers import get_auth_service, get_plex_user_auth_service, get_oidc_user_auth_service, get_user_import_service
 from core.exceptions import AuthenticationError, ConfigurationError, ExternalServiceError, RegistrationError
 from infrastructure.msgspec_fastapi import MsgSpecBody, MsgSpecRoute
 from middleware import CurrentAdminDep, CurrentTokenDep, CurrentUserDep
 from services.oidc_user_auth_service import OIDCUserAuthService
 from services.auth_service import AuthService
-from services.jellyfin_user_auth_service import JellyfinUserAuthService
 from services.plex_user_auth_service import PlexUserAuthService
 from services.user_import_service import UserImportService
 
@@ -287,17 +285,6 @@ async def admin_create_password_recovery_code(
     )
 
 
-@router.get("/admin/import/jellyfin", response_model = ImportCandidateListResponse)
-async def admin_import_list_jellyfin(
-    _admin: CurrentAdminDep,
-    importer: UserImportService = Depends(get_user_import_service),
-) -> ImportCandidateListResponse:
-    candidates = await importer.list_jellyfin_users()
-    return ImportCandidateListResponse(
-        users = [import_candidate_to_response(c) for c in candidates],
-    )
-
-
 @router.get("/admin/import/plex", response_model = ImportCandidateListResponse)
 async def admin_import_list_plex(
     _admin: CurrentAdminDep,
@@ -315,7 +302,7 @@ async def admin_import_users(
     body: ImportUsersRequest = MsgSpecBody(ImportUsersRequest),
     importer: UserImportService = Depends(get_user_import_service),
 ) -> ImportUsersResponse:
-    if body.provider not in ("jellyfin", "plex"):
+    if body.provider not in ("plex",):
         raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST, detail = "Unsupported import provider")
     try:
         result = await importer.import_users(body.provider, body.provider_uids)
@@ -434,34 +421,6 @@ async def plex_login_poll(
     user, token = result
     _set_session_cookie(response, request, token)
     return PlexPollResponse(completed = True, token = token, user = user_to_response(user))
-
-
-@router.post("/jellyfin/login", response_model = AuthResponse)
-async def jellyfin_login(
-    request: Request,
-    response: Response,
-    body: JellyfinLoginRequest = MsgSpecBody(JellyfinLoginRequest),
-    jellyfin_auth: JellyfinUserAuthService = Depends(get_jellyfin_user_auth_service),
-) -> AuthResponse:
-    try:
-        user, token = await jellyfin_auth.login(
-            username = body.username,
-            password = body.password,
-            user_agent = request.headers.get("User-Agent"),
-        )
-    except AuthenticationError:
-        raise HTTPException(
-            status_code = status.HTTP_401_UNAUTHORIZED,
-            detail = "Invalid credentials",
-            headers = {"WWW-Authenticate": "Bearer"},
-        )
-    except ExternalServiceError:
-        raise HTTPException(
-            status_code = status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail = "Jellyfin unavailable",
-        )
-    _set_session_cookie(response, request, token)
-    return AuthResponse(token = token, user = user_to_response(user))
 
 
 @router.post("/oidc/authorize", response_model = OIDCAuthorizeResponse)

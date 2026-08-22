@@ -96,18 +96,18 @@ class TestPutSectionPrefs:
     def test_sidebar_round_trip(self, client):
         resp = client.put(
             "/me/section-prefs",
-            json={"page": "sidebar", "sections": [{"key": "jellyfin", "enabled": False}]},
+            json={"page": "sidebar", "sections": [{"key": "navidrome", "enabled": False}]},
         )
         assert resp.status_code == 200
         sidebar = {s["key"]: s["enabled"] for s in resp.json()["pages"]["sidebar"]}
-        assert sidebar["jellyfin"] is False
-        assert sidebar["navidrome"] is True
+        assert sidebar["navidrome"] is False
+        assert sidebar["plex"] is True
 
         # GET reflects the saved state, other pages untouched
         resp = client.get("/me/section-prefs")
         pages = resp.json()["pages"]
         sidebar = {s["key"]: s["enabled"] for s in pages["sidebar"]}
-        assert sidebar["jellyfin"] is False
+        assert sidebar["navidrome"] is False
         assert all(s["enabled"] for s in pages["home"])
 
     def test_sidebar_unknown_key_rejected(self, client):

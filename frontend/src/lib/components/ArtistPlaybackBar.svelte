@@ -4,7 +4,6 @@
 	import ContextMenu from '$lib/components/ContextMenu.svelte';
 	import type { MenuItem } from '$lib/components/ContextMenu.svelte';
 	import { openGlobalPlaylistModal } from '$lib/stores/playlistModal.svelte';
-	import JellyfinIcon from '$lib/components/JellyfinIcon.svelte';
 	import LocalFilesIcon from '$lib/components/LocalFilesIcon.svelte';
 	import NavidromeIcon from '$lib/components/NavidromeIcon.svelte';
 	import PlexIcon from '$lib/components/PlexIcon.svelte';
@@ -38,7 +37,6 @@
 	const PLAYBACK_SOURCES: { key: PlaybackSourceType; integrationKey: string }[] = [
 		{ key: 'local', integrationKey: 'localfiles' },
 		{ key: 'navidrome', integrationKey: 'navidrome' },
-		{ key: 'jellyfin', integrationKey: 'jellyfin' },
 		{ key: 'plex', integrationKey: 'plex' }
 	];
 
@@ -116,8 +114,6 @@
 		<LocalFilesIcon class={cls} />
 	{:else if source === 'navidrome'}
 		<NavidromeIcon class={cls} />
-	{:else if source === 'jellyfin'}
-		<JellyfinIcon class={cls} />
 	{:else if source === 'plex'}
 		<PlexIcon class={cls} />
 	{/if}

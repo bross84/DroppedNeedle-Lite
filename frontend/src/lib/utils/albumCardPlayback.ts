@@ -8,11 +8,9 @@ import { normalizeCodec } from '$lib/player/queueHelpers';
 import { getCoverUrl } from '$lib/utils/errorHandling';
 import type { QueueItem } from '$lib/player/types';
 import type {
-	JellyfinAlbumMatch,
 	LocalAlbumMatch,
 	NavidromeAlbumMatch,
 	PlexAlbumMatch,
-	JellyfinTrackInfo,
 	LocalTrackInfo,
 	NavidromeTrackInfo,
 	PlexTrackInfo
@@ -26,7 +24,7 @@ export interface AlbumCardMeta {
 	artistId?: string;
 }
 
-type SourceResult = { source: 'local' | 'navidrome' | 'jellyfin' | 'plex'; items: QueueItem[] };
+type SourceResult = { source: 'local' | 'navidrome' | 'plex'; items: QueueItem[] };
 
 function buildLocalItems(tracks: LocalTrackInfo[], meta: AlbumCardMeta): QueueItem[] {
 	const cover = getCoverUrl(meta.coverUrl, meta.mbid);
@@ -58,23 +56,6 @@ function buildNavidromeItems(tracks: NavidromeTrackInfo[], meta: AlbumCardMeta):
 		sourceType: 'navidrome' as const,
 		artistId: meta.artistId,
 		streamUrl: API.stream.navidrome(t.navidrome_id),
-		format: normalizeCodec(t.codec)
-	}));
-}
-
-function buildJellyfinItems(tracks: JellyfinTrackInfo[], meta: AlbumCardMeta): QueueItem[] {
-	const cover = getCoverUrl(meta.coverUrl, meta.mbid);
-	return tracks.map((t) => ({
-		trackSourceId: t.jellyfin_id,
-		trackName: t.title,
-		artistName: meta.artistName,
-		trackNumber: t.track_number,
-		albumId: meta.mbid,
-		albumName: meta.albumName,
-		coverUrl: cover,
-		sourceType: 'jellyfin' as const,
-		artistId: meta.artistId,
-		streamUrl: API.stream.jellyfin(t.jellyfin_id),
 		format: normalizeCodec(t.codec)
 	}));
 }
@@ -138,21 +119,6 @@ export async function fetchAlbumQueueItems(
 		);
 	}
 
-	if (status.jellyfin) {
-		probes.push(
-			api.global
-				.get<JellyfinAlbumMatch>(API.jellyfinLibrary.albumMatch(meta.mbid), { signal })
-				.then((data) => {
-					if (!data?.found || data.tracks.length === 0) return null;
-					return {
-						source: 'jellyfin' as const,
-						items: buildJellyfinItems(data.tracks, meta)
-					};
-				})
-				.catch(() => null)
-		);
-	}
-
 	if (status.plex) {
 		const plexUrl = new URL(API.plexLibrary.albumMatch(meta.mbid), window.location.origin);
 		if (meta.albumName) plexUrl.searchParams.set('name', meta.albumName);
@@ -174,12 +140,7 @@ export async function fetchAlbumQueueItems(
 	if (probes.length === 0) return [];
 
 	const results = await Promise.all(probes);
-	const priority: Array<'local' | 'navidrome' | 'jellyfin' | 'plex'> = [
-		'local',
-		'navidrome',
-		'jellyfin',
-		'plex'
-	];
+	const priority: Array<'local' | 'navidrome' | 'plex'> = ['local', 'navidrome', 'plex'];
 	for (const src of priority) {
 		const hit = results.find((r) => r?.source === src);
 		if (hit) return hit.items;

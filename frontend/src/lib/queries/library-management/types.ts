@@ -252,7 +252,6 @@ export interface LibraryManagementSettings {
 	external_refresh: {
 		enabled: boolean;
 		plex_enabled: boolean;
-		jellyfin_enabled: boolean;
 		navidrome_enabled: boolean;
 		retry_attempts: number;
 		retry_delay_seconds: number;

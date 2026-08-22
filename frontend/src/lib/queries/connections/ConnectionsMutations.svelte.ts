@@ -23,7 +23,7 @@ function invalidateConnections(): Promise<void> {
 }
 
 function isMediaSource(service: string): service is SourcePlaylistSource {
-	return service === 'jellyfin' || service === 'navidrome' || service === 'plex';
+	return service === 'navidrome' || service === 'plex';
 }
 
 async function invalidateConnectionAndPlaylists(service?: string): Promise<void> {
@@ -81,13 +81,6 @@ export const createConnectNavidromeMutation = () =>
 		mutationFn: (vars: MediaServerConnectVars) =>
 			api.global.put<ConnectionStatusResponse>(CONNECTIONS_ENDPOINTS.navidrome, vars),
 		onSuccess: () => invalidateConnectionAndPlaylists('navidrome')
-	}));
-
-export const createConnectJellyfinMutation = () =>
-	createMutation(() => ({
-		mutationFn: (vars: MediaServerConnectVars) =>
-			api.global.put<ConnectionStatusResponse>(CONNECTIONS_ENDPOINTS.jellyfin, vars),
-		onSuccess: () => invalidateConnectionAndPlaylists('jellyfin')
 	}));
 
 // Plex OAuth step 1: mint a pin + popup URL (no state change yet)

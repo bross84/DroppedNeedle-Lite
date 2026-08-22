@@ -29,7 +29,6 @@ from api.v1.schemas.navidrome import (
 )
 from core.dependencies import (
     CurrentUserDep,
-    get_jellyfin_library_service,
     get_local_files_service,
     get_navidrome_library_service,
     get_navidrome_folder_scope_service,
@@ -447,7 +446,6 @@ async def import_navidrome_playlist(
     music_folder_ids: UserMusicFolderIdsDep,
     service: NavidromeLibraryService = Depends(get_navidrome_library_service),
     playlist_service: PlaylistService = Depends(get_playlist_service),
-    jf_service=Depends(get_jellyfin_library_service),
     local_service=Depends(get_local_files_service),
     plex_service=Depends(get_plex_library_service),
 ) -> NavidromeImportResult:
@@ -469,7 +467,6 @@ async def import_navidrome_playlist(
             playlist_service.resolve_track_sources,
             result.droppedneedle_playlist_id,
             requesting=current_user,
-            jf_service=jf_service,
             local_service=local_service,
             nd_service=service,
             plex_service=plex_service,

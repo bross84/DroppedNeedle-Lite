@@ -9,11 +9,6 @@ import { createPlaybackSource } from '$lib/player/createSource';
 import { API } from '$lib/constants';
 import { api } from '$lib/api/client';
 import {
-	reportProgress as reportJellyfinProgress,
-	reportStop as reportJellyfinStop,
-	startSession as startJellyfinSession
-} from '$lib/player/jellyfinPlaybackApi';
-import {
 	reportNavidromeScrobble,
 	reportNavidromeNowPlaying,
 	reportNavidromeStopped
@@ -34,7 +29,7 @@ import {
 	showQueueMutationToast,
 	type StoredSession
 } from './playerUtils';
-import { createProgressReporter, createBeforeUnloadHandler } from './playerJellyfinReporting';
+import { createBeforeUnloadHandler } from './playerBeaconReporting';
 import {
 	computeNextIndex,
 	computePreviousIndex,
@@ -77,8 +72,6 @@ const PREVIEW_FADE_S = 2;
 const ERROR_SKIP_DELAY_MS = 2000;
 const MAX_HISTORY_LENGTH = 3;
 const SESSION_PERSIST_INTERVAL_MS = 5000;
-const JELLYFIN_REPORT_INTERVAL_MS = 10_000;
-const MAX_JELLYFIN_REPORT_FAILURES = 3;
 
 function createPlayerStore() {
 	let currentSource = $state<PlaybackSource | null>(null);
@@ -135,14 +128,8 @@ function createPlayerStore() {
 			: currentIndex + 1
 	);
 
-	const progressReporter = createProgressReporter(
-		reportJellyfinProgress,
-		JELLYFIN_REPORT_INTERVAL_MS,
-		MAX_JELLYFIN_REPORT_FAILURES
-	);
 	const handleBeforeUnload = createBeforeUnloadHandler(
-		() => ({ jellyfinItem: getJellyfinItem(), currentItem: queue[currentIndex] ?? null, progress }),
-		API.stream.jellyfinStop,
+		() => ({ currentItem: queue[currentIndex] ?? null, progress }),
 		API.stream.navidromeScrobble,
 		API.stream.plexScrobble
 	);
@@ -152,10 +139,6 @@ function createPlayerStore() {
 	}
 	function getPreviousIndex(): number | null {
 		return computePreviousIndex(currentIndex, queue.length, shuffleEnabled, shuffleOrder);
-	}
-	function getJellyfinItem(): QueueItem | null {
-		const item = queue[currentIndex];
-		return item?.sourceType === 'jellyfin' ? item : null;
 	}
 	function getCurrentItem(): QueueItem | null {
 		return queue[currentIndex] ?? null;
@@ -174,13 +157,10 @@ function createPlayerStore() {
 		window.removeEventListener('beforeunload', handleBeforeUnload);
 		beforeUnloadRegistered = false;
 	}
-	async function stopPreviousSession(item: QueueItem | null, posSeconds: number): Promise<void> {
-		progressReporter.stop();
+	async function stopPreviousSession(item: QueueItem | null, _posSeconds: number): Promise<void> {
 		unregisterBeforeUnload();
 		if (!item) return;
-		if (item.sourceType === 'jellyfin' && item.playSessionId) {
-			await reportJellyfinStop(item.trackSourceId, item.playSessionId, posSeconds);
-		} else if (item.sourceType === 'navidrome') {
+		if (item.sourceType === 'navidrome') {
 			void reportNavidromeStopped(item.trackSourceId);
 		} else if (item.sourceType === 'plex' && item.plexRatingKey) {
 			void reportPlexStopped(item.plexRatingKey);
@@ -203,7 +183,6 @@ function createPlayerStore() {
 		shuffleEnabled = false;
 		consecutiveErrors = 0;
 		failedTrackNames = [];
-		progressReporter.stop();
 		unregisterBeforeUnload();
 		storeSessionData(null);
 	}
@@ -229,35 +208,12 @@ function createPlayerStore() {
 				loadUrl: url
 			};
 		}
-		if (item.sourceType === 'plex') {
-			isSeekable = true;
-			if (item.plexRatingKey) void reportPlexNowPlaying(item.plexRatingKey);
-			return {
-				source: createPlaybackSource('plex', { url: url!, seekable: true }),
-				loadUrl: url
-			};
-		}
 		isSeekable = true;
+		if (item.plexRatingKey) void reportPlexNowPlaying(item.plexRatingKey);
 		return {
-			source: createPlaybackSource('jellyfin', { url: url!, seekable: true }),
+			source: createPlaybackSource('plex', { url: url!, seekable: true }),
 			loadUrl: url
 		};
-	}
-
-	async function startJellyfinPlayback(index: number): Promise<void> {
-		const item = queue[index];
-		if (!item || item.sourceType !== 'jellyfin') return;
-		try {
-			const playSessionId = await startJellyfinSession(item.trackSourceId, item.playSessionId);
-			const uq = [...queue];
-			uq[index] = { ...uq[index], playSessionId };
-			queue = uq;
-			registerBeforeUnload();
-		} catch {
-			const uq = [...queue];
-			uq[index] = { ...uq[index], playSessionId: '' };
-			queue = uq;
-		}
 	}
 
 	async function loadQueueItem(index: number): Promise<void> {
@@ -276,7 +232,6 @@ function createPlayerStore() {
 		if (prevItem) {
 			await stopPreviousSession(prevItem, prevProgress);
 		} else {
-			progressReporter.stop();
 			unregisterBeforeUnload();
 		}
 		currentSource?.destroy();
@@ -298,14 +253,14 @@ function createPlayerStore() {
 		source.setVolume(volume);
 		try {
 			const activeItem = queue[index] ?? item;
+			if (activeItem.sourceType === 'navidrome' || activeItem.sourceType === 'plex') {
+				registerBeforeUnload();
+			}
 			const loadPromise = source.load({
 				trackSourceId: activeItem.trackSourceId,
 				url: resolvedUrl,
 				format: activeItem.format
 			});
-			// Session must exist before play(): a fast 'playing' event would otherwise
-			// start the progress reporter without a playSessionId and it bails permanently.
-			if (activeItem.sourceType === 'jellyfin') await startJellyfinPlayback(index);
 			if (gen === loadGeneration && activeItem.sourceType !== 'youtube') {
 				source.play();
 			}
@@ -363,18 +318,7 @@ function createPlayerStore() {
 			if (state === 'playing') {
 				consecutiveErrors = 0;
 				failedTrackNames = [];
-				if (getJellyfinItem())
-					progressReporter.start(() => ({
-						jellyfinItem: getJellyfinItem(),
-						progress,
-						isPaused: playbackState !== 'playing'
-					}));
 				prefetchNext();
-			}
-			if (state === 'paused') {
-				const jf = getJellyfinItem();
-				if (jf?.playSessionId)
-					void reportJellyfinProgress(jf.trackSourceId, jf.playSessionId, progress, true);
 			}
 			if (state === 'ended') {
 				const endedItem = getCurrentItem();
@@ -777,9 +721,6 @@ function createPlayerStore() {
 
 		pause(): void {
 			currentSource?.pause();
-			const jf = getJellyfinItem();
-			if (jf?.playSessionId)
-				void reportJellyfinProgress(jf.trackSourceId, jf.playSessionId, progress, true);
 			const item = getCurrentItem();
 			if (item?.sourceType === 'plex' && item.plexRatingKey)
 				void reportPlexStopped(item.plexRatingKey);
@@ -790,9 +731,6 @@ function createPlayerStore() {
 		togglePlay(): void {
 			if (isPlaying) {
 				currentSource?.pause();
-				const jf = getJellyfinItem();
-				if (jf?.playSessionId)
-					void reportJellyfinProgress(jf.trackSourceId, jf.playSessionId, progress, true);
 				const item = getCurrentItem();
 				if (item?.sourceType === 'plex' && item.plexRatingKey)
 					void reportPlexStopped(item.plexRatingKey);
@@ -858,8 +796,11 @@ function createPlayerStore() {
 					nowPlaying = resume.nowPlaying;
 					subscribeToSource(source, gen);
 					source.setVolume(volume);
-					if (resume.currentItem.sourceType === 'jellyfin') {
-						await startJellyfinPlayback(resume.currentIndex);
+					if (
+						resume.currentItem.sourceType === 'navidrome' ||
+						resume.currentItem.sourceType === 'plex'
+					) {
+						registerBeforeUnload();
 					}
 					await source.load({
 						trackSourceId: resume.currentItem.trackSourceId,

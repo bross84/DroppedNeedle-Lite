@@ -1,15 +1,10 @@
 <script
 	lang="ts"
-	generics="TAlbum extends JellyfinAlbumSummary | LocalAlbumSummary | NavidromeAlbumSummary | PlexAlbumSummary"
+	generics="TAlbum extends LocalAlbumSummary | NavidromeAlbumSummary | PlexAlbumSummary"
 >
 	import type { Snippet } from 'svelte';
 	import type { LibraryController } from '$lib/utils/libraryController.svelte';
-	import type {
-		JellyfinAlbumSummary,
-		LocalAlbumSummary,
-		NavidromeAlbumSummary,
-		PlexAlbumSummary
-	} from '$lib/types';
+	import type { LocalAlbumSummary, NavidromeAlbumSummary, PlexAlbumSummary } from '$lib/types';
 	import AlbumImage from '$lib/components/AlbumImage.svelte';
 	import ContextMenu from '$lib/components/ContextMenu.svelte';
 	import AddToPlaylistModal from '$lib/components/AddToPlaylistModal.svelte';

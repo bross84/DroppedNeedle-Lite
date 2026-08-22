@@ -164,31 +164,12 @@ async def test_admin_create_user_optional_email_and_duplicate_username(tmp_path)
 
 
 @pytest.mark.asyncio
-async def test_jellyfin_new_user_autoderives_username_and_dedups(tmp_path):
-    from services.jellyfin_user_auth_service import JellyfinUserAuthService
-
-    store = AuthStore(tmp_path / "library.db")
-    svc = JellyfinUserAuthService(store, None, None)
-
-    profile = {
-        "jellyfin_user_id": "jf-1", "username": "Jane Doe",
-        "email": None, "thumb": None, "access_token": "tok",
-    }
-    user = await svc._find_or_create_user(profile)
-    assert user.username == "jane-doe" and user.username_display == "Jane-Doe"
-
-    profile2 = {**profile, "jellyfin_user_id": "jf-2", "access_token": "tok2"}
-    user2 = await svc._find_or_create_user(profile2)
-    assert user2.username == "jane-doe-2"
-
-
-@pytest.mark.asyncio
 async def test_sso_new_user_retries_on_username_index_race(tmp_path, monkeypatch):
     """A concurrent first-login that loses the username race re-derives instead of 500ing."""
-    from services.jellyfin_user_auth_service import JellyfinUserAuthService
+    from services.plex_user_auth_service import PlexUserAuthService
 
     store = AuthStore(tmp_path / "library.db")
-    svc = JellyfinUserAuthService(store, None, None)
+    svc = PlexUserAuthService(store, None, None)
 
     real_create = store.create_user
     calls = {"n": 0}
@@ -202,10 +183,10 @@ async def test_sso_new_user_retries_on_username_index_race(tmp_path, monkeypatch
     monkeypatch.setattr(store, "create_user", flaky_create)
 
     profile = {
-        "jellyfin_user_id": "jf-1", "username": "Jane Doe",
-        "email": None, "thumb": None, "access_token": "tok",
+        "uuid": "plex-1", "email": "", "display_name": "Jane Doe",
+        "thumb": None, "auth_token": "tok",
     }
-    user = await svc._find_or_create_user(profile)
+    user = await svc._find_or_create_user(profile, "tok")
     assert user.username == "jane-doe"
     assert calls["n"] >= 2  # retried after the simulated race
 

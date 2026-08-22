@@ -19,7 +19,6 @@ def _make_plex_conn(enabled=True, url="http://plex:32400", token="tok", library_
 def _make_helpers(**overrides):
     prefs = MagicMock()
     prefs.get_plex_connection.return_value = _make_plex_conn(**overrides)
-    prefs.get_jellyfin_connection.return_value = MagicMock(enabled=False)
     prefs.get_navidrome_connection.return_value = MagicMock(enabled=False, navidrome_url="", username="", password="")
     prefs.get_listenbrainz_connection.return_value = MagicMock(enabled=False)
     prefs.is_lastfm_enabled.return_value = False

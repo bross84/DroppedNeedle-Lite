@@ -5,7 +5,6 @@
 	import { api, ApiError } from '$lib/api/client';
 	import { getAuthProvidersQuery } from '$lib/queries/auth/AuthProvidersQuery.svelte';
 	import {
-		createJellyfinLoginMutation,
 		createLocalLoginMutation,
 		createOidcAuthorizeMutation,
 		createPlexPinMutation
@@ -19,15 +18,13 @@
 	} from '$lib/queries/auth/types';
 	import { onDestroy } from 'svelte';
 	import { Eye, EyeOff } from 'lucide-svelte';
-	import JellyfinIcon from '$lib/components/JellyfinIcon.svelte';
 	import PlexIcon from '$lib/components/PlexIcon.svelte';
 
-	type Tab = 'local' | 'plex' | 'jellyfin' | 'oidc';
+	type Tab = 'local' | 'plex' | 'oidc';
 
 	const DEFAULT_PROVIDERS: AuthProviders = {
 		local: true,
 		plex: false,
-		jellyfin: false,
 		oidc: false
 	};
 
@@ -41,7 +38,6 @@
 		if (tabInitialised || !providersQuery.isSuccess) return;
 		tabInitialised = true;
 		if (!providers.local && providers.plex) activeTab = 'plex';
-		else if (!providers.local && providers.jellyfin) activeTab = 'jellyfin';
 		else if (!providers.local && providers.oidc) activeTab = 'oidc';
 	});
 
@@ -50,12 +46,6 @@
 	let showPassword = $state(false);
 	let localError = $state<string | null>(null);
 	const localLogin = createLocalLoginMutation();
-
-	let jfUsername = $state('');
-	let jfPassword = $state('');
-	let jfShowPassword = $state(false);
-	let jfError = $state<string | null>(null);
-	const jellyfinLogin = createJellyfinLoginMutation();
 
 	// plex PIN request is a mutation; authorisation is polled imperatively
 	let plexLoading = $state(false);
@@ -82,15 +72,6 @@
 			storeSession(await localLogin.mutateAsync({ username, password }));
 		} catch (e) {
 			localError = e instanceof ApiError ? e.message : 'Could not reach the server';
-		}
-	}
-
-	async function handleJellyfinLogin() {
-		jfError = null;
-		try {
-			storeSession(await jellyfinLogin.mutateAsync({ username: jfUsername, password: jfPassword }));
-		} catch (e) {
-			jfError = e instanceof ApiError ? e.message : 'Could not reach the server';
 		}
 	}
 
@@ -133,9 +114,7 @@
 		}
 	}
 
-	const availableTabs = $derived(
-		(['local', 'plex', 'jellyfin', 'oidc'] as Tab[]).filter((t) => providers[t])
-	);
+	const availableTabs = $derived((['local', 'plex', 'oidc'] as Tab[]).filter((t) => providers[t]));
 </script>
 
 <svelte:head>
@@ -161,7 +140,6 @@
 							onclick={() => (activeTab = tab)}
 						>
 							{#if tab === 'plex'}<PlexIcon class="h-4 w-4" style="color: rgb(var(--brand-plex))" />
-							{:else if tab === 'jellyfin'}<JellyfinIcon class="h-4 w-4 text-info" />
 							{/if}
 							{tab === 'local'
 								? 'Username'
@@ -237,70 +215,6 @@
 							{#if localLogin.isPending}<span class="loading loading-spinner loading-sm"
 								></span>{/if}
 							Sign in
-						</button>
-					</form>
-				{:else if activeTab === 'jellyfin'}
-					<form
-						onsubmit={(e) => {
-							e.preventDefault();
-							void handleJellyfinLogin();
-						}}
-						class="flex flex-col gap-4"
-					>
-						<div class="flex items-center gap-2 mb-1">
-							<JellyfinIcon class="h-5 w-5 text-info" />
-							<span class="text-sm font-medium">Sign in with your Jellyfin account</span>
-						</div>
-						<fieldset class="fieldset">
-							<legend class="fieldset-legend">Username</legend>
-							<input
-								type="text"
-								class="input input-bordered w-full"
-								placeholder="Jellyfin username"
-								bind:value={jfUsername}
-								required
-								autocomplete="username"
-							/>
-						</fieldset>
-						<fieldset class="fieldset">
-							<legend class="fieldset-legend">Password</legend>
-							<label class="input input-bordered flex items-center gap-2 w-full">
-								{#if jfShowPassword}
-									<input
-										type="text"
-										class="grow"
-										placeholder="Password"
-										bind:value={jfPassword}
-										required
-										autocomplete="current-password"
-									/>
-								{:else}
-									<input
-										type="password"
-										class="grow"
-										placeholder="Password"
-										bind:value={jfPassword}
-										required
-										autocomplete="current-password"
-									/>
-								{/if}
-								<button
-									type="button"
-									onclick={() => (jfShowPassword = !jfShowPassword)}
-									class="opacity-50 hover:opacity-100 transition-opacity"
-									aria-label="Toggle password visibility"
-								>
-									{#if jfShowPassword}<EyeOff class="h-4 w-4" />{:else}<Eye class="h-4 w-4" />{/if}
-								</button>
-							</label>
-						</fieldset>
-						{#if jfError}
-							<div class="alert alert-error py-2 text-sm">{jfError}</div>
-						{/if}
-						<button type="submit" class="btn btn-primary w-full" disabled={jellyfinLogin.isPending}>
-							{#if jellyfinLogin.isPending}<span class="loading loading-spinner loading-sm"
-								></span>{/if}
-							Sign in with Jellyfin
 						</button>
 					</form>
 				{:else if activeTab === 'plex'}

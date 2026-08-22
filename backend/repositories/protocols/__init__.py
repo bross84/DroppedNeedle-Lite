@@ -5,7 +5,6 @@ with code that previously imported from `repositories.protocols`.
 """
 
 from repositories.protocols.coverart import CoverArtRepositoryProtocol as CoverArtRepositoryProtocol
-from repositories.protocols.jellyfin import JellyfinRepositoryProtocol as JellyfinRepositoryProtocol
 from repositories.protocols.lastfm import LastFmRepositoryProtocol as LastFmRepositoryProtocol
 from repositories.protocols.library import LibraryRepositoryProtocol as LibraryRepositoryProtocol
 from repositories.protocols.listenbrainz import ListenBrainzRepositoryProtocol as ListenBrainzRepositoryProtocol
@@ -23,7 +22,6 @@ from repositories.listenbrainz_models import (
 
 __all__ = [
     "CoverArtRepositoryProtocol",
-    "JellyfinRepositoryProtocol",
     "LastFmRepositoryProtocol",
     "LibraryRepositoryProtocol",
     "ListenBrainzRepositoryProtocol",

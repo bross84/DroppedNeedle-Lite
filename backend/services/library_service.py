@@ -44,7 +44,6 @@ from services.library_precache_service import LibraryPrecacheService
 if TYPE_CHECKING:
     from services.preferences_service import PreferencesService
     from services.local_files_service import LocalFilesService
-    from services.jellyfin_library_service import JellyfinLibraryService
     from services.navidrome_library_service import NavidromeLibraryService
     from services.navidrome_folder_scope_service import NavidromeFolderScopeService
 
@@ -65,7 +64,6 @@ class LibraryService:
         artist_discovery_service: Any = None,
         audiodb_image_service: Any = None,
         local_files_service: "LocalFilesService | None" = None,
-        jellyfin_library_service: "JellyfinLibraryService | None" = None,
         navidrome_library_service: "NavidromeLibraryService | None" = None,
         navidrome_folder_scope_service: "NavidromeFolderScopeService | None" = None,
         sync_state_store: SyncStateStore | None = None,
@@ -78,7 +76,6 @@ class LibraryService:
         self._memory_cache = memory_cache
         self._disk_cache = disk_cache
         self._local_files_service = local_files_service
-        self._jellyfin_library_service = jellyfin_library_service
         self._navidrome_library_service = navidrome_library_service
         self._navidrome_folder_scope_service = navidrome_folder_scope_service
         self._sync_state_store = sync_state_store
@@ -782,7 +779,7 @@ class LibraryService:
         self, album_mbid: str, artist_mbid: str | None, *, artist_removed: bool = False
     ) -> None:
         # do NOT call library_db.clear() here: it would wipe unrelated sync_state and
-        # the jellyfin/navidrome MBID indexes
+        # the navidrome MBID indexes
         if self._memory_cache:
             keys_to_delete = [
                 f"{ALBUM_INFO_PREFIX}{album_mbid}",
@@ -837,7 +834,7 @@ class LibraryService:
         scope_segment: str = "all",
     ) -> dict[str, tuple[str, str, str | None, float | None]]:
         # resolve to {disc:track: (source, source_id, format, duration)};
-        # priority local -> navidrome -> jellyfin; source_resolution cache (1h TTL)
+        # priority local -> navidrome; source_resolution cache (1h TTL)
         if self._memory_cache is None:
             raise ExternalServiceError(
                 "Memory cache not available for track resolution"
@@ -933,42 +930,6 @@ class LibraryService:
                     exc_info=True,
                 )
 
-        jf_enabled = False
-        try:
-            jf_settings = self._preferences_service.get_jellyfin_connection()
-            jf_enabled = jf_settings.enabled
-        except AttributeError:
-            logger.debug(
-                "Jellyfin settings unavailable during track resolution", exc_info=True
-            )
-
-        if jf_enabled and self._jellyfin_library_service:
-            try:
-                match = await self._jellyfin_library_service.match_album_by_mbid(
-                    album_mbid
-                )
-                if match.found:
-                    all_same = (
-                        len(match.tracks) > 1
-                        and len({t.track_number for t in match.tracks}) == 1
-                    )
-                    if not all_same:
-                        for t in match.tracks:
-                            key = _track_key(
-                                getattr(t, "disc_number", 1) or 1, t.track_number
-                            )
-                            if key not in result:
-                                result[key] = (
-                                    "jellyfin",
-                                    t.jellyfin_id,
-                                    t.codec,
-                                    t.duration_seconds,
-                                )
-            except Exception:  # noqa: BLE001
-                logger.debug(
-                    "Jellyfin track resolution failed for %s", album_mbid, exc_info=True
-                )
-
         await self._memory_cache.set(cache_key, result, ttl_seconds=3600)
         return result
 
@@ -1037,8 +998,6 @@ class LibraryService:
                 stream_url = f"/api/v1/stream/local/{source_id}"
             elif source == "navidrome":
                 stream_url = f"/api/v1/stream/navidrome/{source_id}"
-            elif source == "jellyfin":
-                stream_url = f"/api/v1/stream/jellyfin/{source_id}"
 
             resolved.append(
                 ResolvedTrack(

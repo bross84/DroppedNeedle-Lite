@@ -17,7 +17,6 @@ def _item(mbid: str, disc: int = 1, track: int = 1):
 def _make_service(
     *,
     local_service=None,
-    jf_service=None,
     nd_service=None,
     preferences=None,
     cache=None,
@@ -39,7 +38,6 @@ def _make_service(
         disk_cache=disk_cache,
         audiodb_image_service=audiodb_image_service,
         local_files_service=local_service,
-        jellyfin_library_service=jf_service,
         navidrome_library_service=nd_service,
     )
     return service
@@ -72,7 +70,6 @@ async def test_resolve_tracks_batch_respects_max_items():
 
     prefs = MagicMock()
     prefs.get_navidrome_connection_raw = MagicMock(side_effect=Exception("unconfigured"))
-    prefs.get_jellyfin_connection = MagicMock(side_effect=Exception("unconfigured"))
     service._preferences_service = prefs
 
     result = await service.resolve_tracks_batch(items)

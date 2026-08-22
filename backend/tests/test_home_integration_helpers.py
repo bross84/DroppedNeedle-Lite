@@ -15,12 +15,6 @@ def _make_prefs(**overrides):
     lb.user_token = "tok"
     prefs.get_listenbrainz_connection.return_value = lb
 
-    jf = MagicMock()
-    jf.enabled = overrides.get("jf_enabled", False)
-    jf.jellyfin_url = overrides.get("jf_url", "")
-    jf.api_key = overrides.get("jf_api_key", "")
-    prefs.get_jellyfin_connection.return_value = jf
-
     dc = MagicMock()
     dc.enabled = overrides.get("dc_enabled", False)
     dc.url = overrides.get("dc_url", "")
@@ -70,18 +64,6 @@ class TestIntegrationFlags:
     def test_listenbrainz_disabled_no_username(self):
         h = HomeIntegrationHelpers(_make_prefs(lb_enabled=True, lb_username=""))
         assert h.is_listenbrainz_enabled() is False
-
-    def test_jellyfin_enabled(self):
-        h = HomeIntegrationHelpers(
-            _make_prefs(jf_enabled=True, jf_url="http://jf", jf_api_key="key")
-        )
-        assert h.is_jellyfin_enabled() is True
-
-    def test_jellyfin_disabled_missing_url(self):
-        h = HomeIntegrationHelpers(
-            _make_prefs(jf_enabled=True, jf_url="", jf_api_key="key")
-        )
-        assert h.is_jellyfin_enabled() is False
 
     def test_download_client_configured(self):
         h = HomeIntegrationHelpers(

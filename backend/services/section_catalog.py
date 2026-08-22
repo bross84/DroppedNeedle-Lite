@@ -276,12 +276,6 @@ SIDEBAR_SECTIONS: tuple[SectionDef, ...] = (
         zone="Services",
     ),
     SectionDef(
-        key="jellyfin",
-        title="Jellyfin",
-        description="The Jellyfin entry in the sidebar.",
-        zone="Services",
-    ),
-    SectionDef(
         key="navidrome",
         title="Navidrome",
         description="The Navidrome entry in the sidebar.",

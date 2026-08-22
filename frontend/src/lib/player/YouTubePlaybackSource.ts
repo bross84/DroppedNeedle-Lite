@@ -131,7 +131,7 @@ export class YouTubePlaybackSource implements PlaybackSource {
 	 * both, so we pause on hidden and resume only what we ourselves paused.
 	 *
 	 * This lives in the YouTube source rather than the shared engine on purpose. Local files,
-	 * Jellyfin, Navidrome and Plex all keep playing in the background as before.
+	 * Navidrome and Plex all keep playing in the background as before.
 	 */
 	private attachVisibilityGuard(): void {
 		if (this.visibilityHandler || typeof document === 'undefined') return;

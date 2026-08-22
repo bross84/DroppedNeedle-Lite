@@ -6,9 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, PropertyMock
 import pytest
 
 from repositories.navidrome_models import SubsonicAlbumInfo, SubsonicLyrics
-from repositories.jellyfin_models import JellyfinLyrics, JellyfinLyricLine
 from services.navidrome_library_service import NavidromeLibraryService
-from services.jellyfin_library_service import JellyfinLibraryService
 from services.plex_library_service import PlexLibraryService
 from repositories.plex_models import PlexTrack, PlexMedia, PlexPart
 
@@ -34,19 +32,6 @@ def _navidrome_service(
     repo.get_lyrics_by_song_id = AsyncMock(return_value=lyrics_by_id)
     prefs = MagicMock()
     return NavidromeLibraryService(navidrome_repo=repo, preferences_service=prefs)
-
-
-def _jellyfin_service(lyrics=None) -> JellyfinLibraryService:
-    repo = MagicMock()
-    repo.get_albums = AsyncMock(return_value=([], 0))
-    repo.get_recently_added = AsyncMock(return_value=[])
-    repo.get_most_played = AsyncMock(return_value=[])
-    repo.get_genres = AsyncMock(return_value=[])
-    repo.get_track_count = AsyncMock(return_value=0)
-    repo.get_artist_count = AsyncMock(return_value=0)
-    repo.get_lyrics = AsyncMock(return_value=lyrics)
-    prefs = MagicMock()
-    return JellyfinLibraryService(jellyfin_repo=repo, preferences_service=prefs)
 
 
 def _plex_service() -> PlexLibraryService:
@@ -138,49 +123,6 @@ async def test_navidrome_lyrics_returns_none_on_all_errors():
     svc._navidrome.get_lyrics_by_song_id = AsyncMock(side_effect=RuntimeError("fail"))
     svc._navidrome.get_lyrics = AsyncMock(side_effect=RuntimeError("fail"))
     result = await svc.get_lyrics("song-1", artist="A", title="T")
-    assert result is None
-
-
-@pytest.mark.asyncio
-async def test_jellyfin_lyrics_synced():
-    lyrics = JellyfinLyrics(lines=[
-        JellyfinLyricLine(text="Line one", start=50_000_000),
-        JellyfinLyricLine(text="Line two", start=100_000_000),
-    ])
-    svc = _jellyfin_service(lyrics=lyrics)
-    result = await svc.get_lyrics("item-1")
-    assert result is not None
-    assert result.is_synced is True
-    assert len(result.lines) == 2
-    assert result.lines[0].start_seconds == pytest.approx(5.0)
-    assert result.lines[1].start_seconds == pytest.approx(10.0)
-    assert "Line one" in result.lyrics_text
-
-
-@pytest.mark.asyncio
-async def test_jellyfin_lyrics_unsynced():
-    lyrics = JellyfinLyrics(lines=[
-        JellyfinLyricLine(text="Plain text", start=None),
-    ])
-    svc = _jellyfin_service(lyrics=lyrics)
-    result = await svc.get_lyrics("item-1")
-    assert result is not None
-    assert result.is_synced is False
-    assert result.lines[0].start_seconds is None
-
-
-@pytest.mark.asyncio
-async def test_jellyfin_lyrics_returns_none_when_unavailable():
-    svc = _jellyfin_service(lyrics=None)
-    result = await svc.get_lyrics("item-1")
-    assert result is None
-
-
-@pytest.mark.asyncio
-async def test_jellyfin_lyrics_returns_none_on_error():
-    svc = _jellyfin_service()
-    svc._jellyfin.get_lyrics = AsyncMock(side_effect=RuntimeError("fail"))
-    result = await svc.get_lyrics("item-1")
     assert result is None
 
 

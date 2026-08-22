@@ -57,11 +57,11 @@ class SpotifyAuthUrlResponse(AppStruct):
 
 
 class MediaServerConnectRequest(AppStruct):
-    """Link a Navidrome/Jellyfin account with the user's own credentials.
+    """Link a Navidrome account with the user's own credentials.
 
-    The password is verified against the live server and either stored encrypted
-    (Navidrome - Subsonic token auth needs it per request) or exchanged for an
-    access token and discarded (Jellyfin). It is never serialized back out.
+    The password is verified against the live server and stored encrypted
+    (Navidrome - Subsonic token auth needs it per request). It is never
+    serialized back out.
     """
 
     username: str

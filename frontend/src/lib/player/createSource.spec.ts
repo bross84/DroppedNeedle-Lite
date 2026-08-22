@@ -26,23 +26,10 @@ describe('createPlaybackSource', () => {
 		expect(source).toBeInstanceOf(YouTubePlaybackSource);
 	});
 
-	it('returns a NativeAudioSource for "jellyfin"', () => {
-		const source = createPlaybackSource('jellyfin', {
-			url: 'https://example.test/audio',
-			seekable: true
-		});
-		expect(source).toBeInstanceOf(NativeAudioSource);
-		expect(source.type).toBe('jellyfin');
-	});
-
 	it('returns a NativeAudioSource for "local"', () => {
 		const source = createPlaybackSource('local', { url: '/api/v1/stream/local/1', seekable: true });
 		expect(source).toBeInstanceOf(NativeAudioSource);
 		expect(source.type).toBe('local');
-	});
-
-	it('throws if jellyfin source options are missing', () => {
-		expect(() => createPlaybackSource('jellyfin')).toThrow('requires url and seekable options');
 	});
 
 	it('throws if local source options are missing', () => {

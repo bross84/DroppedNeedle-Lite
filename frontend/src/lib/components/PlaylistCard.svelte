@@ -7,7 +7,7 @@
 	import { toastStore } from '$lib/stores/toast';
 	import { formatTotalDurationSec } from '$lib/utils/formatting';
 	import { getSourceColor, getSourceLabel } from '$lib/utils/sources';
-	import { Play, Shuffle, Trash2, Tv, Lock, Globe } from 'lucide-svelte';
+	import { Play, Shuffle, Trash2, Lock, Globe } from 'lucide-svelte';
 	import { authStore } from '$lib/stores/authStore.svelte';
 	import NavidromeIcon from '$lib/components/NavidromeIcon.svelte';
 	import PlexIcon from '$lib/components/PlexIcon.svelte';
@@ -171,9 +171,7 @@
 					class="absolute top-2 right-2 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider shadow-md backdrop-blur-sm"
 					style="background: color-mix(in srgb, {sourceColor} 85%, black); color: white;"
 				>
-					{#if sourceType === 'jellyfin'}
-						<Tv class="h-3 w-3" />
-					{:else if sourceType === 'navidrome'}
+					{#if sourceType === 'navidrome'}
 						<NavidromeIcon class="h-3 w-3" />
 					{:else if sourceType === 'plex'}
 						<PlexIcon class="h-3 w-3" />

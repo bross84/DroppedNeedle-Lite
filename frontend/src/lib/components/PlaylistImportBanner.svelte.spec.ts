@@ -12,8 +12,8 @@ const sourceIcon = createRawSnippet(() => ({
 function renderBanner(overrides: Record<string, unknown> = {}) {
 	return render(PlaylistImportBanner, {
 		props: {
-			sourceLabel: 'Jellyfin',
-			playlistsHref: '/library/jellyfin/playlists',
+			sourceLabel: 'Navidrome',
+			playlistsHref: '/library/navidrome/playlists',
 			sourceIcon,
 			...overrides
 		}
@@ -25,7 +25,7 @@ describe('PlaylistImportBanner.svelte', () => {
 		renderBanner({ accountMode: 'shared', playlists: [] });
 
 		await expect
-			.element(page.getByText('No playlists found on the shared Jellyfin account'))
+			.element(page.getByText('No playlists found on the shared Navidrome account'))
 			.toBeVisible();
 		await expect.element(page.getByText('Link your account to see your playlists.')).toBeVisible();
 		const link = page.getByRole('link', { name: 'Link your account' });
@@ -36,7 +36,7 @@ describe('PlaylistImportBanner.svelte', () => {
 	it('shows a connected empty state instead of disappearing', async () => {
 		renderBanner({ accountMode: 'linked', accountLabel: 'alice', playlists: [] });
 
-		await expect.element(page.getByText('No Jellyfin playlists found for alice')).toBeVisible();
+		await expect.element(page.getByText('No Navidrome playlists found for alice')).toBeVisible();
 		await expect
 			.element(page.getByText('alice is connected, but no playlists are available.'))
 			.toBeVisible();
@@ -46,7 +46,7 @@ describe('PlaylistImportBanner.svelte', () => {
 	it('keeps its footprint while playlist discovery is loading', async () => {
 		renderBanner({ loading: true });
 
-		await expect.element(page.getByText('Jellyfin')).toBeVisible();
+		await expect.element(page.getByText('Navidrome')).toBeVisible();
 		await expect.element(page.getByRole('group')).toBeVisible();
 	});
 
@@ -57,16 +57,16 @@ describe('PlaylistImportBanner.svelte', () => {
 		});
 
 		await expect
-			.element(page.getByText('Reconnect Jellyfin to check your playlists'))
+			.element(page.getByText('Reconnect Navidrome to check your playlists'))
 			.toBeVisible();
-		await expect.element(page.getByRole('link', { name: 'Reconnect Jellyfin' })).toBeVisible();
+		await expect.element(page.getByRole('link', { name: 'Reconnect Navidrome' })).toBeVisible();
 	});
 
 	it('keeps a visible retry state for generic failures', async () => {
 		const onretry = vi.fn();
 		renderBanner({ errorCode: 'EXTERNAL_SERVICE_ERROR', onretry });
 
-		await expect.element(page.getByText("Couldn't check Jellyfin playlists")).toBeVisible();
+		await expect.element(page.getByText("Couldn't check Navidrome playlists")).toBeVisible();
 		await page.getByRole('button', { name: 'Check again' }).click();
 		expect(onretry).toHaveBeenCalledOnce();
 	});
@@ -96,7 +96,7 @@ describe('PlaylistImportBanner.svelte', () => {
 		});
 
 		await expect
-			.element(page.getByText('Bring your 2 Jellyfin playlists to DroppedNeedle'))
+			.element(page.getByText('Bring your 2 Navidrome playlists to DroppedNeedle'))
 			.toBeVisible();
 		await expect.element(page.getByText('1 of 2 imported so far.')).toBeVisible();
 	});
@@ -117,9 +117,9 @@ describe('PlaylistImportBanner.svelte', () => {
 			]
 		});
 
-		await expect.element(page.getByText('All 1 Jellyfin playlist imported')).toBeVisible();
+		await expect.element(page.getByText('All 1 Navidrome playlist imported')).toBeVisible();
 		await expect
-			.element(page.getByText('Your Jellyfin playlists are now private copies in DroppedNeedle.'))
+			.element(page.getByText('Your Navidrome playlists are now private copies in DroppedNeedle.'))
 			.toBeVisible();
 	});
 });

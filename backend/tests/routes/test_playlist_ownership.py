@@ -188,18 +188,18 @@ async def test_private_cover_not_fetchable_by_non_owner(env):
 @pytest.mark.asyncio
 async def test_two_users_import_same_source_ref(env):
     await _seed_users(env.auth_store)
-    p1 = await env.service.create_playlist("JF", source_ref="jellyfin:123", user_id=OWNER_ID)
-    p2 = await env.service.create_playlist("JF", source_ref="jellyfin:123", user_id=OTHER_ID)
+    p1 = await env.service.create_playlist("ND", source_ref="navidrome:123", user_id=OWNER_ID)
+    p2 = await env.service.create_playlist("ND", source_ref="navidrome:123", user_id=OTHER_ID)
     assert p1.id != p2.id  # the per-user unique index allows both
 
-    assert await env.service.get_imported_source_ids("jellyfin:", user_id=OWNER_ID) == {"123"}
-    assert await env.service.get_imported_source_ids("jellyfin:", user_id=OTHER_ID) == {"123"}
-    assert (await env.service.get_by_source_ref("jellyfin:123", user_id=OWNER_ID)).id == p1.id
-    assert (await env.service.get_by_source_ref("jellyfin:123", user_id=OTHER_ID)).id == p2.id
+    assert await env.service.get_imported_source_ids("navidrome:", user_id=OWNER_ID) == {"123"}
+    assert await env.service.get_imported_source_ids("navidrome:", user_id=OTHER_ID) == {"123"}
+    assert (await env.service.get_by_source_ref("navidrome:123", user_id=OWNER_ID)).id == p1.id
+    assert (await env.service.get_by_source_ref("navidrome:123", user_id=OTHER_ID)).id == p2.id
 
     # A second import of the SAME source by the SAME user collides on the index.
     with pytest.raises(Exception):
-        await env.service.create_playlist("JF dup", source_ref="jellyfin:123", user_id=OWNER_ID)
+        await env.service.create_playlist("ND dup", source_ref="navidrome:123", user_id=OWNER_ID)
 
 
 @pytest.mark.asyncio

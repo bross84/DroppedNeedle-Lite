@@ -19,10 +19,6 @@ class IntegrationHelpers:
         lb_settings = self._preferences.get_listenbrainz_connection()
         return lb_settings.enabled and bool(lb_settings.username)
 
-    def is_jellyfin_enabled(self) -> bool:
-        jf_settings = self._preferences.get_jellyfin_connection()
-        return jf_settings.enabled and bool(jf_settings.jellyfin_url) and bool(jf_settings.api_key)
-
     def is_download_client_configured(self) -> bool:
         # Any acquisition source counts - Free Music, slskd (Soulseek), or SABnzbd (Usenet).
         return self._preferences.is_download_source_ready()
@@ -84,7 +80,6 @@ class IntegrationHelpers:
     def get_integration_status(self) -> DiscoverIntegrationStatus:
         return DiscoverIntegrationStatus(
             listenbrainz=self.is_listenbrainz_enabled(),
-            jellyfin=self.is_jellyfin_enabled(),
             download_client=self.is_download_client_configured(),
             library=self.is_library_configured(),
             youtube=self.is_youtube_api_enabled(),

@@ -236,7 +236,7 @@ describe('LibraryManagementOperationPage', () => {
 				phase: 'complete',
 				external_refreshes: [
 					{
-						target: 'jellyfin',
+						target: 'navidrome',
 						state: 'retry_wait',
 						attempts: 1,
 						max_attempts: 4,

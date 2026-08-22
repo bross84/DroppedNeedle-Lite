@@ -181,7 +181,7 @@ class TestAddTracks:
         p = repo.create_playlist("Test")
         tracks = repo.add_tracks(p.id, [
             {"track_name": "T1", "artist_name": "A1", "album_name": "AL1", "source_type": "local"},
-            {"track_name": "T2", "artist_name": "A2", "album_name": "AL2", "source_type": "jellyfin"},
+            {"track_name": "T2", "artist_name": "A2", "album_name": "AL2", "source_type": "navidrome"},
         ])
         assert len(tracks) == 2
         assert tracks[0].position == 0
@@ -239,12 +239,12 @@ class TestAddTracks:
         p = repo.create_playlist("Test")
         tracks = repo.add_tracks(p.id, [
             {"track_name": "T1", "artist_name": "A1", "album_name": "AL1",
-             "source_type": "local", "available_sources": ["local", "jellyfin"]},
+             "source_type": "local", "available_sources": ["local", "navidrome"]},
         ])
-        assert tracks[0].available_sources == ["local", "jellyfin"]
+        assert tracks[0].available_sources == ["local", "navidrome"]
 
         fetched = repo.get_tracks(p.id)
-        assert fetched[0].available_sources == ["local", "jellyfin"]
+        assert fetched[0].available_sources == ["local", "navidrome"]
 
     def test_disc_number_roundtrip(self, repo):
         p = repo.create_playlist("Test")
@@ -345,9 +345,9 @@ class TestUpdateTrackSource:
         tracks = repo.add_tracks(p.id, [
             {"track_name": "T1", "artist_name": "A1", "album_name": "AL1", "source_type": "local"},
         ])
-        result = repo.update_track_source(p.id, tracks[0].id, source_type="jellyfin")
+        result = repo.update_track_source(p.id, tracks[0].id, source_type="navidrome")
         assert result is not None
-        assert result.source_type == "jellyfin"
+        assert result.source_type == "navidrome"
 
     def test_update_available_sources(self, repo):
         p = repo.create_playlist("Test")
@@ -355,10 +355,10 @@ class TestUpdateTrackSource:
             {"track_name": "T1", "artist_name": "A1", "album_name": "AL1", "source_type": "local"},
         ])
         result = repo.update_track_source(
-            p.id, tracks[0].id, available_sources=["local", "jellyfin"],
+            p.id, tracks[0].id, available_sources=["local", "navidrome"],
         )
         assert result is not None
-        assert result.available_sources == ["local", "jellyfin"]
+        assert result.available_sources == ["local", "navidrome"]
 
     def test_non_existent(self, repo):
         p = repo.create_playlist("Test")

@@ -217,14 +217,6 @@ export type AlbumTracksInfo = {
 	selected_release_mbid?: string | null;
 };
 
-export type JellyfinConnectionSettings = {
-	jellyfin_url: string;
-	api_key: string;
-	user_id: string;
-	enabled: boolean;
-	login_enabled: boolean;
-};
-
 export type OIDCConnectionSettings = {
 	enabled: boolean;
 	issuer: string;
@@ -701,83 +693,6 @@ export type RequestHistoryResponse = {
 	total_pages: number;
 };
 
-export type JellyfinTrackInfo = {
-	jellyfin_id: string;
-	title: string;
-	track_number: number;
-	disc_number?: number | null;
-	duration_seconds: number;
-	album_name: string;
-	artist_name: string;
-	album_id?: string;
-	codec?: string | null;
-	bitrate?: number | null;
-	image_url?: string | null;
-};
-
-export type JellyfinAlbumMatch = {
-	found: boolean;
-	jellyfin_album_id?: string | null;
-	tracks: JellyfinTrackInfo[];
-};
-
-export type JellyfinAlbumSummary = {
-	jellyfin_id: string;
-	name: string;
-	artist_name: string;
-	year?: number | null;
-	track_count: number;
-	image_url?: string | null;
-	musicbrainz_id?: string | null;
-	artist_musicbrainz_id?: string | null;
-	play_count?: number;
-};
-
-export type JellyfinPaginatedResponse = {
-	items: JellyfinAlbumSummary[];
-	total: number;
-	offset: number;
-	limit: number;
-};
-
-export type JellyfinLibraryStats = {
-	total_tracks: number;
-	total_albums: number;
-	total_artists: number;
-};
-
-export type JellyfinArtistSummary = {
-	jellyfin_id: string;
-	name: string;
-	image_url?: string | null;
-	album_count: number;
-	musicbrainz_id?: string | null;
-	play_count?: number;
-};
-
-export type JellyfinArtistPage = {
-	items: JellyfinArtistSummary[];
-	total: number;
-	offset: number;
-	limit: number;
-};
-
-export type JellyfinArtistIndexEntry = {
-	name: string;
-	artists: JellyfinArtistSummary[];
-};
-
-export type JellyfinArtistIndexResponse = {
-	index: JellyfinArtistIndexEntry[];
-};
-
-export type JellyfinTrackPage = {
-	items: JellyfinTrackInfo[];
-	total: number;
-	offset: number;
-	limit: number;
-};
-
 export type NavidromeConnectionSettings = {
 	navidrome_url: string;
 	username: string;
@@ -1051,17 +966,6 @@ export type NavidromeHubResponse = {
 	genres: string[];
 };
 
-export type JellyfinHubResponse = {
-	stats: JellyfinLibraryStats | null;
-	recently_played: JellyfinAlbumSummary[];
-	recently_added: JellyfinAlbumSummary[];
-	favorites: JellyfinAlbumSummary[];
-	most_played_artists: JellyfinArtistSummary[];
-	most_played_albums: JellyfinAlbumSummary[];
-	all_albums_preview: JellyfinAlbumSummary[];
-	genres: string[];
-};
-
 export type LocalTrackInfo = {
 	track_file_id: string;
 	title: string;
@@ -1307,7 +1211,7 @@ export type SourcePlaylistSummary = {
 	created_at?: string;
 };
 
-export type SourcePlaylistSource = 'jellyfin' | 'navidrome' | 'plex';
+export type SourcePlaylistSource = 'navidrome' | 'plex';
 
 export type SourcePlaylistCollection = {
 	account_mode: 'linked' | 'shared';
@@ -1388,28 +1292,6 @@ export type NavidromeNowPlayingResponse = {
 	entries: NavidromeNowPlayingEntry[];
 };
 
-export type JellyfinSessionInfo = {
-	session_id: string;
-	user_name: string;
-	device_name: string;
-	client_name: string;
-	track_name: string;
-	artist_name: string;
-	album_name: string;
-	album_id: string;
-	cover_url: string;
-	position_seconds: number;
-	duration_seconds: number;
-	is_paused: boolean;
-	play_method: string;
-	audio_codec: string;
-	bitrate: number;
-};
-
-export type JellyfinSessionsResponse = {
-	sessions: JellyfinSessionInfo[];
-};
-
 export type NowPlayingSession = {
 	id: string;
 	user_name: string;
@@ -1419,7 +1301,7 @@ export type NowPlayingSession = {
 	cover_url: string;
 	device_name: string;
 	is_paused: boolean;
-	// upstream servers use 'jellyfin'|'navidrome'|'plex'; the web player adds
+	// upstream servers use 'navidrome'|'plex'; the web player adds
 	// 'local'|'youtube'; connected apps report their client name (e.g. 'finamp')
 	source?: string;
 	progress_ms?: number;
@@ -1491,28 +1373,6 @@ export type LocalLyricsResponse = {
 	text: string;
 	is_synced: boolean;
 	lines: LyricLine[];
-};
-
-export type JellyfinLyricsLine = {
-	text: string;
-	start_seconds: number | null;
-};
-
-export type JellyfinLyricsResponse = {
-	lines: JellyfinLyricsLine[];
-	is_synced: boolean;
-	lyrics_text: string;
-};
-
-export type JellyfinFavoritesExpanded = {
-	albums: JellyfinAlbumSummary[];
-	artists: JellyfinArtistSummary[];
-};
-
-export type JellyfinFilterFacets = {
-	years: number[];
-	tags: string[];
-	studios: string[];
 };
 
 export type AlbumSort = 'recent' | 'title' | 'artist';
@@ -2118,7 +1978,6 @@ export interface DownloadClientStatus {
 
 export interface HomeIntegrationStatus {
 	listenbrainz: boolean;
-	jellyfin: boolean;
 	download_client: boolean;
 	youtube: boolean;
 	lastfm: boolean;

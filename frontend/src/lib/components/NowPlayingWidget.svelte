@@ -23,7 +23,6 @@
 	}
 
 	const sourceLabels: Record<string, string> = {
-		jellyfin: 'Jellyfin',
 		navidrome: 'Navidrome',
 		plex: 'Plex',
 		local: 'DroppedNeedle',

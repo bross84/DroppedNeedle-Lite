@@ -4,7 +4,6 @@
 	import { API } from '$lib/constants';
 	import { downloadFile } from '$lib/utils/downloadHelper';
 	import { playerStore } from '$lib/stores/player.svelte';
-	import { launchJellyfinPlayback } from '$lib/player/launchJellyfinPlayback';
 	import { launchLocalPlayback } from '$lib/player/launchLocalPlayback';
 	import { launchNavidromePlayback } from '$lib/player/launchNavidromePlayback';
 	import { launchPlexPlayback } from '$lib/player/launchPlexPlayback';
@@ -15,12 +14,10 @@
 	import MetadataPanel from '$lib/components/MetadataPanel.svelte';
 	import {
 		buildQueueItem,
-		buildQueueItemsFromJellyfin,
 		buildQueueItemsFromLocal,
 		buildQueueItemsFromNavidrome,
 		buildQueueItemsFromPlex,
 		compareDiscTrack,
-		normalizeCodec,
 		normalizeDiscNumber,
 		type TrackMeta,
 		type TrackSourceData
@@ -30,38 +27,29 @@
 	import { api } from '$lib/api/client';
 	import NowPlayingIndicator from '$lib/components/NowPlayingIndicator.svelte';
 	import AudioQualityBadge from '$lib/components/AudioQualityBadge.svelte';
-	import { Radio } from 'lucide-svelte';
 	import type {
-		JellyfinTrackInfo,
 		LocalAlbumMatch,
 		LocalTrackInfo,
 		NavidromeTrackInfo,
 		PlexTrackInfo,
 		NavidromeAlbumDetail,
 		PlexAlbumDetail,
-		JellyfinAlbumSummary,
 		LocalAlbumSummary,
 		NavidromeAlbumSummary,
 		PlexAlbumSummary
 	} from '$lib/types';
 
-	type SourceType = 'jellyfin' | 'local' | 'navidrome' | 'plex';
+	type SourceType = 'local' | 'navidrome' | 'plex';
 
 	interface Props {
 		open: boolean;
 		sourceType: SourceType;
-		album:
-			| JellyfinAlbumSummary
-			| LocalAlbumSummary
-			| NavidromeAlbumSummary
-			| PlexAlbumSummary
-			| null;
+		album: LocalAlbumSummary | NavidromeAlbumSummary | PlexAlbumSummary | null;
 		onclose: () => void;
 	}
 
 	let { open = $bindable(), sourceType, album, onclose }: Props = $props();
 
-	let jellyfinTracks = $state<JellyfinTrackInfo[]>([]);
 	let localTracks = $state<LocalTrackInfo[]>([]);
 	let navidromeTracks = $state<NavidromeTrackInfo[]>([]);
 	let plexTracks = $state<PlexTrackInfo[]>([]);
@@ -69,7 +57,6 @@
 	let trackError = $state('');
 	let fetchId = 0;
 	let playlistModalRef = $state<{ open: (tracks: QueueItem[]) => void } | null>(null);
-	let mixLoading = $state(false);
 	let infoOpen = $state(false);
 	let infoNotes = $state('');
 	let infoLastfmUrl = $state('');
@@ -87,20 +74,15 @@
 	let canNavigate = $derived(!!mbid || !!albumName);
 	let canNavigateArtist = $derived(!!artistMbid);
 	let trackCount = $derived(
-		sourceType === 'jellyfin'
-			? jellyfinTracks.length
-			: sourceType === 'navidrome'
-				? navidromeTracks.length
-				: sourceType === 'plex'
-					? plexTracks.length
-					: localTracks.length
+		sourceType === 'navidrome'
+			? navidromeTracks.length
+			: sourceType === 'plex'
+				? plexTracks.length
+				: localTracks.length
 	);
 
 	function getAlbumCoverUrl(): string {
 		if (!album) return '';
-		if (sourceType === 'jellyfin') {
-			return (album as JellyfinAlbumSummary).image_url ?? '';
-		}
 		if (sourceType === 'navidrome') {
 			return (album as NavidromeAlbumSummary).image_url ?? '';
 		}
@@ -112,7 +94,6 @@
 
 	function getAlbumId(): string {
 		if (!album) return '';
-		if (sourceType === 'jellyfin') return (album as JellyfinAlbumSummary).jellyfin_id;
 		if (sourceType === 'navidrome') return (album as NavidromeAlbumSummary).navidrome_id;
 		if (sourceType === 'plex') return (album as PlexAlbumSummary).plex_id;
 		return (album as LocalAlbumSummary).musicbrainz_id;
@@ -120,7 +101,6 @@
 
 	function getMbid(): string | null {
 		if (!album) return null;
-		if (sourceType === 'jellyfin') return (album as JellyfinAlbumSummary).musicbrainz_id ?? null;
 		if (sourceType === 'navidrome') return (album as NavidromeAlbumSummary).musicbrainz_id ?? null;
 		if (sourceType === 'plex') return (album as PlexAlbumSummary).musicbrainz_id ?? null;
 		return (album as LocalAlbumSummary).musicbrainz_id ?? null;
@@ -128,8 +108,6 @@
 
 	function getArtistMbid(): string | null {
 		if (!album) return null;
-		if (sourceType === 'jellyfin')
-			return (album as JellyfinAlbumSummary).artist_musicbrainz_id ?? null;
 		if (sourceType === 'navidrome')
 			return (album as NavidromeAlbumSummary).artist_musicbrainz_id ?? null;
 		if (sourceType === 'plex') return (album as PlexAlbumSummary).artist_musicbrainz_id ?? null;
@@ -141,7 +119,6 @@
 			fetchTracks();
 		}
 		if (!open) {
-			jellyfinTracks = [];
 			localTracks = [];
 			navidromeTracks = [];
 			plexTracks = [];
@@ -154,14 +131,7 @@
 		loadingTracks = true;
 		trackError = '';
 		try {
-			if (sourceType === 'jellyfin') {
-				const jfAlbum = album as JellyfinAlbumSummary;
-				const data = await api.global.get<JellyfinTrackInfo[]>(
-					API.jellyfinLibrary.albumTracks(jfAlbum.jellyfin_id)
-				);
-				if (id !== fetchId) return;
-				jellyfinTracks = data;
-			} else if (sourceType === 'navidrome') {
+			if (sourceType === 'navidrome') {
 				const ndAlbum = album as NavidromeAlbumSummary;
 				const detail = await api.global.get<NavidromeAlbumDetail>(
 					API.navidromeLibrary.albumDetail(ndAlbum.navidrome_id)
@@ -215,36 +185,6 @@
 		goto(`/artist/${target}`);
 	}
 
-	async function launchInstantMix() {
-		if (sourceType !== 'jellyfin' || !album || !('jellyfin_id' in album)) return;
-		mixLoading = true;
-		try {
-			const tracks = await api.get<JellyfinTrackInfo[]>(
-				API.jellyfinLibrary.instantMix(album.jellyfin_id)
-			);
-			if (tracks.length > 0) {
-				const items: QueueItem[] = tracks.map((t) => ({
-					trackSourceId: t.jellyfin_id,
-					trackName: t.title,
-					artistName: t.artist_name,
-					trackNumber: t.track_number,
-					discNumber: normalizeDiscNumber(t.disc_number),
-					albumId: t.album_id || '',
-					albumName: t.album_name,
-					coverUrl: t.album_id ? `/api/v1/jellyfin/image/${t.album_id}` : null,
-					sourceType: 'jellyfin' as const,
-					streamUrl: API.stream.jellyfin(t.jellyfin_id),
-					format: normalizeCodec(t.codec)
-				}));
-				playerStore.playQueue(items, 0, false);
-			}
-		} catch {
-			return;
-		} finally {
-			mixLoading = false;
-		}
-	}
-
 	async function openAlbumInfo() {
 		if (sourceType !== 'navidrome' || !album || !('navidrome_id' in album)) return;
 		infoLoading = true;
@@ -276,9 +216,7 @@
 			coverUrl
 		};
 
-		if (sourceType === 'jellyfin' && jellyfinTracks.length > 0) {
-			launchJellyfinPlayback([...jellyfinTracks].sort(compareDiscTrack), 0, shuffle, meta);
-		} else if (sourceType === 'navidrome' && navidromeTracks.length > 0) {
+		if (sourceType === 'navidrome' && navidromeTracks.length > 0) {
 			launchNavidromePlayback([...navidromeTracks].sort(compareDiscTrack), 0, shuffle, meta);
 		} else if (sourceType === 'plex' && plexTracks.length > 0) {
 			launchPlexPlayback([...plexTracks].sort(compareDiscTrack), 0, shuffle, meta);
@@ -296,12 +234,7 @@
 			coverUrl
 		};
 
-		if (sourceType === 'jellyfin') {
-			const sorted = [...jellyfinTracks].sort(compareDiscTrack);
-			const track = jellyfinTracks[index];
-			const sortedIdx = track ? sorted.indexOf(track) : index;
-			launchJellyfinPlayback(sorted, sortedIdx >= 0 ? sortedIdx : index, false, meta);
-		} else if (sourceType === 'navidrome') {
+		if (sourceType === 'navidrome') {
 			const sorted = [...navidromeTracks].sort(compareDiscTrack);
 			const track = navidromeTracks[index];
 			const sortedIdx = track ? sorted.indexOf(track) : index;
@@ -337,19 +270,6 @@
 
 	function buildTrackQueueItem(index: number): QueueItem | null {
 		const meta = getTrackMeta();
-		if (sourceType === 'jellyfin') {
-			const track = jellyfinTracks[index];
-			if (!track) return null;
-			const sourceData: TrackSourceData = {
-				trackPosition: track.track_number,
-				discNumber: normalizeDiscNumber(track.disc_number),
-				trackTitle: track.title,
-				trackLength: track.duration_seconds,
-				jellyfinTrack: track
-			};
-			return buildQueueItem(meta, sourceData);
-		}
-
 		if (sourceType === 'navidrome') {
 			const track = navidromeTracks[index];
 			if (!track) return null;
@@ -390,9 +310,6 @@
 
 	function buildAlbumQueueItems(): QueueItem[] {
 		const meta = getTrackMeta();
-		if (sourceType === 'jellyfin') {
-			return buildQueueItemsFromJellyfin([...jellyfinTracks].sort(compareDiscTrack), meta);
-		}
 		if (sourceType === 'navidrome') {
 			return buildQueueItemsFromNavidrome([...navidromeTracks].sort(compareDiscTrack), meta);
 		}
@@ -484,21 +401,18 @@
 	}
 
 	function getTrackName(index: number): string {
-		if (sourceType === 'jellyfin') return jellyfinTracks[index]?.title ?? '';
 		if (sourceType === 'navidrome') return navidromeTracks[index]?.title ?? '';
 		if (sourceType === 'plex') return plexTracks[index]?.title ?? '';
 		return localTracks[index]?.title ?? '';
 	}
 
 	function getTrackNumber(index: number): number {
-		if (sourceType === 'jellyfin') return jellyfinTracks[index]?.track_number ?? 0;
 		if (sourceType === 'navidrome') return navidromeTracks[index]?.track_number ?? 0;
 		if (sourceType === 'plex') return plexTracks[index]?.track_number ?? 0;
 		return localTracks[index]?.track_number ?? 0;
 	}
 
 	function getTrackDiscNumber(index: number): number {
-		if (sourceType === 'jellyfin') return normalizeDiscNumber(jellyfinTracks[index]?.disc_number);
 		if (sourceType === 'navidrome') return normalizeDiscNumber(navidromeTracks[index]?.disc_number);
 		if (sourceType === 'plex') return normalizeDiscNumber(plexTracks[index]?.disc_number);
 		return normalizeDiscNumber(localTracks[index]?.disc_number);
@@ -587,9 +501,7 @@
 						{#if year}
 							<span class="badge badge-sm badge-ghost">{year}</span>
 						{/if}
-						{#if sourceType === 'jellyfin'}
-							<span class="badge badge-sm badge-info">Jellyfin</span>
-						{:else if sourceType === 'navidrome'}
+						{#if sourceType === 'navidrome'}
 							<span class="badge badge-sm badge-primary">Navidrome</span>
 						{:else if sourceType === 'plex'}
 							<span class="badge badge-sm badge-warning">Plex</span>
@@ -626,18 +538,6 @@
 						<Shuffle class="h-4 w-4" />
 						Shuffle
 					</button>
-					{#if sourceType === 'jellyfin'}
-						<button
-							class="btn btn-sm btn-outline gap-1"
-							onclick={launchInstantMix}
-							disabled={mixLoading}
-						>
-							<span class:animate-pulse={mixLoading}>
-								<Radio class="h-4 w-4" />
-							</span>
-							Instant Mix
-						</button>
-					{/if}
 					{#if sourceType === 'navidrome'}
 						<button
 							class="btn btn-sm btn-ghost gap-1"
@@ -693,12 +593,7 @@
 									<span class="text-sm truncate flex-1 {playing ? 'text-accent' : ''}"
 										>{getTrackName(i)}</span
 									>
-									{#if sourceType === 'jellyfin'}
-										{@const dur = jellyfinTracks[i]?.duration_seconds}
-										{#if dur}
-											<span class="text-xs opacity-40 shrink-0">{formatDuration(dur)}</span>
-										{/if}
-									{:else if sourceType === 'navidrome'}
+									{#if sourceType === 'navidrome'}
 										{@const dur = navidromeTracks[i]?.duration_seconds}
 										{#if dur}
 											<span class="text-xs opacity-40 shrink-0">{formatDuration(dur)}</span>

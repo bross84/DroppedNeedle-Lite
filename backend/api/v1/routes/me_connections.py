@@ -42,7 +42,6 @@ from api.v1.schemas.settings import (
 )
 from core.dependencies import (
     get_auth_store,
-    get_jellyfin_user_auth_service,
     get_lastfm_auth_service,
     get_now_playing_service,
     get_per_user_client_factory,
@@ -68,7 +67,6 @@ from infrastructure.persistence.user_connections_store import UserConnectionsSto
 from infrastructure.persistence.user_listening_prefs_store import UserListeningPrefsStore
 from infrastructure.persistence.user_section_prefs_store import UserSectionPrefsStore
 from middleware import CurrentUserDep
-from services.jellyfin_user_auth_service import JellyfinUserAuthService
 from services.lastfm_auth_service import LastFmAuthService
 from services.per_user_client_factory import PerUserClientFactory
 from services.personal_mix_service import PersonalMixService
@@ -81,7 +79,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(route_class=MsgSpecRoute, prefix="/me", tags=["me"])
 
-_SUPPORTED_SERVICES = ("lastfm", "listenbrainz", "spotify", "navidrome", "jellyfin", "plex")
+_SUPPORTED_SERVICES = ("lastfm", "listenbrainz", "spotify", "navidrome", "plex")
 _SPOTIFY_SCOPES = "playlist-read-private playlist-read-collaborative user-read-private"
 
 
@@ -400,40 +398,6 @@ async def connect_navidrome(
     )
     await client_factory.invalidate_playlist_cache(current_user.id, "navidrome")
     return ConnectionStatus(service="navidrome", enabled=True, username=body.username)
-
-
-@router.put("/connections/jellyfin", response_model=ConnectionStatus)
-async def connect_jellyfin(
-    current_user: CurrentUserDep,
-    body: MediaServerConnectRequest = MsgSpecBody(MediaServerConnectRequest),
-    auth_service: JellyfinUserAuthService = Depends(get_jellyfin_user_auth_service),
-    client_factory: PerUserClientFactory = Depends(get_per_user_client_factory),
-    store: UserConnectionsStore = Depends(get_user_connections_store),
-    preferences_service: PreferencesService = Depends(get_preferences_service),
-) -> ConnectionStatus:
-    jf = preferences_service.get_jellyfin_connection()
-    if not (jf.enabled and jf.jellyfin_url):
-        raise HTTPException(status_code=400, detail="Jellyfin is not configured by the administrator")
-    if not body.username.strip() or not body.password:
-        raise HTTPException(status_code=400, detail="A Jellyfin username and password are required")
-    try:
-        profile = await auth_service.authenticate_credentials(body.username, body.password)
-    except AuthenticationError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except ExternalServiceError:
-        raise HTTPException(status_code=502, detail="Couldn't reach Jellyfin to verify the account")
-    # only the exchanged access token is persisted - never the password
-    await store.upsert(
-        current_user.id,
-        "jellyfin",
-        {
-            "access_token": profile["access_token"],
-            "jellyfin_user_id": profile["jellyfin_user_id"],
-            "username": profile["username"],
-        },
-    )
-    await client_factory.invalidate_playlist_cache(current_user.id, "jellyfin")
-    return ConnectionStatus(service="jellyfin", enabled=True, username=profile["username"])
 
 
 @router.post("/connections/plex/auth/pin", response_model=PlexLinkPinResponse)

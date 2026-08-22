@@ -53,7 +53,6 @@ vi.mock('$lib/stores/library', () => ({
 const integrationState = {
 	youtube: false,
 	youtube_api: false,
-	jellyfin: false,
 	localfiles: true,
 	navidrome: true,
 	lastfm: false,
@@ -241,11 +240,6 @@ vi.mock('$lib/components/TrackPlayButton.svelte', () => {
 	Comp.prototype = {};
 	return { default: Comp };
 });
-vi.mock('$lib/components/JellyfinIcon.svelte', () => {
-	const Comp = function () {};
-	Comp.prototype = {};
-	return { default: Comp };
-});
 vi.mock('$lib/components/LocalFilesIcon.svelte', () => {
 	const Comp = function () {};
 	Comp.prototype = {};
@@ -267,7 +261,6 @@ vi.mock('$lib/components/NowPlayingIndicator.svelte', () => {
 	return { default: Comp };
 });
 
-vi.mock('$lib/player/launchJellyfinPlayback', () => ({ launchJellyfinPlayback: vi.fn() }));
 vi.mock('$lib/player/launchLocalPlayback', () => ({ launchLocalPlayback: vi.fn() }));
 vi.mock('$lib/player/launchNavidromePlayback', () => ({ launchNavidromePlayback: vi.fn() }));
 
@@ -443,10 +436,6 @@ describe('album detail page track rendering', () => {
 
 			if (url.endsWith(`/api/v1/youtube/track-links/${albumId}`)) {
 				return Promise.resolve(jsonResponse([]));
-			}
-
-			if (url.endsWith(`/api/v1/jellyfin/albums/match/${albumId}`)) {
-				return Promise.resolve(jsonResponse({ found: false, jellyfin_album_id: null, tracks: [] }));
 			}
 
 			if (url.endsWith(`/api/v1/local/albums/match/${albumId}`)) {

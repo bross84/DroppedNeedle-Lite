@@ -25,7 +25,6 @@ from api.v1.schemas.plex import (
 )
 from core.dependencies import (
     CurrentUserDep,
-    get_jellyfin_library_service,
     get_local_files_service,
     get_navidrome_library_service,
     get_plex_library_service,
@@ -364,7 +363,6 @@ async def import_plex_playlist(
     current_user: CurrentUserDep,
     service: PlexLibraryService = Depends(get_plex_library_service),
     playlist_service: PlaylistService = Depends(get_playlist_service),
-    jf_service=Depends(get_jellyfin_library_service),
     local_service=Depends(get_local_files_service),
     nd_service=Depends(get_navidrome_library_service),
 ) -> PlexImportResult:
@@ -380,7 +378,6 @@ async def import_plex_playlist(
         background_tasks.add_task(
             playlist_service.resolve_track_sources,
             result.droppedneedle_playlist_id,
-            jf_service=jf_service,
             local_service=local_service,
             nd_service=nd_service,
             plex_service=service,

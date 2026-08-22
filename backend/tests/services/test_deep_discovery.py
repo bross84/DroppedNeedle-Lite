@@ -7,13 +7,10 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from api.v1.schemas.navidrome import NavidromeArtistInfoSchema, NavidromeTrackInfo
-from api.v1.schemas.jellyfin import JellyfinAlbumSummary
 from api.v1.schemas.plex import PlexAnalyticsResponse, PlexHistoryResponse
 from repositories.navidrome_models import SubsonicArtist, SubsonicArtistInfo, SubsonicSong
-from repositories.jellyfin_models import JellyfinItem
 from repositories.plex_models import PlexHistoryEntry
 from services.navidrome_library_service import NavidromeLibraryService
-from services.jellyfin_library_service import JellyfinLibraryService
 from services.plex_library_service import PlexLibraryService
 
 
@@ -35,17 +32,6 @@ def _make_navidrome_service() -> tuple[NavidromeLibraryService, MagicMock]:
     return service, repo
 
 
-def _make_jellyfin_service() -> tuple[JellyfinLibraryService, MagicMock]:
-    repo = MagicMock()
-    repo.is_configured.return_value = True
-    repo.get_similar_items = AsyncMock(return_value=[])
-    repo.get_image_url = MagicMock(return_value=None)
-    prefs = MagicMock()
-    prefs.get_advanced_settings.return_value = MagicMock()
-    service = JellyfinLibraryService(jellyfin_repo=repo, preferences_service=prefs)
-    return service, repo
-
-
 def _make_plex_service() -> tuple[PlexLibraryService, MagicMock]:
     repo = MagicMock()
     repo.is_configured.return_value = True
@@ -61,11 +47,6 @@ def _subsonic_song(id: str = "s1", title: str = "Song", artist: str = "Artist",
                    album: str = "Album", track: int = 1, duration: int = 200) -> SubsonicSong:
     return SubsonicSong(id=id, title=title, artist=artist, album=album,
                         track=track, duration=duration)
-
-
-def _jellyfin_item(id: str = "j1", name: str = "Album", type: str = "MusicAlbum",
-                   artist_name: str = "Artist") -> JellyfinItem:
-    return JellyfinItem(id=id, name=name, type=type, artist_name=artist_name)
 
 
 def _plex_history_entry(
@@ -160,38 +141,6 @@ class TestNavidromeArtistInfo:
         repo.get_artist_info.side_effect = Exception("Fail")
         result = await service.get_artist_info("ar1")
         assert result is None
-
-
-class TestJellyfinSimilarItems:
-    @pytest.mark.asyncio
-    async def test_returns_album_summaries(self):
-        service, repo = _make_jellyfin_service()
-        repo.get_similar_items.return_value = [
-            _jellyfin_item("j1", "Similar Album"),
-            _jellyfin_item("j2", "Another Similar"),
-        ]
-        result = await service.get_similar_items("seed-id")
-        assert len(result) == 2
-        assert isinstance(result[0], JellyfinAlbumSummary)
-        assert result[0].name == "Similar Album"
-
-    @pytest.mark.asyncio
-    async def test_filters_non_music(self):
-        service, repo = _make_jellyfin_service()
-        repo.get_similar_items.return_value = [
-            _jellyfin_item("j1", "Album", "MusicAlbum"),
-            _jellyfin_item("j2", "Video", "Video"),
-        ]
-        result = await service.get_similar_items("seed-id")
-        assert len(result) == 1
-        assert result[0].name == "Album"
-
-    @pytest.mark.asyncio
-    async def test_returns_empty_on_error(self):
-        service, repo = _make_jellyfin_service()
-        repo.get_similar_items.side_effect = Exception("Fail")
-        result = await service.get_similar_items("seed-id")
-        assert result == []
 
 
 class TestPlexHistory:

@@ -40,12 +40,6 @@ vi.mock('$lib/player/createSource', () => ({
 	})
 }));
 
-vi.mock('$lib/player/jellyfinPlaybackApi', () => ({
-	startSession: vi.fn(async () => 'mock-session'),
-	reportProgress: vi.fn(async () => true),
-	reportStop: vi.fn(async () => true)
-}));
-
 const storage = new Map<string, string>();
 vi.stubGlobal('localStorage', {
 	getItem: vi.fn((key: string) => (storage.has(key) ? storage.get(key)! : null)),
@@ -114,8 +108,8 @@ function makeItem(overrides: Partial<QueueItem> = {}): QueueItem {
 		coverUrl: overrides.coverUrl ?? null,
 		sourceType: overrides.sourceType ?? 'local',
 		streamUrl: overrides.streamUrl ?? 'http://localhost/test.mp3',
-		availableSources: overrides.availableSources ?? ['local', 'jellyfin'],
-		sourceIds: overrides.sourceIds ?? { local: id, jellyfin: id },
+		availableSources: overrides.availableSources ?? ['local', 'navidrome'],
+		sourceIds: overrides.sourceIds ?? { local: id, navidrome: id },
 		duration: overrides.duration,
 		...overrides
 	};
@@ -341,7 +335,7 @@ describe('playerStore queue methods', () => {
 		it('ignores out-of-bounds index', () => {
 			playerStore.playQueue(makeItems(3));
 			const before = playerStore.queue[0].sourceType;
-			playerStore.changeTrackSource(-1, 'jellyfin');
+			playerStore.changeTrackSource(-1, 'navidrome');
 			expect(playerStore.queue[0].sourceType).toBe(before);
 		});
 
@@ -349,21 +343,21 @@ describe('playerStore queue methods', () => {
 			playerStore.playQueue(makeItems(3));
 			const currentIdx = playerStore.currentIndex;
 			const beforeSource = playerStore.queue[currentIdx].sourceType;
-			playerStore.changeTrackSource(currentIdx, 'jellyfin');
+			playerStore.changeTrackSource(currentIdx, 'navidrome');
 			expect(playerStore.queue[currentIdx].sourceType).toBe(beforeSource);
 			expect(playbackToast.show).toHaveBeenCalled();
 		});
 
 		it('updates source on non-current item', () => {
 			playerStore.playQueue(makeItems(3));
-			playerStore.changeTrackSource(2, 'jellyfin');
-			expect(playerStore.queue[2].sourceType).toBe('jellyfin');
+			playerStore.changeTrackSource(2, 'navidrome');
+			expect(playerStore.queue[2].sourceType).toBe('navidrome');
 		});
 
 		it('updates streamUrl for target source', () => {
 			playerStore.playQueue(makeItems(3));
-			playerStore.changeTrackSource(1, 'jellyfin');
-			expect(playerStore.queue[1].streamUrl).toBe('/api/v1/stream/jellyfin/vid-1');
+			playerStore.changeTrackSource(1, 'navidrome');
+			expect(playerStore.queue[1].streamUrl).toBe('/api/v1/stream/navidrome/vid-1');
 		});
 	});
 
@@ -372,10 +366,10 @@ describe('playerStore queue methods', () => {
 			expect.assertions(3);
 			const items = makeItems(3).map((item, i) => ({ ...item, playlistTrackId: `pt-${i}` }));
 			playerStore.playQueue(items);
-			playerStore.updateQueueItemByPlaylistTrackId('pt-2', 'jellyfin', 'jf-new', 'opus');
-			expect(playerStore.queue[2].sourceType).toBe('jellyfin');
-			expect(playerStore.queue[2].trackSourceId).toBe('jf-new');
-			expect(playerStore.queue[2].streamUrl).toBe('/api/v1/stream/jellyfin/jf-new');
+			playerStore.updateQueueItemByPlaylistTrackId('pt-2', 'navidrome', 'nd-new', 'opus');
+			expect(playerStore.queue[2].sourceType).toBe('navidrome');
+			expect(playerStore.queue[2].trackSourceId).toBe('nd-new');
+			expect(playerStore.queue[2].streamUrl).toBe('/api/v1/stream/navidrome/nd-new');
 		});
 
 		it('is a no-op when playlistTrackId is not found', () => {
@@ -383,7 +377,7 @@ describe('playerStore queue methods', () => {
 			const items = makeItems(3).map((item, i) => ({ ...item, playlistTrackId: `pt-${i}` }));
 			playerStore.playQueue(items);
 			const before = playerStore.queue[1].sourceType;
-			playerStore.updateQueueItemByPlaylistTrackId('pt-nonexistent', 'jellyfin', 'jf-new');
+			playerStore.updateQueueItemByPlaylistTrackId('pt-nonexistent', 'navidrome', 'nd-new');
 			expect(playerStore.queue[1].sourceType).toBe(before);
 		});
 
@@ -393,7 +387,7 @@ describe('playerStore queue methods', () => {
 			playerStore.playQueue(items);
 			const currentIdx = playerStore.currentIndex;
 			const before = playerStore.queue[currentIdx].sourceType;
-			playerStore.updateQueueItemByPlaylistTrackId(`pt-${currentIdx}`, 'jellyfin', 'jf-new');
+			playerStore.updateQueueItemByPlaylistTrackId(`pt-${currentIdx}`, 'navidrome', 'nd-new');
 			expect(playerStore.queue[currentIdx].sourceType).toBe(before);
 		});
 
@@ -429,7 +423,7 @@ describe('playerStore queue methods', () => {
 						coverUrl: null,
 						sourceType: 'howler',
 						streamUrl: '/api/v1/stream/local/1',
-						availableSources: ['howler', 'jellyfin']
+						availableSources: ['howler', 'navidrome']
 					}
 				],
 				currentIndex: 0,
@@ -442,7 +436,7 @@ describe('playerStore queue methods', () => {
 			playerStore.resumeSession();
 
 			expect(playerStore.queue[0].sourceType).toBe('local');
-			expect(playerStore.queue[0].availableSources).toEqual(['local', 'jellyfin']);
+			expect(playerStore.queue[0].availableSources).toEqual(['local', 'navidrome']);
 		});
 	});
 
@@ -740,135 +734,18 @@ describe('playerStore queue methods', () => {
 	});
 });
 
-describe('Jellyfin session lifecycle', () => {
-	let jellyfinApi: {
-		startSession: ReturnType<typeof vi.fn>;
-		reportProgress: ReturnType<typeof vi.fn>;
-		reportStop: ReturnType<typeof vi.fn>;
-	};
-
-	beforeEach(async () => {
-		localStorage.clear();
-		playerStore.stop();
-		vi.clearAllMocks();
-		vi.useFakeTimers();
-
-		jellyfinApi =
-			(await import('$lib/player/jellyfinPlaybackApi')) as unknown as typeof jellyfinApi;
-		jellyfinApi.startSession.mockResolvedValue('ps-123');
-
-		mockApiGet.mockResolvedValue({
-			url: 'http://jf/Audio/1/stream?static=true',
-			seekable: true,
-			playSessionId: 'ps-123'
-		});
-		mockApiHead.mockResolvedValue(new Response(null, { status: 200 }));
-	});
-
-	afterEach(() => {
-		vi.useRealTimers();
-		vi.unstubAllGlobals();
-		vi.stubGlobal('localStorage', {
-			getItem: vi.fn((key: string) => (storage.has(key) ? storage.get(key)! : null)),
-			setItem: vi.fn((key: string, value: string) => {
-				storage.set(key, value);
-			}),
-			removeItem: vi.fn((key: string) => {
-				storage.delete(key);
-			}),
-			clear: vi.fn(() => {
-				storage.clear();
-			})
-		});
-	});
-
-	function makeJellyfinItem(overrides: Partial<QueueItem> = {}): QueueItem {
-		return makeItem({
-			sourceType: 'jellyfin',
-			trackSourceId: 'jf-1',
-			streamUrl: undefined,
-			...overrides
-		});
-	}
-
-	it('calls startSession when a Jellyfin track is loaded', async () => {
-		playerStore.playQueue([makeJellyfinItem()]);
-		await vi.advanceTimersByTimeAsync(0);
-
-		expect(jellyfinApi.startSession).toHaveBeenCalledWith('jf-1', undefined);
-	});
-
-	it('calls reportStop when switching tracks', async () => {
-		playerStore.playQueue([
-			makeJellyfinItem({ trackSourceId: 'jf-1' }),
-			makeItem({ trackSourceId: 'loc-2' })
-		]);
-		await vi.advanceTimersByTimeAsync(0);
-
-		capturedStateCallbacks.forEach((cb) => cb('playing'));
-		capturedProgressCallbacks.forEach((cb) => cb(30, 180));
-		await vi.advanceTimersByTimeAsync(0);
-
-		playerStore.nextTrack();
-		await vi.advanceTimersByTimeAsync(0);
-
-		expect(jellyfinApi.reportStop).toHaveBeenCalledWith('jf-1', 'ps-123', expect.any(Number));
-	});
-
-	it('calls reportStop when stop() is called', async () => {
-		playerStore.playQueue([makeJellyfinItem()]);
-		await vi.advanceTimersByTimeAsync(0);
-
-		playerStore.stop();
-		await vi.advanceTimersByTimeAsync(0);
-
-		expect(jellyfinApi.reportStop).toHaveBeenCalledWith('jf-1', 'ps-123', expect.any(Number));
-	});
-
-	it('calls reportProgress during the progress interval', async () => {
-		playerStore.playQueue([makeJellyfinItem()]);
-		await vi.advanceTimersByTimeAsync(0);
-
-		capturedStateCallbacks.forEach((cb) => cb('playing'));
-		capturedProgressCallbacks.forEach((cb) => cb(10, 180));
-		await vi.advanceTimersByTimeAsync(0);
-
-		vi.advanceTimersByTime(10_000);
-
-		expect(jellyfinApi.reportProgress).toHaveBeenCalledWith(
-			'jf-1',
-			'ps-123',
-			expect.any(Number),
-			false
-		);
-	});
-});
-
 describe('beforeunload beacon', () => {
 	let addEventListenerSpy: ReturnType<typeof vi.fn>;
 	let removeEventListenerSpy: ReturnType<typeof vi.fn>;
 	let sendBeaconMock: ReturnType<typeof vi.fn>;
-	let jellyfinApi: {
-		startSession: ReturnType<typeof vi.fn>;
-		reportProgress: ReturnType<typeof vi.fn>;
-		reportStop: ReturnType<typeof vi.fn>;
-	};
 
-	beforeEach(async () => {
+	beforeEach(() => {
 		localStorage.clear();
 		playerStore.stop();
 		vi.clearAllMocks();
 		vi.useFakeTimers();
 
-		jellyfinApi =
-			(await import('$lib/player/jellyfinPlaybackApi')) as unknown as typeof jellyfinApi;
-		jellyfinApi.startSession.mockResolvedValue('ps-beacon');
-
-		mockApiGet.mockResolvedValue({
-			url: 'http://jf/Audio/1/stream?static=true',
-			seekable: true,
-			playSessionId: 'ps-beacon'
-		});
+		mockApiGet.mockResolvedValue({});
 		mockApiHead.mockResolvedValue(new Response(null, { status: 200 }));
 
 		const listeners = new Map<string, Set<Function>>();
@@ -907,24 +784,24 @@ describe('beforeunload beacon', () => {
 		});
 	});
 
-	function makeJellyfinItem(overrides: Partial<QueueItem> = {}): QueueItem {
+	function makeNavidromeItem(overrides: Partial<QueueItem> = {}): QueueItem {
 		return makeItem({
-			sourceType: 'jellyfin',
-			trackSourceId: 'jf-beacon',
+			sourceType: 'navidrome',
+			trackSourceId: 'nd-beacon',
 			streamUrl: undefined,
 			...overrides
 		});
 	}
 
-	it('registers beforeunload listener when a Jellyfin track starts', async () => {
-		playerStore.playQueue([makeJellyfinItem()]);
+	it('registers beforeunload listener when a Navidrome track starts', async () => {
+		playerStore.playQueue([makeNavidromeItem()]);
 		await vi.advanceTimersByTimeAsync(0);
 
 		expect(addEventListenerSpy).toHaveBeenCalledWith('beforeunload', expect.any(Function));
 	});
 
-	it('sends beacon with correct payload on beforeunload', async () => {
-		playerStore.playQueue([makeJellyfinItem()]);
+	it('sends a scrobble beacon on beforeunload past the 30s threshold', async () => {
+		playerStore.playQueue([makeNavidromeItem()]);
 		await vi.advanceTimersByTimeAsync(0);
 
 		capturedProgressCallbacks.forEach((cb) => cb(45, 180));
@@ -937,19 +814,13 @@ describe('beforeunload beacon', () => {
 		beforeUnloadHandler!();
 
 		expect(sendBeaconMock).toHaveBeenCalledWith(
-			'/api/v1/stream/jellyfin/jf-beacon/stop',
+			'/api/v1/stream/navidrome/nd-beacon/scrobble',
 			expect.any(Blob)
 		);
-
-		const sentBlob = sendBeaconMock.mock.calls[0][1] as Blob;
-		expect(sentBlob.type).toBe('application/json');
-		const text = await sentBlob.text();
-		const parsed = JSON.parse(text);
-		expect(parsed).toEqual({ play_session_id: 'ps-beacon', position_seconds: 45 });
 	});
 
 	it('removes beforeunload listener on destroy/stop', async () => {
-		playerStore.playQueue([makeJellyfinItem()]);
+		playerStore.playQueue([makeNavidromeItem()]);
 		await vi.advanceTimersByTimeAsync(0);
 
 		playerStore.stop();
@@ -967,9 +838,8 @@ describe('non-seekable state propagation', () => {
 		vi.useFakeTimers();
 
 		mockApiGet.mockResolvedValue({
-			url: 'http://jf/Audio/1/universal?transcode',
-			seekable: false,
-			playSessionId: 'ps-ns'
+			url: 'http://nd/rest/stream?transcode',
+			seekable: false
 		});
 		mockApiHead.mockResolvedValue(new Response(null, { status: 200 }));
 	});
@@ -991,8 +861,12 @@ describe('non-seekable state propagation', () => {
 		});
 	});
 
-	it('sets isSeekable to true for Jellyfin streams', async () => {
-		const item = makeItem({ sourceType: 'jellyfin', trackSourceId: 'jf-ns', streamUrl: undefined });
+	it('sets isSeekable to true for Navidrome streams', async () => {
+		const item = makeItem({
+			sourceType: 'navidrome',
+			trackSourceId: 'nd-ns',
+			streamUrl: undefined
+		});
 		playerStore.playQueue([item]);
 		await vi.advanceTimersByTimeAsync(0);
 

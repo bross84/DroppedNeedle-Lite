@@ -13,7 +13,6 @@ from fastapi import FastAPI
 from api.v1.routes.auth import router as auth_router
 from api.v1.routes.profile import router as profile_router
 from core.dependencies import (
-    get_jellyfin_library_service,
     get_local_files_service,
     get_navidrome_library_service,
     get_preferences_service,
@@ -43,15 +42,11 @@ class _Conn:
     enabled = False
     username = ""
     user_id = ""
-    jellyfin_url = ""
     navidrome_url = ""
     plex_url = ""
 
 
 class _FakePrefs:
-    def get_jellyfin_connection(self):
-        return _Conn()
-
     def get_listenbrainz_connection(self):
         return _Conn()
 
@@ -97,7 +92,6 @@ def _app(store: AuthStore, auth: AuthService, current_user_id: str):
     app.include_router(profile_router)
     app.dependency_overrides[get_auth_service] = lambda: auth
     app.dependency_overrides[get_preferences_service] = lambda: _FakePrefs()
-    app.dependency_overrides[get_jellyfin_library_service] = lambda: None
     app.dependency_overrides[get_local_files_service] = lambda: _FakeLocal()
     app.dependency_overrides[get_navidrome_library_service] = lambda: None
 
@@ -117,7 +111,7 @@ def test_get_profile_returns_own_row(tmp_path):
     assert body["username"] == "owner"
     assert body["email"] == "owner@example.com"
     assert body["providers"] == ["local"]
-    assert {s["name"] for s in body["services"]} == {"Jellyfin", "ListenBrainz", "Last.fm", "Navidrome", "Plex"}
+    assert {s["name"] for s in body["services"]} == {"ListenBrainz", "Last.fm", "Navidrome", "Plex"}
 
 
 def test_get_profile_is_self_scoped(tmp_path):
@@ -177,7 +171,7 @@ def test_set_local_password_for_sso_only(tmp_path):
             id="sso-1", display_name="SSO User", role="user",
             username=username, username_display=display,
         )
-        await store.create_auth_provider(id="p-jf", user_id=user.id, provider="jellyfin", provider_uid="jf-1")
+        await store.create_auth_provider(id="p-px", user_id=user.id, provider="plex", provider_uid="px-1")
         return user
 
     user = asyncio.run(seed())

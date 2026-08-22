@@ -42,7 +42,6 @@ from repositories.coverart_management_models import CaaManagementResponse
 if TYPE_CHECKING:
     from repositories.musicbrainz_repository import MusicBrainzRepository
     from repositories.protocols.library import LibraryRepositoryProtocol
-    from repositories.jellyfin_repository import JellyfinRepository
     from services.audiodb_image_service import AudioDBImageService
     from services.audiodb_browse_queue import AudioDBBrowseQueue
     from infrastructure.persistence.library_db import LibraryDB
@@ -117,13 +116,6 @@ _library_cover_circuit_breaker = CircuitBreaker(
     success_threshold=2,
     timeout=60.0,
     name="coverart_library",
-)
-
-_jellyfin_cover_circuit_breaker = CircuitBreaker(
-    failure_threshold=5,
-    success_threshold=2,
-    timeout=60.0,
-    name="coverart_jellyfin",
 )
 
 _wikidata_cover_circuit_breaker = CircuitBreaker(
@@ -235,7 +227,6 @@ class CoverArtRepository:
         cache: CacheInterface,
         mb_repo: Optional["MusicBrainzRepository"] = None,
         library_repo: Optional["LibraryRepositoryProtocol"] = None,
-        jellyfin_repo: Optional["JellyfinRepository"] = None,
         audiodb_service: Optional["AudioDBImageService"] = None,
         audiodb_browse_queue: Optional["AudioDBBrowseQueue"] = None,
         cache_dir: Path = _default_cache_dir(),
@@ -251,7 +242,6 @@ class CoverArtRepository:
         self._cache = cache
         self._mb_repo = mb_repo
         self._library_repo = library_repo
-        self._jellyfin_repo = jellyfin_repo
         self._library_db = library_db
         self._native_library_store = native_library_store
         self._local_cover_priority = local_cover_priority
@@ -273,7 +263,6 @@ class CoverArtRepository:
             cache=cache,
             mb_repo=mb_repo,
             library_repo=library_repo,
-            jellyfin_repo=jellyfin_repo,
             audiodb_service=audiodb_service,
             audiodb_browse_queue=audiodb_browse_queue,
             user_agent=self._client.headers.get("User-Agent"),
@@ -283,7 +272,6 @@ class CoverArtRepository:
             write_cache_fn=self._disk_cache.write,
             library_repo=library_repo,
             mb_repo=mb_repo,
-            jellyfin_repo=jellyfin_repo,
             audiodb_service=audiodb_service,
             audiodb_browse_queue=audiodb_browse_queue,
         )
@@ -457,16 +445,6 @@ class CoverArtRepository:
 
     @with_retry(
         max_attempts=3,
-        circuit_breaker=_jellyfin_cover_circuit_breaker,
-        retriable_exceptions=(httpx.HTTPError, ExternalServiceError),
-    )
-    async def _http_get_jellyfin(
-        self, url: str, priority: RequestPriority, **kwargs
-    ) -> httpx.Response:
-        return await self._perform_http_get(url, priority, "jellyfin", **kwargs)
-
-    @with_retry(
-        max_attempts=3,
         circuit_breaker=_wikidata_cover_circuit_breaker,
         retriable_exceptions=(httpx.HTTPError, ExternalServiceError),
     )
@@ -507,8 +485,6 @@ class CoverArtRepository:
             return await self._http_get_coverart(url, priority, **kwargs)
         if request_source == "library":
             return await self._http_get_library(url, priority, **kwargs)
-        if request_source == "jellyfin":
-            return await self._http_get_jellyfin(url, priority, **kwargs)
         if request_source == "wikidata":
             return await self._http_get_wikidata(url, priority, **kwargs)
         if request_source == "wikimedia":
@@ -1447,7 +1423,6 @@ class CoverArtRepository:
         debug_info["circuit_breakers"] = {
             "coverart": _coverart_circuit_breaker.get_state(),
             "library": _library_cover_circuit_breaker.get_state(),
-            "jellyfin": _jellyfin_cover_circuit_breaker.get_state(),
             "wikidata": _wikidata_cover_circuit_breaker.get_state(),
             "wikimedia": _wikimedia_cover_circuit_breaker.get_state(),
             "generic": _generic_cover_circuit_breaker.get_state(),

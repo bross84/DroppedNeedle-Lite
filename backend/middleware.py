@@ -34,7 +34,6 @@ _PUBLIC_PATHS: frozenset[str] = frozenset({
     # Third-party login flows
     "/api/v1/auth/plex/pin",
     "/api/v1/auth/plex/poll",
-    "/api/v1/auth/jellyfin/login",
     "/api/v1/auth/oidc/authorize",
     "/api/v1/auth/oidc/callback",
     "/api/v1/auth/oidc/exchange",

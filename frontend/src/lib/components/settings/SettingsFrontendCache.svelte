@@ -69,14 +69,6 @@
 		unit="min"
 	/>
 	<SettingsNumberField
-		label="Jellyfin Sidebar"
-		description="Default: 2 minutes"
-		bind:value={data.frontend_ttl_jellyfin_sidebar}
-		min={1}
-		max={60}
-		unit="min"
-	/>
-	<SettingsNumberField
 		label="Plex Sidebar"
 		description="Default: 2 minutes"
 		bind:value={data.frontend_ttl_plex_sidebar}

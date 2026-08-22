@@ -26,13 +26,11 @@ from api.v1.schemas.home import (
 )
 from infrastructure.cache.memory_cache import CacheInterface
 from infrastructure.cache.cache_keys import DAILY_MIX_PREFIX, TOP_PICKS_PREFIX
-from infrastructure.cover_urls import prefer_artist_cover_url
 from infrastructure.degradation import DegradationContext, init_degradation_context
 from infrastructure.persistence import DiscoverySnapshotStore, MBIDStore
 from infrastructure.serialization import clone_with_updates
 from repositories.protocols import (
     ListenBrainzRepositoryProtocol,
-    JellyfinRepositoryProtocol,
     LibraryRepositoryProtocol,
     MusicBrainzRepositoryProtocol,
     LastFmRepositoryProtocol,
@@ -184,8 +182,6 @@ def _scaled(base: float) -> float:
 # inner one can fire and degrade a slow station to empty. The stations run concurrently,
 # so wall-clock is ~this value, not N times it.
 RADIO_POOL_BUDGET_SECONDS = 18
-REDISCOVER_PLAY_THRESHOLD = 5
-REDISCOVER_MONTHS_AGO = 3
 MISSING_ESSENTIALS_MIN_ALBUMS = 3
 MISSING_ESSENTIALS_MAX_PER_ARTIST = 3
 VARIOUS_ARTISTS_MBID = "89ad4ac3-39f7-470e-963a-56509c546377"
@@ -204,7 +200,6 @@ class DiscoverHomepageService:
     def __init__(
         self,
         listenbrainz_repo: ListenBrainzRepositoryProtocol,
-        jellyfin_repo: JellyfinRepositoryProtocol,
         library_repo: LibraryRepositoryProtocol,
         musicbrainz_repo: MusicBrainzRepositoryProtocol,
         integration: IntegrationHelpers,
@@ -225,7 +220,6 @@ class DiscoverHomepageService:
         ownership_service: Any = None,
     ) -> None:
         self._lb_repo = listenbrainz_repo
-        self._jf_repo = jellyfin_repo
         self._library_repo = library_repo
         self._mb_repo = musicbrainz_repo
         self._integration = integration
@@ -244,7 +238,7 @@ class DiscoverHomepageService:
         self._snapshot_store = snapshot_store
         self._workload_gate = workload_gate
         self._ownership = ownership_service
-        self._transformers = HomeDataTransformers(jellyfin_repo)
+        self._transformers = HomeDataTransformers()
         self._weekly_exploration = WeeklyExplorationService(
             listenbrainz_repo, musicbrainz_repo
         )
@@ -490,7 +484,6 @@ class DiscoverHomepageService:
             seeds = await self._get_seed_artists(
                 lb_enabled,
                 username,
-                self._integration.is_jellyfin_enabled(),
                 resolved_source=primary,
                 lfm_enabled=lfm_enabled,
                 lfm_username=lfm_username,
@@ -890,7 +883,6 @@ class DiscoverHomepageService:
             lfm_enabled,
             primary,
         ) = await self._resolve_user_music(user_id, None)
-        jf_enabled = self._integration.is_jellyfin_enabled()
         library_configured = self._integration.is_library_configured()
 
         library_mbids: set[str] = set()
@@ -899,7 +891,6 @@ class DiscoverHomepageService:
         seed_artists = await self._get_seed_artists(
             lb_enabled,
             username,
-            jf_enabled,
             resolved_source=primary,
             lfm_enabled=lfm_enabled,
             lfm_username=lfm_username,
@@ -963,9 +954,6 @@ class DiscoverHomepageService:
                     lfm_username, period="3month", limit=5
                 )
             )
-
-        if jf_enabled:
-            tasks["jf_most_played"] = self._jf_repo.get_most_played_artists(limit=50)
 
         if library_configured:
             tasks["library_artists"] = self._library_repo.get_home_artists(limit=500)
@@ -1064,8 +1052,6 @@ class DiscoverHomepageService:
         response.listeners_like_you = post_results.get("listeners_like_you")
         response.anniversaries = post_results.get("anniversaries")
         response.new_from_followed = post_results.get("new_from_followed")
-
-        response.rediscover = self._build_rediscover(results, library_mbids, jf_enabled)
 
         response.artists_you_might_like = self._build_artists_you_might_like(
             seed_artists,
@@ -1273,7 +1259,6 @@ class DiscoverHomepageService:
         self,
         lb_enabled: bool,
         username: str | None,
-        jf_enabled: bool,
         resolved_source: str = "listenbrainz",
         lfm_enabled: bool = False,
         lfm_username: str | None = None,
@@ -1328,34 +1313,6 @@ class DiscoverHomepageService:
                             seen_mbids.add(mbid)
                 except Exception as e:  # noqa: BLE001
                     logger.warning(f"Failed to get LB top artists ({range_}): {e}")
-
-        if resolved_source != "lastfm" and len(seeds) < 3 and jf_enabled:
-            for fetch_fn in (
-                lambda: self._jf_repo.get_most_played_artists(limit=10),
-                lambda: self._jf_repo.get_favorite_artists(limit=10),
-            ):
-                if len(seeds) >= 3:
-                    break
-                try:
-                    jf_items = await fetch_fn()
-                    for item in jf_items:
-                        if len(seeds) >= 3:
-                            break
-                        mbid = None
-                        if item.provider_ids:
-                            mbid = item.provider_ids.get("MusicBrainzArtist")
-                        if mbid and mbid not in seen_mbids:
-                            seeds.append(
-                                ListenBrainzArtist(
-                                    artist_name=item.artist_name or item.name,
-                                    listen_count=item.play_count,
-                                    artist_mbids=[mbid],
-                                )
-                            )
-                            seen_mbids.add(mbid)
-                except Exception as e:  # noqa: BLE001
-                    logger.warning(f"Failed to get Jellyfin seed artists: {e}")
-                    continue
 
         return seeds
 
@@ -2407,80 +2364,6 @@ class DiscoverHomepageService:
             source="library",
         )
 
-    def _build_rediscover(
-        self,
-        results: dict[str, Any],
-        library_mbids: set[str],
-        jf_enabled: bool,
-    ) -> HomeSection | None:
-        if not jf_enabled:
-            return None
-
-        jf_artists = results.get("jf_most_played")
-        if not jf_artists:
-            return None
-
-        now = datetime.now(timezone.utc)
-        rediscover_items: list[HomeArtist] = []
-        seen: set[str] = set()
-
-        for item in jf_artists:
-            if item.play_count < REDISCOVER_PLAY_THRESHOLD:
-                continue
-            if not item.last_played:
-                continue
-
-            try:
-                last_played = datetime.fromisoformat(
-                    item.last_played.replace("Z", "+00:00")
-                )
-                months_since = (now - last_played).days / 30.0
-                if months_since < REDISCOVER_MONTHS_AGO:
-                    continue
-            except (ValueError, TypeError):
-                continue
-
-            artist_name = item.artist_name or item.name
-            if artist_name.lower() in seen:
-                continue
-            seen.add(artist_name.lower())
-
-            mbid = None
-            if item.provider_ids:
-                mbid = item.provider_ids.get("MusicBrainzArtist")
-
-            image_url = None
-            if self._jf_repo and hasattr(self._jf_repo, "get_image_url"):
-                target_id = item.artist_id or item.id
-                image_url = prefer_artist_cover_url(
-                    mbid,
-                    self._jf_repo.get_image_url(target_id, item.image_tag),
-                    size=500,
-                )
-
-            rediscover_items.append(
-                HomeArtist(
-                    mbid=mbid,
-                    name=artist_name,
-                    listen_count=item.play_count,
-                    image_url=image_url,
-                    in_library=mbid.lower() in library_mbids if mbid else False,
-                )
-            )
-
-            if len(rediscover_items) >= 15:
-                break
-
-        if not rediscover_items:
-            return None
-
-        return HomeSection(
-            title="Rediscover",
-            type="artists",
-            items=rediscover_items,
-            source="jellyfin",
-        )
-
     def _build_artists_you_might_like(
         self,
         seed_artists: list,
@@ -2958,7 +2841,7 @@ class DiscoverHomepageService:
     def _build_service_prompts(
         self, lb_enabled: bool, lfm_enabled: bool
     ) -> list[ServicePrompt]:
-        # LB/Last.fm prompts are per-user; jellyfin/download-client stay global (D2)
+        # LB/Last.fm prompts are per-user; download-client stays global (D2)
         prompts = []
         if not lb_enabled:
             prompts.append(
@@ -2973,22 +2856,6 @@ class DiscoverHomepageService:
                         "Similar artists",
                         "Listening stats",
                         "Genre insights",
-                    ],
-                )
-            )
-        if not self._integration.is_jellyfin_enabled():
-            prompts.append(
-                ServicePrompt(
-                    service="jellyfin",
-                    title="Connect Jellyfin",
-                    description="Uses your play history to bring back old favorites and improve recommendations.",
-                    icon="JF",
-                    color="secondary",
-                    features=[
-                        "Rediscover favorites",
-                        "Play statistics",
-                        "Listening history",
-                        "Better recommendations",
                     ],
                 )
             )

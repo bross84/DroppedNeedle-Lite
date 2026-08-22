@@ -32,8 +32,6 @@ LFM_PREFIX = "lfm_"
 
 LRCLIB_PREFIX = "lrclib:"
 
-JELLYFIN_PREFIX = "jellyfin_"
-
 NAVIDROME_PREFIX = "navidrome:"
 
 PLEX_PREFIX = "plex:"

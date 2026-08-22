@@ -182,7 +182,7 @@ describe('createSettingsForm', () => {
 			const data = { url: 'http://test', enabled: true };
 			mockApiGet.mockResolvedValueOnce(data);
 			mockApiPut.mockResolvedValueOnce(data);
-			mockApiGet.mockResolvedValueOnce({ jellyfin: true });
+			mockApiGet.mockResolvedValueOnce({ navidrome: true });
 
 			const form = createSettingsForm<TestSettings>({
 				...defaultConfig,
@@ -191,7 +191,7 @@ describe('createSettingsForm', () => {
 			await form.load();
 			await form.save();
 
-			expect(mockSetStatus).toHaveBeenCalledWith({ jellyfin: true });
+			expect(mockSetStatus).toHaveBeenCalledWith({ navidrome: true });
 			form.cleanup();
 		});
 

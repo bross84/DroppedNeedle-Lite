@@ -13,8 +13,6 @@ import { SourcePlaylistQueryKeyFactory } from './SourcePlaylistQueryKeyFactory';
 
 function importUrl(source: SourcePlaylistSource, playlistId: string): string {
 	switch (source) {
-		case 'jellyfin':
-			return API.jellyfinLibrary.playlistImport(playlistId);
 		case 'navidrome':
 			return API.navidromeLibrary.playlistImport(playlistId);
 		case 'plex':
