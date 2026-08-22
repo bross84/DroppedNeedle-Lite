@@ -91,7 +91,6 @@ from api.v1.routes import cache_status as cache_status_routes
 from api.v1.routes import youtube as youtube_routes
 from api.v1.routes import requests_page as requests_page_routes
 from api.v1.routes import stream as stream_routes
-from api.v1.routes import jellyfin_library as jellyfin_library_routes
 from api.v1.routes import navidrome_library as navidrome_library_routes
 from api.v1.routes import navidrome_preferences as navidrome_preferences_routes
 from api.v1.routes import local_library as local_library_routes
@@ -413,11 +412,10 @@ async def lifespan(app: FastAPI):
     TaskRegistry.get_instance().register("orphan-staging-cleanup", _orphan_task)
 
     # live now-playing presence: TTL-sweep stale native/compat sessions + poll the
-    # upstream Jellyfin/Navidrome/Plex servers into the shared SSE feed
+    # upstream Navidrome/Plex servers into the shared SSE feed
     from core.dependencies import (
         get_now_playing_service,
         get_home_service,
-        get_jellyfin_library_service,
         get_navidrome_library_service,
         get_plex_library_service,
     )
@@ -427,7 +425,6 @@ async def lifespan(app: FastAPI):
         run_now_playing_presence_loop(
             get_now_playing_service(),
             get_home_service,
-            get_jellyfin_library_service,
             get_navidrome_library_service,
             get_plex_library_service,
         )
@@ -620,25 +617,6 @@ async def lifespan(app: FastAPI):
         get_preferences_service(),
     )
 
-    from core.tasks import warm_jellyfin_mbid_index
-    from core.dependencies import get_jellyfin_repository
-
-    jellyfin_settings = preferences_service.get_jellyfin_connection()
-    if jellyfin_settings.enabled:
-        mbid_task = asyncio.create_task(
-            warm_jellyfin_mbid_index(get_jellyfin_repository())
-        )
-        mbid_task.add_done_callback(
-            lambda t: None
-            if t.cancelled()
-            else (
-                logger.error("Jellyfin MBID index warming failed: %s", t.exception())
-                if t.exception()
-                else None
-            )
-        )
-        TaskRegistry.get_instance().register("jellyfin-mbid-warmup", mbid_task)
-
     navidrome_settings = preferences_service.get_navidrome_connection()
     if navidrome_settings.enabled:
         from core.tasks import warm_navidrome_mbid_cache
@@ -796,7 +774,6 @@ app.add_middleware(
         "/api/v1/auth/password-recovery/reset": (1.0, 5),
         "/api/v1/auth/setup": (1.0, 3),
         "/api/v1/auth/plex/poll": (5.0, 10),
-        "/api/v1/auth/jellyfin/login": (2.0, 5),
     },
 )
 
@@ -845,7 +822,6 @@ v1_router.include_router(cache_routes.router)
 v1_router.include_router(cache_status_routes.router)
 v1_router.include_router(requests_page_routes.router)
 v1_router.include_router(stream_routes.router)
-v1_router.include_router(jellyfin_library_routes.router)
 v1_router.include_router(navidrome_library_routes.router)
 v1_router.include_router(navidrome_preferences_routes.router)
 v1_router.include_router(plex_library_routes.router)

@@ -11,7 +11,7 @@
 	import PlaylistMosaic from '$lib/components/PlaylistMosaic.svelte';
 	import ContextMenu from '$lib/components/ContextMenu.svelte';
 	import type { MenuItem } from '$lib/components/ContextMenu.svelte';
-	import { Play, Shuffle, Pencil, Check, X, Tv, Sparkles, Globe, Lock } from 'lucide-svelte';
+	import { Play, Shuffle, Pencil, Check, X, Sparkles, Globe, Lock } from 'lucide-svelte';
 	import NavidromeIcon from '$lib/components/NavidromeIcon.svelte';
 	import PlexIcon from '$lib/components/PlexIcon.svelte';
 	import { getSourceColor, getSourceLabel } from '$lib/utils/sources';
@@ -322,9 +322,7 @@
 					class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
 					style="background: color-mix(in srgb, {sourceColor} 15%, transparent); color: {sourceColor};"
 				>
-					{#if sourceType === 'jellyfin'}
-						<Tv class="h-3 w-3" />
-					{:else if sourceType === 'navidrome'}
+					{#if sourceType === 'navidrome'}
 						<NavidromeIcon class="h-3 w-3" />
 					{:else if sourceType === 'plex'}
 						<PlexIcon class="h-3 w-3" />

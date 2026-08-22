@@ -5,7 +5,6 @@ import { api } from '$lib/api/client';
 interface IntegrationStatus {
 	download_client: boolean;
 	library: boolean;
-	jellyfin: boolean;
 	navidrome: boolean;
 	plex: boolean;
 	youtube: boolean;
@@ -18,7 +17,6 @@ function createIntegrationStore() {
 	const { subscribe, set, update } = writable<IntegrationStatus>({
 		download_client: false,
 		library: false,
-		jellyfin: false,
 		navidrome: false,
 		plex: false,
 		youtube: false,
@@ -40,7 +38,6 @@ function createIntegrationStore() {
 			set({
 				download_client: false,
 				library: false,
-				jellyfin: false,
 				navidrome: false,
 				plex: false,
 				youtube: false,

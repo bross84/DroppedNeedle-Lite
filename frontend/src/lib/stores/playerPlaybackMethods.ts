@@ -74,8 +74,7 @@ export function changeItemSource(
 		...item,
 		sourceType: newSourceType,
 		trackSourceId: resolvedId,
-		streamUrl,
-		playSessionId: undefined
+		streamUrl
 	};
 	return { newQueue };
 }
@@ -100,7 +99,6 @@ export function updateItemByPlaylistTrackId(
 		trackSourceId: newTrackSourceId,
 		streamUrl,
 		format: newFormat,
-		playSessionId: undefined,
 		plexRatingKey: newSourceType === 'plex' ? plexRatingKey : undefined
 	};
 	return newQueue;

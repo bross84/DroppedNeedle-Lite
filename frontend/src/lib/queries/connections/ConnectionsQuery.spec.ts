@@ -33,7 +33,6 @@ import { ConnectionsQueryKeyFactory } from './ConnectionsQueryKeyFactory';
 import { CONNECTIONS_ENDPOINTS } from './endpoints';
 import { getConnectionsQuery } from './ConnectionsQuery.svelte';
 import {
-	createConnectJellyfinMutation,
 	createConnectListenBrainzMutation,
 	createConnectNavidromeMutation,
 	createDisconnectMutation,
@@ -132,15 +131,6 @@ describe('connection mutations hit the correct endpoints', () => {
 		const m = createConnectNavidromeMutation() as unknown as Opts;
 		await m.mutationFn({ username: 'alice', password: 'pw' });
 		expect(mockPut).toHaveBeenCalledWith(CONNECTIONS_ENDPOINTS.navidrome, {
-			username: 'alice',
-			password: 'pw'
-		});
-	});
-
-	it('connect jellyfin -> PUT with username + password', async () => {
-		const m = createConnectJellyfinMutation() as unknown as Opts;
-		await m.mutationFn({ username: 'alice', password: 'pw' });
-		expect(mockPut).toHaveBeenCalledWith(CONNECTIONS_ENDPOINTS.jellyfin, {
 			username: 'alice',
 			password: 'pw'
 		});

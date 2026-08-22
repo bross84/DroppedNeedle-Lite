@@ -4,7 +4,6 @@
 	import { eqStore } from '$lib/stores/eq.svelte';
 	import { scrobbleManager } from '$lib/stores/scrobble.svelte';
 	import YouTubePlayer from '$lib/components/YouTubePlayer.svelte';
-	import JellyfinIcon from '$lib/components/JellyfinIcon.svelte';
 	import NavidromeIcon from '$lib/components/NavidromeIcon.svelte';
 	import PlexIcon from '$lib/components/PlexIcon.svelte';
 	import QueueDrawer from '$lib/components/QueueDrawer.svelte';
@@ -366,11 +365,6 @@
 						>
 							<ExternalLink class="h-4 w-4" />
 						</button>
-					</div>
-				{:else if playerStore.nowPlaying.sourceType === 'jellyfin'}
-					<div class="hidden sm:flex items-center gap-2" style="color: rgb(var(--brand-jellyfin))">
-						<JellyfinIcon class="h-5 w-5" />
-						<span class="text-sm font-medium">Jellyfin</span>
 					</div>
 				{:else if playerStore.nowPlaying.sourceType === 'navidrome'}
 					<div class="hidden sm:flex items-center gap-2" style="color: rgb(var(--brand-navidrome))">

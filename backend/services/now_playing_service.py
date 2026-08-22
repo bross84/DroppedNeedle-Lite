@@ -1,9 +1,8 @@
 """NowPlayingService - in-memory live presence registry.
 
-Holds the current playing session for every source (the native web player, inbound
-Subsonic/Jellyfin connected apps, and the polled upstream Jellyfin/Navidrome/Plex
-servers) and broadcasts a privacy-projected snapshot over the SSE ``now-playing``
-channel whenever it changes.
+Holds the current playing session for every source (the native web player and the
+polled upstream Navidrome/Plex servers) and broadcasts a privacy-projected snapshot
+over the SSE ``now-playing`` channel whenever it changes.
 
 Single-process invariant: correct only under ``uvicorn --workers 1`` (the current
 Dockerfile), like ``SSEPublisher``. Presence is transient and intentionally lost on

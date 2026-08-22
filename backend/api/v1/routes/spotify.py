@@ -7,7 +7,6 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 
 from core.dependencies import (
-    get_jellyfin_library_service,
     get_local_files_service,
     get_navidrome_library_service,
     get_navidrome_folder_scope_service,
@@ -23,7 +22,7 @@ from services.spotify_import_service import SpotifyImportService, SpotifyNotLink
 from services.local_files_service import LocalFilesService
 from services.playlist_service import PlaylistService
 
-_LINK_SOURCE_PRIORITY = ["local", "jellyfin", "navidrome", "plex"]
+_LINK_SOURCE_PRIORITY = ["local", "navidrome", "plex"]
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +68,6 @@ async def _background_import(
         )
         return
     try:
-        jf_service = get_jellyfin_library_service()
         nd_service = get_navidrome_library_service()
         folder_resolution = await get_navidrome_folder_scope_service().resolve(user_id)
         navidrome_folder_ids = (
@@ -81,7 +79,6 @@ async def _background_import(
         sources_map = await playlist_service.resolve_track_sources(
             playlist_id,
             requesting=current_user,
-            jf_service=jf_service,
             local_service=local_service,
             nd_service=nd_service,
             plex_service=plex_service,
@@ -98,7 +95,6 @@ async def _background_import(
                         current_user,
                         track_id,
                         source_type=best,
-                        jf_service=jf_service,
                         local_service=local_service,
                         nd_service=nd_service,
                         plex_service=plex_service,

@@ -40,7 +40,6 @@ def _conn(**attrs) -> MagicMock:
 def _global_prefs() -> MagicMock:
     prefs = MagicMock()
     prefs.get_listenbrainz_connection.return_value = _conn(username="", user_token="")
-    prefs.get_jellyfin_connection.return_value = _conn(jellyfin_url="", api_key="")
     prefs.get_download_client_settings.return_value = _conn(url="")
     yt = _conn(api_enabled=False)
     yt.has_valid_api_key = MagicMock(return_value=False)
@@ -125,7 +124,6 @@ def _home_service(
 
     service = HomeService(
         listenbrainz_repo=lb_repo,
-        jellyfin_repo=AsyncMock(),
         library_repo=library_repo,
         musicbrainz_repo=AsyncMock(),
         preferences_service=_global_prefs(),
@@ -270,7 +268,6 @@ def test_discover_service_prompts_are_per_user():
 
     svc = DiscoverHomepageService.__new__(DiscoverHomepageService)
     svc._integration = MagicMock()
-    svc._integration.is_jellyfin_enabled.return_value = True
     svc._integration.is_download_client_configured.return_value = True
 
     linked = svc._build_service_prompts(lb_enabled=True, lfm_enabled=True)
@@ -301,7 +298,6 @@ async def test_seed_artists_fall_back_to_broader_ranges():
     seeds = await svc._get_seed_artists(
         lb_enabled=True,
         username="u",
-        jf_enabled=False,
         resolved_source="listenbrainz",
         lb_client=client,
     )

@@ -54,7 +54,6 @@ vi.mock('$lib/components/TrackPlayButton.svelte', emptyComponent);
 vi.mock('$lib/components/TrackPreviewButton.svelte', emptyComponent);
 vi.mock('$lib/components/TrackSourceButton.svelte', emptyComponent);
 vi.mock('$lib/components/ContextMenu.svelte', emptyComponent);
-vi.mock('$lib/components/JellyfinIcon.svelte', emptyComponent);
 vi.mock('$lib/components/LocalFilesIcon.svelte', emptyComponent);
 vi.mock('$lib/components/NavidromeIcon.svelte', emptyComponent);
 vi.mock('$lib/components/PlexIcon.svelte', emptyComponent);
@@ -166,15 +165,12 @@ function renderList(
 		album,
 		renderedTrackSections: buildRenderedTrackSections(TRACKS),
 		trackLinkMap: new Map(),
-		jellyfinMatch: null,
 		localMatch: null,
 		navidromeMatch: null,
 		plexMatch: null,
-		jellyfinTrackMap: new Map(),
 		localTrackMap: new Map(),
 		navidromeTrackMap: new Map(),
 		plexTrackMap: new Map(),
-		jellyfinTracks: [],
 		localTracks: [],
 		navidromeTracks: [],
 		plexTracks: [],
@@ -182,7 +178,6 @@ function renderList(
 		youtubeEnabled: false,
 		youtubeApiConfigured: false,
 		previewCacheMap: new Map(),
-		jellyfinEnabled: false,
 		localfilesEnabled: false,
 		navidromeEnabled: false,
 		plexEnabled: false,

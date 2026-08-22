@@ -159,7 +159,7 @@ describe('playlists API client', () => {
 	describe('addTracksToPlaylist', () => {
 		it('sends POST with { tracks, position } and unwraps .tracks', async () => {
 			const tracks = [
-				{ track_name: 'Song', artist_name: 'Art', album_name: 'Alb', source_type: 'jellyfin' }
+				{ track_name: 'Song', artist_name: 'Art', album_name: 'Alb', source_type: 'navidrome' }
 			];
 			const responseTracks = [{ id: 't1', position: 0, track_name: 'Song' }];
 			mockPost.mockResolvedValue({ tracks: responseTracks });
@@ -175,7 +175,7 @@ describe('playlists API client', () => {
 
 		it('omits position when not provided', async () => {
 			const tracks = [
-				{ track_name: 'Song', artist_name: 'Art', album_name: 'Alb', source_type: 'jellyfin' }
+				{ track_name: 'Song', artist_name: 'Art', album_name: 'Alb', source_type: 'navidrome' }
 			];
 			mockPost.mockResolvedValue({ tracks: [] });
 
@@ -254,11 +254,11 @@ describe('playlists API client', () => {
 				albumId: 'alb-1',
 				albumName: 'My Album',
 				coverUrl: '/cover.jpg',
-				sourceType: 'jellyfin',
+				sourceType: 'navidrome',
 				artistId: 'art-1',
 				streamUrl: '/stream/vid-1',
 				format: 'aac',
-				availableSources: ['jellyfin', 'local'],
+				availableSources: ['navidrome', 'local'],
 				duration: 240
 			};
 
@@ -272,8 +272,8 @@ describe('playlists API client', () => {
 				artist_id: 'art-1',
 				track_source_id: 'vid-1',
 				cover_url: '/cover.jpg',
-				source_type: 'jellyfin',
-				available_sources: ['jellyfin', 'local'],
+				source_type: 'navidrome',
+				available_sources: ['navidrome', 'local'],
 				format: 'aac',
 				track_number: 3,
 				disc_number: null,

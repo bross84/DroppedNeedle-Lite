@@ -19,7 +19,6 @@ from .cache_providers import (
     get_cache,
     get_disk_cache,
     get_library_db,
-    get_mbid_store,
     get_native_library_store,
     get_preferences_service,
 )
@@ -135,25 +134,6 @@ def get_lrclib_repository() -> "LrclibRepository":
         settings=get_settings(),
     )
     return LrclibRepository(client, get_cache())
-
-
-@singleton
-def get_jellyfin_repository() -> "JellyfinRepository":
-    from repositories.jellyfin_repository import JellyfinRepository
-
-    cache = get_cache()
-    mbid_store = get_mbid_store()
-    http_client = _get_configured_http_client()
-    preferences = get_preferences_service()
-    jf_settings = preferences.get_jellyfin_connection()
-    return JellyfinRepository(
-        http_client=http_client,
-        cache=cache,
-        base_url=jf_settings.jellyfin_url if jf_settings.enabled else "",
-        api_key=jf_settings.api_key if jf_settings.enabled else "",
-        user_id=jf_settings.user_id if jf_settings.enabled else "",
-        mbid_store=mbid_store,
-    )
 
 
 @singleton
@@ -510,7 +490,6 @@ def _build_coverart_repository(
     advanced = get_preferences_service().get_advanced_settings()
     cache = get_cache()
     mb_repo = get_musicbrainz_repository()
-    jellyfin_repo = get_jellyfin_repository()
     audiodb_service = get_audiodb_image_service()
     audiodb_browse_queue = get_audiodb_browse_queue()
     # Covers get their own short-budget client, not the shared 10s default (see
@@ -523,7 +502,6 @@ def _build_coverart_repository(
         cache,
         mb_repo,
         library_repo,
-        jellyfin_repo,
         audiodb_service=audiodb_service,
         audiodb_browse_queue=audiodb_browse_queue,
         cache_dir=cache_dir,

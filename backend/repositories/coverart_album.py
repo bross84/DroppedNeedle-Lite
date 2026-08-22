@@ -18,7 +18,6 @@ if TYPE_CHECKING:
     from services.audiodb_browse_queue import AudioDBBrowseQueue
     from repositories.protocols.library import LibraryRepositoryProtocol
     from repositories.musicbrainz_repository import MusicBrainzRepository
-    from repositories.jellyfin_repository import JellyfinRepository
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +62,6 @@ class AlbumCoverFetcher:
         write_cache_fn,
         library_repo: 'LibraryRepositoryProtocol' | None = None,
         mb_repo: 'MusicBrainzRepository' | None = None,
-        jellyfin_repo: 'JellyfinRepository' | None = None,
         audiodb_service: 'AudioDBImageService' | None = None,
         audiodb_browse_queue: 'AudioDBBrowseQueue' | None = None,
     ):
@@ -71,7 +69,6 @@ class AlbumCoverFetcher:
         self._write_disk_cache = write_cache_fn
         self._library_repo = library_repo
         self._mb_repo = mb_repo
-        self._jellyfin_repo = jellyfin_repo
         self._audiodb_service = audiodb_service
         self._audiodb_browse_queue = audiodb_browse_queue
         self._release_audiodb_warming: dict[str, tuple[str, float]] = {}
@@ -146,10 +143,7 @@ class AlbumCoverFetcher:
         size: int,
         priority: RequestPriority = RequestPriority.IMAGE_FETCH,
     ) -> tuple[bytes, str, str] | None:
-        result = await self._fetch_from_library(release_group_id, file_path, size=size, priority=priority)
-        if result:
-            return result
-        return await self._fetch_from_jellyfin(release_group_id, file_path, priority=priority)
+        return await self._fetch_from_library(release_group_id, file_path, size=size, priority=priority)
 
     async def _fetch_from_audiodb(
         self,
@@ -373,42 +367,6 @@ class AlbumCoverFetcher:
         except Exception:  # noqa: BLE001
             return None
 
-    async def _fetch_from_jellyfin(
-        self,
-        musicbrainz_id: str,
-        file_path: Path,
-        priority: RequestPriority = RequestPriority.IMAGE_FETCH,
-    ) -> tuple[bytes, str, str] | None:
-        if not self._jellyfin_repo or not self._jellyfin_repo.is_configured():
-            return None
-        try:
-            album = await self._jellyfin_repo.get_album_by_mbid(musicbrainz_id)
-            if not album:
-                return None
-            image_url = self._jellyfin_repo.get_image_url(album.id, album.image_tag)
-            if not image_url:
-                return None
-            response = await self._http_get(
-                image_url,
-                priority,
-                source="jellyfin",
-                headers=self._jellyfin_repo.get_auth_headers(),
-            )
-            if response.status_code != 200:
-                return None
-            content_type = response.headers.get("content-type", "")
-            if not _is_valid_image_content_type(content_type):
-                logger.warning(f"Non-image content-type from Jellyfin album: {content_type}")
-                return None
-            content = response.content
-            task = asyncio.create_task(
-                self._write_disk_cache(file_path, content, content_type, {"source": "jellyfin"})
-            )
-            task.add_done_callback(_log_task_error)
-            return (content, content_type, "jellyfin")
-        except Exception:  # noqa: BLE001
-            return None
-
     async def fetch_release_cover(
         self,
         release_id: str,
@@ -503,11 +461,6 @@ class AlbumCoverFetcher:
             )
 
         if release_group_id:
-            result = await self._fetch_from_library(release_group_id, file_path, size=size_int, priority=priority)
-            if result:
-                return result
-            result = await self._fetch_from_jellyfin(release_group_id, file_path, priority=priority)
-            if result:
-                return result
+            return await self._fetch_from_library(release_group_id, file_path, size=size_int, priority=priority)
 
-        return await self._fetch_from_jellyfin(release_id, file_path, priority=priority)
+        return None

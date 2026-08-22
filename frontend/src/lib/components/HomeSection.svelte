@@ -7,7 +7,7 @@
 		HomeGenre
 	} from '$lib/types';
 	import type { Snippet } from 'svelte';
-	import { ArrowRight, X, Check, Disc3, Music2, Tv, Sparkles, Search } from 'lucide-svelte';
+	import { ArrowRight, X, Check, Disc3, Music2, Sparkles, Search } from 'lucide-svelte';
 	import { goto } from '$app/navigation';
 	import {
 		albumHrefOrNull,
@@ -119,8 +119,6 @@
 				<div class="text-3xl sm:text-4xl mb-2">
 					{#if section.connect_service === 'listenbrainz'}
 						<Music2 class="h-5 w-5" />
-					{:else if section.connect_service === 'jellyfin'}
-						<Tv class="h-5 w-5" />
 					{:else if section.connect_service === 'lastfm'}
 						<Music2 class="h-5 w-5" />
 					{:else}
@@ -134,9 +132,7 @@
 							? 'ListenBrainz'
 							: section.connect_service === 'lastfm'
 								? 'Last.fm'
-								: section.connect_service === 'jellyfin'
-									? 'Jellyfin'
-									: section.connect_service}
+								: section.connect_service}
 					</a>
 				{/if}
 			</div>

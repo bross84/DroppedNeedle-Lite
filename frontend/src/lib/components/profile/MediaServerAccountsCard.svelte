@@ -1,12 +1,10 @@
 <script lang="ts">
 	import { Loader2, ServerCog } from 'lucide-svelte';
 	import { ApiError } from '$lib/api/client';
-	import JellyfinIcon from '$lib/components/JellyfinIcon.svelte';
 	import NavidromeIcon from '$lib/components/NavidromeIcon.svelte';
 	import PlexIcon from '$lib/components/PlexIcon.svelte';
 	import { getConnectionsQuery } from '$lib/queries/connections/ConnectionsQuery.svelte';
 	import {
-		createConnectJellyfinMutation,
 		createConnectNavidromeMutation,
 		createDisconnectMutation,
 		createPlexLinkPinMutation,
@@ -24,12 +22,10 @@
 	const connections = $derived(connectionsQuery.data?.connections ?? []);
 
 	const navidromeEnabled = $derived(services.some((s) => s.name === 'Navidrome' && s.enabled));
-	const jellyfinEnabled = $derived(services.some((s) => s.name === 'Jellyfin' && s.enabled));
 	const plexEnabled = $derived(services.some((s) => s.name === 'Plex' && s.enabled));
-	const anyEnabled = $derived(navidromeEnabled || jellyfinEnabled || plexEnabled);
+	const anyEnabled = $derived(navidromeEnabled || plexEnabled);
 
 	const connectNavidromeMutation = createConnectNavidromeMutation();
-	const connectJellyfinMutation = createConnectJellyfinMutation();
 	const plexPinMutation = createPlexLinkPinMutation();
 	const plexPollMutation = createPlexLinkPollMutation();
 	const disconnectMutation = createDisconnectMutation();
@@ -46,7 +42,6 @@
 	}
 
 	let navidromeForm = $state(emptyForm());
-	let jellyfinForm = $state(emptyForm());
 
 	let plexPinId = $state<number | null>(null);
 	let plexError = $state<string | null>(null);
@@ -65,19 +60,6 @@
 			navidromeForm = emptyForm();
 		} catch (e) {
 			navidromeForm.error = errorMessage(e, 'Could not sign in to Navidrome.');
-		}
-	}
-
-	async function linkJellyfin() {
-		jellyfinForm.error = null;
-		try {
-			await connectJellyfinMutation.mutateAsync({
-				username: jellyfinForm.username.trim(),
-				password: jellyfinForm.password
-			});
-			jellyfinForm = emptyForm();
-		} catch (e) {
-			jellyfinForm.error = errorMessage(e, 'Could not sign in to Jellyfin.');
 		}
 	}
 
@@ -134,12 +116,6 @@
 				label: 'Navidrome',
 				icon: NavidromeIcon,
 				tint: 'bg-green-500/10 text-green-400 ring-green-500/20'
-			},
-			jellyfinEnabled && {
-				service: 'jellyfin',
-				label: 'Jellyfin',
-				icon: JellyfinIcon,
-				tint: 'bg-purple-500/10 text-purple-400 ring-purple-500/20'
 			},
 			plexEnabled && {
 				service: 'plex',
@@ -223,14 +199,6 @@
 									>
 										Connect
 									</button>
-								{:else if row.service === 'jellyfin'}
-									<button
-										type="button"
-										class="btn btn-primary btn-xs gap-1 rounded-full px-3 shadow-sm transition-transform hover:scale-[1.03]"
-										onclick={() => (jellyfinForm.open = !jellyfinForm.open)}
-									>
-										Connect
-									</button>
 								{:else if plexPinId !== null}
 									<div class="flex items-center gap-2">
 										<button
@@ -299,56 +267,6 @@
 											!navidromeForm.password}
 									>
 										{#if connectNavidromeMutation.isPending}
-											<Loader2 class="h-3.5 w-3.5 animate-spin" />
-										{/if}
-										Link account
-									</button>
-								</div>
-							</div>
-						{/if}
-
-						{#if row.service === 'jellyfin' && !linked && jellyfinForm.open}
-							<div
-								class="mt-2 space-y-2 rounded-xl border border-base-300/40 bg-base-100/40 p-3 animate-fade-in-up"
-							>
-								<p class="text-xs text-base-content/60">
-									Sign in with your own Jellyfin username and password. The password is exchanged
-									for an access token and never stored.
-								</p>
-								<input
-									type="text"
-									class="input input-sm input-soft w-full"
-									placeholder="Jellyfin username"
-									bind:value={jellyfinForm.username}
-									autocomplete="off"
-								/>
-								<input
-									type="password"
-									class="input input-sm input-soft w-full"
-									placeholder="Password"
-									bind:value={jellyfinForm.password}
-									autocomplete="off"
-								/>
-								{#if jellyfinForm.error}
-									<p class="text-xs text-error">{jellyfinForm.error}</p>
-								{/if}
-								<div class="flex justify-end gap-2">
-									<button
-										type="button"
-										class="btn btn-ghost btn-xs rounded-full"
-										onclick={() => (jellyfinForm = emptyForm())}
-									>
-										Cancel
-									</button>
-									<button
-										type="button"
-										class="btn btn-primary btn-xs gap-1 rounded-full"
-										onclick={linkJellyfin}
-										disabled={connectJellyfinMutation.isPending ||
-											!jellyfinForm.username.trim() ||
-											!jellyfinForm.password}
-									>
-										{#if connectJellyfinMutation.isPending}
 											<Loader2 class="h-3.5 w-3.5 animate-spin" />
 										{/if}
 										Link account

@@ -41,10 +41,6 @@ class AdvancedSettings(AppStruct):
     cache_ttl_artist_discovery_non_library: int = 3600
     cache_ttl_search: int = 3600
     cache_ttl_local_files_recently_added: int = 120
-    cache_ttl_jellyfin_recently_played: int = 300
-    cache_ttl_jellyfin_favorites: int = 300
-    cache_ttl_jellyfin_genres: int = 3600
-    cache_ttl_jellyfin_library_stats: int = 600
     cache_ttl_navidrome_albums: int = 300
     cache_ttl_navidrome_artists: int = 300
     cache_ttl_navidrome_recent: int = 120
@@ -95,7 +91,6 @@ class AdvancedSettings(AppStruct):
     frontend_ttl_discover_queue: int = 86400000
     frontend_ttl_search: int = 300000
     frontend_ttl_local_files_sidebar: int = 120000
-    frontend_ttl_jellyfin_sidebar: int = 120000
     frontend_ttl_plex_sidebar: int = 120000
     frontend_ttl_playlist_sources: int = 900000
     audiodb_enabled: bool = True
@@ -130,10 +125,6 @@ class AdvancedSettings(AppStruct):
             "cache_ttl_artist_discovery_non_library": (3600, 604800),
             "cache_ttl_search": (60, 86400),
             "cache_ttl_local_files_recently_added": (60, 3600),
-            "cache_ttl_jellyfin_recently_played": (60, 3600),
-            "cache_ttl_jellyfin_favorites": (60, 3600),
-            "cache_ttl_jellyfin_genres": (60, 86400),
-            "cache_ttl_jellyfin_library_stats": (60, 3600),
             "cache_ttl_navidrome_albums": (60, 3600),
             "cache_ttl_navidrome_artists": (60, 3600),
             "cache_ttl_navidrome_recent": (60, 3600),
@@ -187,7 +178,6 @@ class AdvancedSettings(AppStruct):
             "frontend_ttl_discover_queue": (3600000, 604800000),
             "frontend_ttl_search": (60000, 3600000),
             "frontend_ttl_local_files_sidebar": (60000, 3600000),
-            "frontend_ttl_jellyfin_sidebar": (60000, 3600000),
             "frontend_ttl_plex_sidebar": (60000, 3600000),
             "frontend_ttl_playlist_sources": (60000, 3600000),
             "cache_ttl_audiodb_found": (3600, 2592000),
@@ -212,7 +202,6 @@ class FrontendCacheTTLs(AppStruct):
     discover_queue: int = 86400000
     search: int = 300000
     local_files_sidebar: int = 120000
-    jellyfin_sidebar: int = 120000
     plex_sidebar: int = 120000
     playlist_sources: int = 900000
     discover_queue_polling_interval: int = 4000
@@ -228,10 +217,6 @@ class AdvancedSettingsFrontend(AppStruct):
     cache_ttl_artist_discovery_non_library: int = 1
     cache_ttl_search: int = 60
     cache_ttl_local_files_recently_added: int = 2
-    cache_ttl_jellyfin_recently_played: int = 5
-    cache_ttl_jellyfin_favorites: int = 5
-    cache_ttl_jellyfin_genres: int = 60
-    cache_ttl_jellyfin_library_stats: int = 10
     cache_ttl_navidrome_albums: int = 5
     cache_ttl_navidrome_artists: int = 5
     cache_ttl_navidrome_recent: int = 2
@@ -281,7 +266,6 @@ class AdvancedSettingsFrontend(AppStruct):
     frontend_ttl_discover_queue: int = 1440
     frontend_ttl_search: int = 5
     frontend_ttl_local_files_sidebar: int = 2
-    frontend_ttl_jellyfin_sidebar: int = 2
     frontend_ttl_plex_sidebar: int = 2
     frontend_ttl_playlist_sources: int = 15
     audiodb_enabled: bool = True
@@ -315,10 +299,6 @@ class AdvancedSettingsFrontend(AppStruct):
             "cache_ttl_artist_discovery_non_library",
             "cache_ttl_search",
             "cache_ttl_local_files_recently_added",
-            "cache_ttl_jellyfin_recently_played",
-            "cache_ttl_jellyfin_favorites",
-            "cache_ttl_jellyfin_genres",
-            "cache_ttl_jellyfin_library_stats",
             "cache_ttl_navidrome_albums",
             "cache_ttl_navidrome_artists",
             "cache_ttl_navidrome_recent",
@@ -353,10 +333,6 @@ class AdvancedSettingsFrontend(AppStruct):
             "cache_ttl_artist_discovery_non_library": (1, 168),
             "cache_ttl_search": (1, 1440),
             "cache_ttl_local_files_recently_added": (1, 60),
-            "cache_ttl_jellyfin_recently_played": (1, 60),
-            "cache_ttl_jellyfin_favorites": (1, 60),
-            "cache_ttl_jellyfin_genres": (1, 1440),
-            "cache_ttl_jellyfin_library_stats": (1, 60),
             "cache_ttl_navidrome_albums": (1, 60),
             "cache_ttl_navidrome_artists": (1, 60),
             "cache_ttl_navidrome_recent": (1, 60),
@@ -404,7 +380,6 @@ class AdvancedSettingsFrontend(AppStruct):
             "frontend_ttl_discover_queue": (60, 10080),
             "frontend_ttl_search": (1, 60),
             "frontend_ttl_local_files_sidebar": (1, 60),
-            "frontend_ttl_jellyfin_sidebar": (1, 60),
             "frontend_ttl_plex_sidebar": (1, 60),
             "frontend_ttl_playlist_sources": (1, 60),
             "cache_ttl_audiodb_found": (1, 720),
@@ -437,10 +412,6 @@ class AdvancedSettingsFrontend(AppStruct):
             cache_ttl_artist_discovery_non_library=settings.cache_ttl_artist_discovery_non_library // 3600,
             cache_ttl_search=settings.cache_ttl_search // 60,
             cache_ttl_local_files_recently_added=settings.cache_ttl_local_files_recently_added // 60,
-            cache_ttl_jellyfin_recently_played=settings.cache_ttl_jellyfin_recently_played // 60,
-            cache_ttl_jellyfin_favorites=settings.cache_ttl_jellyfin_favorites // 60,
-            cache_ttl_jellyfin_genres=settings.cache_ttl_jellyfin_genres // 60,
-            cache_ttl_jellyfin_library_stats=settings.cache_ttl_jellyfin_library_stats // 60,
             cache_ttl_navidrome_albums=settings.cache_ttl_navidrome_albums // 60,
             cache_ttl_navidrome_artists=settings.cache_ttl_navidrome_artists // 60,
             cache_ttl_navidrome_recent=settings.cache_ttl_navidrome_recent // 60,
@@ -490,7 +461,6 @@ class AdvancedSettingsFrontend(AppStruct):
             frontend_ttl_discover_queue=settings.frontend_ttl_discover_queue // 60000,
             frontend_ttl_search=settings.frontend_ttl_search // 60000,
             frontend_ttl_local_files_sidebar=settings.frontend_ttl_local_files_sidebar // 60000,
-            frontend_ttl_jellyfin_sidebar=settings.frontend_ttl_jellyfin_sidebar // 60000,
             frontend_ttl_plex_sidebar=settings.frontend_ttl_plex_sidebar // 60000,
             frontend_ttl_playlist_sources=settings.frontend_ttl_playlist_sources // 60000,
             audiodb_enabled=settings.audiodb_enabled,
@@ -525,10 +495,6 @@ class AdvancedSettingsFrontend(AppStruct):
             cache_ttl_artist_discovery_non_library=self.cache_ttl_artist_discovery_non_library * 3600,
             cache_ttl_search=self.cache_ttl_search * 60,
             cache_ttl_local_files_recently_added=self.cache_ttl_local_files_recently_added * 60,
-            cache_ttl_jellyfin_recently_played=self.cache_ttl_jellyfin_recently_played * 60,
-            cache_ttl_jellyfin_favorites=self.cache_ttl_jellyfin_favorites * 60,
-            cache_ttl_jellyfin_genres=self.cache_ttl_jellyfin_genres * 60,
-            cache_ttl_jellyfin_library_stats=self.cache_ttl_jellyfin_library_stats * 60,
             cache_ttl_navidrome_albums=self.cache_ttl_navidrome_albums * 60,
             cache_ttl_navidrome_artists=self.cache_ttl_navidrome_artists * 60,
             cache_ttl_navidrome_recent=self.cache_ttl_navidrome_recent * 60,
@@ -578,7 +544,6 @@ class AdvancedSettingsFrontend(AppStruct):
             frontend_ttl_discover_queue=self.frontend_ttl_discover_queue * 60000,
             frontend_ttl_search=self.frontend_ttl_search * 60000,
             frontend_ttl_local_files_sidebar=self.frontend_ttl_local_files_sidebar * 60000,
-            frontend_ttl_jellyfin_sidebar=self.frontend_ttl_jellyfin_sidebar * 60000,
             frontend_ttl_plex_sidebar=self.frontend_ttl_plex_sidebar * 60000,
             frontend_ttl_playlist_sources=self.frontend_ttl_playlist_sources * 60000,
             audiodb_enabled=self.audiodb_enabled,

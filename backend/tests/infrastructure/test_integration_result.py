@@ -19,7 +19,7 @@ class TestIntegrationResultOk:
         assert r.error_message is None
 
     def test_is_ok_true(self):
-        r = IntegrationResult.ok(data=42, source="jellyfin")
+        r = IntegrationResult.ok(data=42, source="navidrome")
         assert r.is_ok is True
         assert r.is_degraded is False
         assert r.is_error is False

@@ -1,4 +1,4 @@
-"""SSO auto-link (issue #138, D4): a Jellyfin/Plex login hands us a fresh
+"""SSO auto-link (issue #138, D4): a Plex login hands us a fresh
 user-scoped token, so the login flow also upserts the matching per-user media
 connection - and a failed upsert must never fail the login itself."""
 
@@ -8,16 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from core.exceptions import AuthenticationError
-from services.jellyfin_user_auth_service import JellyfinUserAuthService
 from services.plex_user_auth_service import PlexUserAuthService
-
-_JF_PROFILE = {
-    "jellyfin_user_id": "jf-uid-1",
-    "username": "alice",
-    "email": None,
-    "thumb": None,
-    "access_token": "jf-tok",
-}
 
 _PLEX_PROFILE = {
     "uuid": "px-uid-1",
@@ -38,71 +29,6 @@ def _auth_store() -> MagicMock:
 
 def _user() -> SimpleNamespace:
     return SimpleNamespace(id="user-1", display_name="Alice", role="user")
-
-
-@pytest.fixture
-def jf_service():
-    repo = MagicMock()
-    repo.is_configured = MagicMock(return_value=True)
-    connections = MagicMock()
-    connections.upsert = AsyncMock()
-    svc = JellyfinUserAuthService(
-        auth_store=_auth_store(),
-        jellyfin_repository=repo,
-        preferences_service=MagicMock(),
-        connections_store=connections,
-    )
-    svc._authenticate_with_jellyfin = AsyncMock(return_value=dict(_JF_PROFILE))
-    svc._find_or_create_user = AsyncMock(return_value=_user())
-    return svc, connections
-
-
-@pytest.mark.asyncio
-async def test_jellyfin_login_auto_links_connection(jf_service):
-    svc, connections = jf_service
-    user, token = await svc.login(username="alice", password="pw")
-    assert token == "raw-token"
-    connections.upsert.assert_awaited_once_with(
-        "user-1",
-        "jellyfin",
-        {"access_token": "jf-tok", "jellyfin_user_id": "jf-uid-1", "username": "alice"},
-    )
-
-
-@pytest.mark.asyncio
-async def test_jellyfin_login_survives_auto_link_failure(jf_service):
-    svc, connections = jf_service
-    connections.upsert.side_effect = RuntimeError("db locked")
-    user, token = await svc.login(username="alice", password="pw")
-    assert token == "raw-token"
-
-
-@pytest.mark.asyncio
-async def test_jellyfin_login_without_connections_store_still_works():
-    repo = MagicMock()
-    repo.is_configured = MagicMock(return_value=True)
-    svc = JellyfinUserAuthService(
-        auth_store=_auth_store(),
-        jellyfin_repository=repo,
-        preferences_service=MagicMock(),
-    )
-    svc._authenticate_with_jellyfin = AsyncMock(return_value=dict(_JF_PROFILE))
-    svc._find_or_create_user = AsyncMock(return_value=_user())
-    _, token = await svc.login(username="alice", password="pw")
-    assert token == "raw-token"
-
-
-@pytest.mark.asyncio
-async def test_jellyfin_authenticate_credentials_requires_configured_server():
-    repo = MagicMock()
-    repo.is_configured = MagicMock(return_value=False)
-    svc = JellyfinUserAuthService(
-        auth_store=_auth_store(),
-        jellyfin_repository=repo,
-        preferences_service=MagicMock(),
-    )
-    with pytest.raises(AuthenticationError):
-        await svc.authenticate_credentials("alice", "pw")
 
 
 @pytest.fixture

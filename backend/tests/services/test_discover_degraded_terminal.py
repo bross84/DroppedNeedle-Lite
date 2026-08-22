@@ -35,7 +35,6 @@ def _make_prefs() -> MagicMock:
         source="listenbrainz"
     )
     for getter in (
-        "get_jellyfin_connection",
         "get_download_client_settings",
         "get_youtube_connection",
         "get_local_files_connection",
@@ -64,7 +63,6 @@ class _FakeCache:
 def _make_service(cache: _FakeCache) -> DiscoverHomepageService:
     return DiscoverHomepageService(
         listenbrainz_repo=AsyncMock(),
-        jellyfin_repo=AsyncMock(),
         library_repo=AsyncMock(),
         musicbrainz_repo=AsyncMock(),
         integration=IntegrationHelpers(_make_prefs()),

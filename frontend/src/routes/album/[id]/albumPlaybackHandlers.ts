@@ -1,7 +1,5 @@
 import type {
 	AlbumBasicInfo,
-	JellyfinAlbumMatch,
-	JellyfinTrackInfo,
 	LocalAlbumMatch,
 	LocalTrackInfo,
 	NavidromeAlbumMatch,
@@ -14,7 +12,6 @@ import type { QueueItem, PlaybackMeta } from '$lib/player/types';
 import type { TrackMeta, TrackSourceData } from '$lib/player/queueHelpers';
 import {
 	buildQueueItem,
-	buildQueueItemsFromJellyfin,
 	buildQueueItemsFromLocal,
 	buildQueueItemsFromNavidrome,
 	buildQueueItemsFromPlex,
@@ -23,7 +20,6 @@ import {
 	normalizeDiscNumber
 } from '$lib/player/queueHelpers';
 import { getCoverUrl } from '$lib/utils/errorHandling';
-import { launchJellyfinPlayback } from '$lib/player/launchJellyfinPlayback';
 import { launchLocalPlayback } from '$lib/player/launchLocalPlayback';
 import { launchNavidromePlayback } from '$lib/player/launchNavidromePlayback';
 import { launchPlexPlayback } from '$lib/player/launchPlexPlayback';
@@ -132,21 +128,18 @@ function playSource<T extends SourceTrack>(
 }
 
 export function playSourceTrack(
-	source: 'jellyfin' | 'local' | 'navidrome' | 'plex',
+	source: 'local' | 'navidrome' | 'plex',
 	trackPosition: number,
 	discNumber: number,
 	title: string,
 	album: AlbumBasicInfo,
-	jellyfinMatch: JellyfinAlbumMatch | null,
 	localMatch: LocalAlbumMatch | null,
 	navidromeMatch: NavidromeAlbumMatch | null,
 	plexMatch: PlexAlbumMatch | null,
 	canonicalTracks: Track[]
 ): void {
 	const opts = { startTrack: trackPosition, startDisc: discNumber, startTitle: title };
-	if (source === 'jellyfin')
-		playSource(jellyfinMatch, launchJellyfinPlayback, album, canonicalTracks, opts);
-	else if (source === 'local')
+	if (source === 'local')
 		playSource(localMatch, launchLocalPlayback, album, canonicalTracks, opts);
 	else if (source === 'plex')
 		playSource(plexMatch, launchPlexPlayback, album, canonicalTracks, opts);
@@ -157,7 +150,6 @@ function buildTrackQueueItem(
 	track: { position: number; disc_number?: number | null; title: string },
 	album: AlbumBasicInfo,
 	resolvedLocal: LocalTrackInfo | null,
-	resolvedJellyfin: JellyfinTrackInfo | null,
 	resolvedNavidrome: NavidromeTrackInfo | null = null,
 	resolvedPlex: PlexTrackInfo | null = null
 ): QueueItem | null {
@@ -168,12 +160,10 @@ function buildTrackQueueItem(
 		trackLength:
 			resolvedLocal?.duration_seconds ??
 			resolvedNavidrome?.duration_seconds ??
-			resolvedJellyfin?.duration_seconds ??
 			resolvedPlex?.duration_seconds ??
 			undefined,
 		localTrack: resolvedLocal,
 		navidromeTrack: resolvedNavidrome,
-		jellyfinTrack: resolvedJellyfin,
 		plexTrack: resolvedPlex
 	};
 	return buildQueueItem(getTrackMeta(album), sourceData);
@@ -183,19 +173,11 @@ export function getTrackContextMenuItems(
 	track: { position: number; disc_number?: number | null; title: string },
 	album: AlbumBasicInfo,
 	resolvedLocal: LocalTrackInfo | null,
-	resolvedJellyfin: JellyfinTrackInfo | null,
 	resolvedNavidrome: NavidromeTrackInfo | null,
 	resolvedPlex: PlexTrackInfo | null,
 	playlistModalRef: { open: (tracks: QueueItem[]) => void } | null
 ): MenuItem[] {
-	const queueItem = buildTrackQueueItem(
-		track,
-		album,
-		resolvedLocal,
-		resolvedJellyfin,
-		resolvedNavidrome,
-		resolvedPlex
-	);
+	const queueItem = buildTrackQueueItem(track, album, resolvedLocal, resolvedNavidrome, resolvedPlex);
 	const hasSource = queueItem !== null;
 	const items: MenuItem[] = [
 		{
@@ -234,20 +216,14 @@ export function getTrackContextMenuItems(
 }
 
 function getSourceQueueItems(
-	source: 'jellyfin' | 'local' | 'navidrome' | 'plex',
+	source: 'local' | 'navidrome' | 'plex',
 	album: AlbumBasicInfo,
-	jellyfinTracks: JellyfinTrackInfo[],
 	localTracks: LocalTrackInfo[],
 	navidromeTracks: NavidromeTrackInfo[],
 	plexTracks: PlexTrackInfo[],
 	canonicalTracks: Track[]
 ): QueueItem[] {
 	const meta = getTrackMeta(album);
-	if (source === 'jellyfin')
-		return buildQueueItemsFromJellyfin(
-			withCanonicalTrackTitles([...jellyfinTracks].sort(compareDiscTrack), canonicalTracks),
-			meta
-		);
 	if (source === 'navidrome')
 		return buildQueueItemsFromNavidrome(
 			withCanonicalTrackTitles([...navidromeTracks].sort(compareDiscTrack), canonicalTracks),
@@ -275,10 +251,9 @@ export function buildSourceCallbacks<
 		shuffle: boolean | undefined,
 		meta: PlaybackMeta
 	) => void,
-	source: 'jellyfin' | 'local' | 'navidrome' | 'plex',
+	source: 'local' | 'navidrome' | 'plex',
 	albumGetter: () => AlbumBasicInfo | null,
 	tracksGetters: {
-		jellyfin: () => JellyfinTrackInfo[];
 		local: () => LocalTrackInfo[];
 		navidrome: () => NavidromeTrackInfo[];
 		plex: () => PlexTrackInfo[];
@@ -301,7 +276,6 @@ export function buildSourceCallbacks<
 			const items = getSourceQueueItems(
 				source,
 				a,
-				tracksGetters.jellyfin(),
 				tracksGetters.local(),
 				tracksGetters.navidrome(),
 				tracksGetters.plex(),
@@ -315,7 +289,6 @@ export function buildSourceCallbacks<
 			const items = getSourceQueueItems(
 				source,
 				a,
-				tracksGetters.jellyfin(),
 				tracksGetters.local(),
 				tracksGetters.navidrome(),
 				tracksGetters.plex(),
@@ -329,7 +302,6 @@ export function buildSourceCallbacks<
 			const items = getSourceQueueItems(
 				source,
 				a,
-				tracksGetters.jellyfin(),
 				tracksGetters.local(),
 				tracksGetters.navidrome(),
 				tracksGetters.plex(),

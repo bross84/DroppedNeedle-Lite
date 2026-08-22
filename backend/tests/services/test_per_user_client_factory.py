@@ -55,9 +55,6 @@ def _factory(
     prefs.get_navidrome_connection_raw.return_value = SimpleNamespace(
         enabled=media_enabled, navidrome_url="http://nd.local"
     )
-    prefs.get_jellyfin_connection.return_value = SimpleNamespace(
-        enabled=media_enabled, jellyfin_url="http://jf.local"
-    )
     prefs.get_plex_connection_raw.return_value = SimpleNamespace(
         enabled=media_enabled, plex_url="http://plex.local"
     )
@@ -159,35 +156,6 @@ async def test_resolve_navidrome_none_when_admin_disabled(store):
 
 
 @pytest.mark.asyncio
-async def test_resolve_jellyfin_threads_token_and_jellyfin_user_id(store):
-    await store.upsert(
-        "u1",
-        "jellyfin",
-        {"access_token": "jf-tok", "jellyfin_user_id": "jf-uid", "username": "jfuser"},
-    )
-    repo = await _factory(store).resolve_jellyfin("u1")
-    assert repo is not None
-    assert repo._base_url == "http://jf.local"
-    assert repo._api_key == "jf-tok"
-    assert repo._user_id == "jf-uid"
-
-
-@pytest.mark.asyncio
-async def test_resolve_jellyfin_none_when_unlinked_or_incomplete(store):
-    assert await _factory(store).resolve_jellyfin("u1") is None
-    await store.upsert("u1", "jellyfin", {"access_token": "jf-tok", "jellyfin_user_id": ""})
-    assert await _factory(store).resolve_jellyfin("u1") is None
-
-
-@pytest.mark.asyncio
-async def test_resolve_jellyfin_none_when_admin_disabled(store):
-    await store.upsert(
-        "u1", "jellyfin", {"access_token": "jf-tok", "jellyfin_user_id": "jf-uid"}
-    )
-    assert await _factory(store, media_enabled=False).resolve_jellyfin("u1") is None
-
-
-@pytest.mark.asyncio
 async def test_resolve_plex_threads_token_and_app_client_id(store):
     await store.upsert(
         "u1", "plex", {"auth_token": "plex-tok", "plex_user_id": "px-uid", "username": "pxuser"}
@@ -214,15 +182,6 @@ async def test_playlist_resolvers_use_linked_credentials_and_user_cache_scope(st
     )
     await store.upsert(
         "u1",
-        "jellyfin",
-        {
-            "access_token": "jf-tok",
-            "jellyfin_user_id": "jf-uid",
-            "username": "jfuser",
-        },
-    )
-    await store.upsert(
-        "u1",
         "plex",
         {
             "auth_token": "account-tok",
@@ -233,17 +192,12 @@ async def test_playlist_resolvers_use_linked_credentials_and_user_cache_scope(st
     factory = _factory(store)
 
     navidrome = await factory.resolve_navidrome_playlist("u1")
-    jellyfin = await factory.resolve_jellyfin_playlist("u1")
     plex = await factory.resolve_plex_playlist("u1")
 
     assert navidrome is not None
     assert navidrome.account_mode == "linked"
     assert navidrome.account_label == "nduser"
     assert navidrome.repository._cache_scope.startswith("user:u1:")
-    assert jellyfin is not None
-    assert jellyfin.account_label == "jfuser"
-    assert jellyfin.repository._api_key == "jf-tok"
-    assert jellyfin.repository._cache_scope.startswith("user:u1:")
     assert plex is not None
     assert plex.account_label == "plexuser"
     assert plex.repository._token == "server-tok"
@@ -254,7 +208,6 @@ async def test_playlist_resolvers_use_linked_credentials_and_user_cache_scope(st
 async def test_playlist_resolvers_return_none_only_when_user_has_no_link(store):
     factory = _factory(store)
     assert await factory.resolve_navidrome_playlist("u1") is None
-    assert await factory.resolve_jellyfin_playlist("u1") is None
     assert await factory.resolve_plex_playlist("u1") is None
 
 
@@ -262,22 +215,22 @@ async def test_playlist_resolvers_return_none_only_when_user_has_no_link(store):
 async def test_enabled_but_unreadable_media_link_fails_closed(store):
     await store.upsert(
         "u1",
-        "jellyfin",
-        {"access_token": "jf-tok", "jellyfin_user_id": "jf-uid"},
+        "navidrome",
+        {"username": "nduser", "password": "ndpass"},
     )
     conn = sqlite3.connect(store.db_path)
     try:
         conn.execute(
             "UPDATE user_connections SET connection_data = ? "
             "WHERE user_id = ? AND service = ?",
-            ("unreadable", "u1", "jellyfin"),
+            ("unreadable", "u1", "navidrome"),
         )
         conn.commit()
     finally:
         conn.close()
 
     with pytest.raises(MediaAccountRelinkRequiredError):
-        await _factory(store).resolve_jellyfin_playlist("u1")
+        await _factory(store).resolve_navidrome_playlist("u1")
 
 
 @pytest.mark.asyncio
@@ -285,48 +238,45 @@ async def test_two_users_get_distinct_playlist_cache_scopes(store):
     for user_id, username in (("u1", "alice"), ("u2", "bob")):
         await store.upsert(
             user_id,
-            "jellyfin",
+            "navidrome",
             {
-                "access_token": f"token-{user_id}",
-                "jellyfin_user_id": f"jf-{user_id}",
                 "username": username,
+                "password": f"pass-{user_id}",
             },
         )
     factory = _factory(store)
-    alice = await factory.resolve_jellyfin_playlist("u1")
-    bob = await factory.resolve_jellyfin_playlist("u2")
+    alice = await factory.resolve_navidrome_playlist("u1")
+    bob = await factory.resolve_navidrome_playlist("u2")
 
     assert alice is not None and bob is not None
     assert alice.repository._cache_scope.startswith("user:u1:")
     assert bob.repository._cache_scope.startswith("user:u2:")
     assert alice.repository._cache_scope != bob.repository._cache_scope
-    assert alice.repository._api_key != bob.repository._api_key
+    assert alice.repository._password != bob.repository._password
 
 
 @pytest.mark.asyncio
 async def test_relink_changes_playlist_cache_generation(store):
     await store.upsert(
         "u1",
-        "jellyfin",
+        "navidrome",
         {
-            "access_token": "old-token",
-            "jellyfin_user_id": "jf-u1",
             "username": "alice",
+            "password": "old-pass",
         },
     )
     factory = _factory(store)
-    before = await factory.resolve_jellyfin_playlist("u1")
+    before = await factory.resolve_navidrome_playlist("u1")
 
     await store.upsert(
         "u1",
-        "jellyfin",
+        "navidrome",
         {
-            "access_token": "new-token",
-            "jellyfin_user_id": "jf-u1",
             "username": "alice",
+            "password": "new-pass",
         },
     )
-    after = await factory.resolve_jellyfin_playlist("u1")
+    after = await factory.resolve_navidrome_playlist("u1")
 
     assert before is not None and after is not None
     assert before.repository._cache_scope.startswith("user:u1:")
@@ -375,19 +325,15 @@ async def test_legacy_plex_link_is_upgraded_to_server_specific_token(
 async def test_media_server_linked_checks_mirror_resolvers(store):
     factory = _factory(store)
     assert await factory.is_navidrome_linked("u1") is False
-    assert await factory.is_jellyfin_linked("u1") is False
     assert await factory.is_plex_linked("u1") is False
 
     await store.upsert("u1", "navidrome", {"username": "n", "password": "p"})
-    await store.upsert("u1", "jellyfin", {"access_token": "t", "jellyfin_user_id": "i"})
     await store.upsert("u1", "plex", {"auth_token": "t"})
     assert await factory.is_navidrome_linked("u1") is True
-    assert await factory.is_jellyfin_linked("u1") is True
     assert await factory.is_plex_linked("u1") is True
 
     disabled = _factory(store, media_enabled=False)
     assert await disabled.is_navidrome_linked("u1") is False
-    assert await disabled.is_jellyfin_linked("u1") is False
     assert await disabled.is_plex_linked("u1") is False
 
 

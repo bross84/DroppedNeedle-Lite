@@ -3,7 +3,6 @@ import type { AuthUser } from '$lib/stores/authStore.svelte';
 export interface AuthProviders {
 	local: boolean;
 	plex: boolean;
-	jellyfin: boolean;
 	oidc: boolean;
 }
 
@@ -37,11 +36,6 @@ export interface PasswordRecoveryResetVars {
 export interface PasswordRecoveryCodeResponse {
 	recovery_code: string;
 	expires_at: string;
-}
-
-export interface JellyfinLoginVars {
-	username: string;
-	password: string;
 }
 
 export interface SetupVars {

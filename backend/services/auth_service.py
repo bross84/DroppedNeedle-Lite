@@ -479,7 +479,7 @@ def _new_id() -> str:
 def _make_local_data(password: str) -> str:
     """Return a JSON-safe string holding the bcrypt hash.
 
-    External tokens (Plex, Jellyfin) will use encrypted JSON in provider_data.
+    External tokens (Plex) will use encrypted JSON in provider_data.
     For local accounts we just store the bcrypt hash directly, bcrypt is
     already a one-way function designed for password storage, encryption
     on top adds no meaningful security benefit.

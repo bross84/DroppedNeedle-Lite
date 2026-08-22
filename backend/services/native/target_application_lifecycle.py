@@ -221,8 +221,6 @@ async def start_target_operational_runtime(
         get_acquisition_cleanup_service,
         get_download_client_repository,
         get_target_events_watcher_service,
-        get_jellyfin_repository,
-        get_jellyfin_library_service,
         get_mbid_store,
         get_target_navidrome_library_service,
         get_now_playing_service,
@@ -264,7 +262,6 @@ async def start_target_operational_runtime(
         start_request_status_sync_task,
         start_store_prune_task,
         start_wanted_watcher_task,
-        warm_jellyfin_mbid_index,
         warm_navidrome_mbid_cache,
         warm_plex_mbid_cache,
     )
@@ -304,7 +301,6 @@ async def start_target_operational_runtime(
         run_now_playing_presence_loop(
             get_now_playing_service(),
             get_target_home_service,
-            get_jellyfin_library_service,
             get_target_navidrome_library_service,
             get_target_plex_library_service,
         ),
@@ -352,11 +348,6 @@ async def start_target_operational_runtime(
     )
     get_audiodb_browse_queue().start_consumer(get_audiodb_image_service(), preferences)
 
-    jellyfin = preferences.get_jellyfin_connection()
-    if jellyfin.enabled:
-        _register_task(
-            "jellyfin-mbid-warmup", warm_jellyfin_mbid_index(get_jellyfin_repository())
-        )
     if preferences.get_navidrome_connection().enabled:
         _register_task(
             "navidrome-mbid-warmup",

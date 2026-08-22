@@ -8,9 +8,6 @@ from api.v1.schemas.settings import (
     LibrarySyncSettings,
     LibraryScanScheduleSettings,
     LibraryScanScheduleResponse,
-    JellyfinConnectionSettings,
-    JellyfinVerifyResponse,
-    JellyfinUserInfo,
     NavidromeConnectionSettings,
     ListenBrainzConnectionSettings,
     YouTubeConnectionSettings,
@@ -230,7 +227,6 @@ async def get_frontend_cache_ttls(
         discover_queue=backend_settings.frontend_ttl_discover_queue,
         search=backend_settings.frontend_ttl_search,
         local_files_sidebar=backend_settings.frontend_ttl_local_files_sidebar,
-        jellyfin_sidebar=backend_settings.frontend_ttl_jellyfin_sidebar,
         plex_sidebar=backend_settings.frontend_ttl_plex_sidebar,
         playlist_sources=backend_settings.frontend_ttl_playlist_sources,
         discover_queue_polling_interval=backend_settings.discover_queue_polling_interval,
@@ -271,44 +267,6 @@ async def update_advanced_settings(
         raise HTTPException(status_code=400, detail="That settings value isn't valid")
 
 
-@router.get("/jellyfin", response_model=JellyfinConnectionSettings)
-async def get_jellyfin_settings(
-    preferences_service: PreferencesService = Depends(get_preferences_service),
-):
-    return preferences_service.get_jellyfin_connection()
-
-
-@router.put("/jellyfin", response_model=JellyfinConnectionSettings)
-async def update_jellyfin_settings(
-    settings: JellyfinConnectionSettings = MsgSpecBody(JellyfinConnectionSettings),
-    preferences_service: PreferencesService = Depends(get_preferences_service),
-    settings_service: SettingsService = Depends(get_settings_service),
-):
-    try:
-        preferences_service.save_jellyfin_connection(settings)
-        await settings_service.on_jellyfin_settings_changed()
-        return settings
-    except ConfigurationError as e:
-        logger.warning(f"Configuration error updating Jellyfin settings: {e}")
-        raise HTTPException(
-            status_code=400, detail="Jellyfin settings are incomplete or invalid"
-        )
-
-
-@router.post("/jellyfin/verify", response_model=JellyfinVerifyResponse)
-async def verify_jellyfin_connection(
-    settings: JellyfinConnectionSettings = MsgSpecBody(JellyfinConnectionSettings),
-    settings_service: SettingsService = Depends(get_settings_service),
-):
-    result = await settings_service.verify_jellyfin(settings)
-    users = (
-        [JellyfinUserInfo(id=user.id, name=user.name) for user in (result.users or [])]
-        if result.success
-        else []
-    )
-    return JellyfinVerifyResponse(
-        success=result.success, message=result.message, users=users
-    )
 
 
 @router.get("/navidrome", response_model=NavidromeConnectionSettings)

@@ -14,14 +14,11 @@ from fastapi.testclient import TestClient
 
 from api.v1.routes.plex_library import router as plex_router
 from api.v1.routes.navidrome_library import router as navidrome_router
-from api.v1.routes.jellyfin_library import router as jellyfin_router
 from api.v1.schemas.plex import PlexSessionInfo, PlexSessionsResponse
 from api.v1.schemas.navidrome import NavidromeNowPlayingEntrySchema, NavidromeNowPlayingResponse
-from api.v1.schemas.jellyfin import JellyfinSessionInfo, JellyfinSessionsResponse
 from core.dependencies import (
     get_plex_library_service,
     get_navidrome_library_service,
-    get_jellyfin_library_service,
     get_plex_repository,
 )
 
@@ -107,52 +104,6 @@ class TestNavidromeNowPlayingRoute:
         resp = self.client.get("/navidrome/now-playing")
         assert resp.status_code == 200
         assert resp.json()["entries"] == []
-
-
-class TestJellyfinSessionsRoute:
-    @pytest.fixture
-    def _setup(self):
-        self.mock_svc = MagicMock()
-        self.mock_svc.get_sessions = AsyncMock(return_value=JellyfinSessionsResponse(sessions=[
-            JellyfinSessionInfo(
-                session_id="js1",
-                user_name="carol",
-                device_name="Chrome",
-                client_name="Jellyfin Web",
-                track_name="Song J",
-                artist_name="Artist J",
-                album_name="Album J",
-                album_id="jalb1",
-                cover_url="/api/v1/jellyfin/image/jitem1",
-                position_seconds=60.0,
-                duration_seconds=300.0,
-                is_paused=False,
-                play_method="DirectPlay",
-                audio_codec="aac",
-                bitrate=256,
-            )
-        ]))
-        app = FastAPI()
-        app.include_router(jellyfin_router)
-        app.dependency_overrides[get_jellyfin_library_service] = lambda: self.mock_svc
-        self.client = TestClient(app)
-
-    def test_sessions_returns_200(self, _setup):
-        resp = self.client.get("/jellyfin/sessions")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert len(data["sessions"]) == 1
-        assert data["sessions"][0]["session_id"] == "js1"
-        assert data["sessions"][0]["track_name"] == "Song J"
-        assert data["sessions"][0]["position_seconds"] == 60.0
-
-    def test_sessions_empty(self, _setup):
-        self.mock_svc.get_sessions = AsyncMock(
-            return_value=JellyfinSessionsResponse(sessions=[])
-        )
-        resp = self.client.get("/jellyfin/sessions")
-        assert resp.status_code == 200
-        assert resp.json()["sessions"] == []
 
 
 # Live presence routes (/api/v1/now-playing)

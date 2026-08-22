@@ -405,14 +405,6 @@ async def warm_library_cache(
         logger.error("Library cache warming failed: %s", e, exc_info=True)
 
 
-async def warm_jellyfin_mbid_index(jellyfin_repo: "JellyfinRepository") -> None:
-    await asyncio.sleep(8)
-    try:
-        await jellyfin_repo.build_mbid_index()
-    except Exception as e:
-        logger.error("Jellyfin MBID index warming failed: %s", e, exc_info=True)
-
-
 async def warm_navidrome_mbid_cache(service_getter=None) -> None:
     if service_getter is None:
         from core.dependencies import get_navidrome_library_service

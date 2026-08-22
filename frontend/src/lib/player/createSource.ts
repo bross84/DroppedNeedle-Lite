@@ -12,9 +12,6 @@ export function createPlaybackSource(type: SourceType, opts?: NativeSourceOption
 	switch (type) {
 		case 'youtube':
 			return new YouTubePlaybackSource(YOUTUBE_PLAYER_ELEMENT_ID);
-		case 'jellyfin':
-			if (!opts) throw new Error('Jellyfin playback source requires url and seekable options');
-			return new NativeAudioSource('jellyfin', opts);
 		case 'local':
 			if (!opts) throw new Error('Local playback source requires url and seekable options');
 			return new NativeAudioSource('local', opts);

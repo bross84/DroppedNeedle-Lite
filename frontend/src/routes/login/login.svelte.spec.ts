@@ -30,14 +30,13 @@ vi.mock('$lib/stores/authStore.svelte', () => ({
 // Two providers so the tab bar renders (it only shows when >1 method is enabled).
 vi.mock('$lib/queries/auth/AuthProvidersQuery.svelte', () => ({
 	getAuthProvidersQuery: () => ({
-		data: { local: true, plex: false, jellyfin: true, oidc: false },
+		data: { local: true, plex: true, oidc: false },
 		isSuccess: true
 	})
 }));
 
 vi.mock('$lib/queries/auth/AuthMutations.svelte', () => ({
 	createLocalLoginMutation: () => ({ mutateAsync: mockLocalMutate, isPending: false }),
-	createJellyfinLoginMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
 	createOidcAuthorizeMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
 	createPlexPinMutation: () => ({ mutateAsync: vi.fn(), isPending: false })
 }));

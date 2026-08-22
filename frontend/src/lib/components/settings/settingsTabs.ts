@@ -21,7 +21,6 @@ const settingsTabLoaders: Record<string, SettingsLoader> = {
 	'free-music': () => import('./SettingsFreeMusic.svelte'),
 	'download-client': () => import('./SettingsDownloadClients.svelte'),
 	indexers: () => import('./SettingsIndexers.svelte'),
-	jellyfin: () => import('./SettingsJellyfin.svelte'),
 	navidrome: () => import('./SettingsNavidrome.svelte'),
 	plex: () => import('./SettingsPlex.svelte'),
 	youtube: () => import('./SettingsYouTube.svelte'),

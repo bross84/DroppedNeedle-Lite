@@ -28,8 +28,8 @@ describe('serviceStatusStore', () => {
 		const { serviceStatusStore } = await import('$lib/stores/serviceStatus');
 		serviceStatusStore.clear();
 
-		serviceStatusStore.recordFromHeader('jellyfin, musicbrainz');
-		expect(get(serviceStatusStore)).toEqual({ jellyfin: 'error', musicbrainz: 'error' });
+		serviceStatusStore.recordFromHeader('lastfm, musicbrainz');
+		expect(get(serviceStatusStore)).toEqual({ lastfm: 'error', musicbrainz: 'error' });
 	});
 
 	it('ignores null/empty header', async () => {
@@ -62,8 +62,8 @@ describe('serviceStatusStore', () => {
 		serviceStatusStore.clear();
 
 		serviceStatusStore.recordFromResponse({ musicbrainz: 'error' });
-		serviceStatusStore.recordFromHeader('jellyfin');
-		expect(get(serviceStatusStore)).toEqual({ musicbrainz: 'error', jellyfin: 'error' });
+		serviceStatusStore.recordFromHeader('lastfm');
+		expect(get(serviceStatusStore)).toEqual({ musicbrainz: 'error', lastfm: 'error' });
 	});
 
 	it('clear resets store to empty', async () => {

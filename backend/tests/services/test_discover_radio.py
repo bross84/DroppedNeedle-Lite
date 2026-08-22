@@ -58,12 +58,6 @@ def _make_prefs(
     prefs.is_lastfm_enabled.return_value = lfm_enabled
     prefs.get_primary_music_source.return_value = PrimaryMusicSourceSettings(source=primary_source)
 
-    jf_settings = MagicMock()
-    jf_settings.enabled = False
-    jf_settings.jellyfin_url = ""
-    jf_settings.api_key = ""
-    prefs.get_jellyfin_connection.return_value = jf_settings
-
     download_client = MagicMock()
     download_client.enabled = False
     download_client.url = ""
@@ -152,7 +146,6 @@ def _make_homepage_service(
     cache: AsyncMock | None = None,
 ) -> DiscoverHomepageService:
     lb_repo = AsyncMock()
-    jf_repo = AsyncMock()
     library_repo = AsyncMock()
     mb_repo = AsyncMock()
     prefs = _make_prefs()
@@ -161,7 +154,6 @@ def _make_homepage_service(
 
     return DiscoverHomepageService(
         listenbrainz_repo=lb_repo,
-        jellyfin_repo=jf_repo,
         library_repo=library_repo,
         musicbrainz_repo=mb_repo,
         integration=integration,

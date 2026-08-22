@@ -34,10 +34,6 @@ class _StateUserMiddleware(BaseHTTPMiddleware):
 class _FakeImporter:
     def __init__(self) -> None:
         self.import_calls: list[tuple[str, list[str]]] = []
-        self.jellyfin = [
-            ImportCandidate(provider="jellyfin", provider_uid="jf-1", display_name="Alice"),
-            ImportCandidate(provider="jellyfin", provider_uid="jf-2", display_name="Bob", already_imported=True),
-        ]
         self.plex = [
             ImportCandidate(
                 provider="plex",
@@ -46,10 +42,8 @@ class _FakeImporter:
                 email="c@x.y",
                 avatar_url="https://plex.tv/u/1/avatar",
             ),
+            ImportCandidate(provider="plex", provider_uid="px-2", display_name="Bob", already_imported=True),
         ]
-
-    async def list_jellyfin_users(self):
-        return list(self.jellyfin)
 
     async def list_plex_users(self):
         return list(self.plex)
@@ -64,7 +58,7 @@ class _FakeImporter:
             username="alice",
             username_display="Alice",
         )
-        return ImportResult(imported=[user], linked=[], skipped=["jf-2"])
+        return ImportResult(imported=[user], linked=[], skipped=["px-2"])
 
 
 def _app(importer, *, admin: bool) -> FastAPI:
@@ -78,18 +72,6 @@ def _app(importer, *, admin: bool) -> FastAPI:
     return app
 
 
-def test_admin_list_jellyfin_returns_candidates():
-    importer = _FakeImporter()
-    client = build_test_client(_app(importer, admin=True))
-
-    resp = client.get("/auth/admin/import/jellyfin")
-
-    assert resp.status_code == 200
-    users = resp.json()["users"]
-    assert {u["provider_uid"] for u in users} == {"jf-1", "jf-2"}
-    assert {u["provider_uid"] for u in users if u["already_imported"]} == {"jf-2"}
-
-
 def test_admin_list_plex_returns_candidates():
     importer = _FakeImporter()
     client = build_test_client(_app(importer, admin=True))
@@ -98,7 +80,8 @@ def test_admin_list_plex_returns_candidates():
 
     assert resp.status_code == 200
     users = resp.json()["users"]
-    assert users[0]["provider_uid"] == "px-1"
+    assert {u["provider_uid"] for u in users} == {"px-1", "px-2"}
+    assert {u["provider_uid"] for u in users if u["already_imported"]} == {"px-2"}
     assert users[0]["email"] == "c@x.y"
     assert users[0]["avatar_url"] == "https://plex.tv/u/1/avatar"
 
@@ -109,15 +92,15 @@ def test_admin_import_returns_counts_and_delegates_thinly():
 
     resp = client.post(
         "/auth/admin/import",
-        json={"provider": "jellyfin", "provider_uids": ["jf-1", "jf-2"]},
+        json={"provider": "plex", "provider_uids": ["px-1", "px-2"]},
     )
 
     assert resp.status_code == 200
     body = resp.json()
     assert body["total_imported"] == 1
     assert body["imported"][0]["role"] == "user"
-    assert body["skipped"] == ["jf-2"]
-    assert importer.import_calls == [("jellyfin", ["jf-1", "jf-2"])]
+    assert body["skipped"] == ["px-2"]
+    assert importer.import_calls == [("plex", ["px-1", "px-2"])]
 
 
 def test_import_body_cannot_set_role():
@@ -126,13 +109,13 @@ def test_import_body_cannot_set_role():
 
     resp = client.post(
         "/auth/admin/import",
-        json={"provider": "jellyfin", "provider_uids": ["jf-1"], "role": "admin"},
+        json={"provider": "plex", "provider_uids": ["px-1"], "role": "admin"},
     )
 
     assert resp.status_code == 200
     assert resp.json()["imported"][0]["role"] == "user"
     # The role field is ignored and never threaded to the service.
-    assert importer.import_calls == [("jellyfin", ["jf-1"])]
+    assert importer.import_calls == [("plex", ["px-1"])]
 
 
 def test_import_unsupported_provider_rejected():
@@ -148,9 +131,8 @@ def test_import_unsupported_provider_rejected():
 @pytest.mark.parametrize(
     "method,path,payload",
     [
-        ("get", "/auth/admin/import/jellyfin", None),
         ("get", "/auth/admin/import/plex", None),
-        ("post", "/auth/admin/import", {"provider": "jellyfin", "provider_uids": ["jf-1"]}),
+        ("post", "/auth/admin/import", {"provider": "plex", "provider_uids": ["px-1"]}),
     ],
 )
 def test_import_endpoints_forbidden_for_non_admin(method, path, payload):

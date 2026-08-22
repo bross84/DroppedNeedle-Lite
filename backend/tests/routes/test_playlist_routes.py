@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from api.v1.routes.playlists import router as playlists_router
-from core.dependencies import get_playlist_service, get_jellyfin_library_service, get_local_files_service, get_navidrome_library_service
+from core.dependencies import get_playlist_service, get_local_files_service, get_navidrome_library_service
 from core.exceptions import PlaylistNotFoundError, InvalidPlaylistDataError, ResourceNotFoundError, ValidationError
 from core.exception_handlers import resource_not_found_handler, validation_error_handler, general_exception_handler
 from repositories.playlist_repository import PlaylistRecord, PlaylistSummaryRecord, PlaylistTrackRecord
@@ -68,11 +68,6 @@ def mock_playlist_service():
 
 
 @pytest.fixture
-def mock_jf_service():
-    return AsyncMock()
-
-
-@pytest.fixture
 def mock_local_service():
     return AsyncMock()
 
@@ -83,11 +78,10 @@ def mock_nd_service():
 
 
 @pytest.fixture
-def client(mock_playlist_service, mock_jf_service, mock_local_service, mock_nd_service):
+def client(mock_playlist_service, mock_local_service, mock_nd_service):
     app = FastAPI()
     app.include_router(playlists_router)
     app.dependency_overrides[get_playlist_service] = lambda: mock_playlist_service
-    app.dependency_overrides[get_jellyfin_library_service] = lambda: mock_jf_service
     app.dependency_overrides[get_local_files_service] = lambda: mock_local_service
     app.dependency_overrides[get_navidrome_library_service] = lambda: mock_nd_service
     override_user_auth(app)
@@ -352,14 +346,14 @@ class TestCheckTrackMembership:
 class TestResolveSources:
     def test_success(self, client, mock_playlist_service):
         mock_playlist_service.resolve_track_sources.return_value = {
-            "t-1": ["jellyfin", "local"],
-            "t-2": ["jellyfin"],
+            "t-1": ["navidrome", "local"],
+            "t-2": ["navidrome"],
         }
         resp = client.post("/playlists/p-1/resolve-sources")
         assert resp.status_code == 200
         data = resp.json()
-        assert data["sources"]["t-1"] == ["jellyfin", "local"]
-        assert data["sources"]["t-2"] == ["jellyfin"]
+        assert data["sources"]["t-1"] == ["navidrome", "local"]
+        assert data["sources"]["t-2"] == ["navidrome"]
 
     def test_empty_sources(self, client, mock_playlist_service):
         mock_playlist_service.resolve_track_sources.return_value = {}
@@ -376,17 +370,17 @@ class TestResolveSources:
 class TestUpdateTrackSourceResolution:
     def test_returns_updated_track_source_id(self, client, mock_playlist_service):
         updated = _track()
-        updated.source_type = "jellyfin"
-        updated.track_source_id = "jf-resolved-id"
-        updated.available_sources = ["jellyfin", "local"]
+        updated.source_type = "navidrome"
+        updated.track_source_id = "nd-resolved-id"
+        updated.available_sources = ["navidrome", "local"]
         mock_playlist_service.update_track_source.return_value = updated
         resp = client.patch(
             "/playlists/p-1/tracks/t-1",
-            content=b'{"source_type": "jellyfin"}',
+            content=b'{"source_type": "navidrome"}',
             headers={"Content-Type": "application/json"},
         )
         assert resp.status_code == 200
         data = resp.json()
-        assert data["source_type"] == "jellyfin"
-        assert data["track_source_id"] == "jf-resolved-id"
-        assert data["available_sources"] == ["jellyfin", "local"]
+        assert data["source_type"] == "navidrome"
+        assert data["track_source_id"] == "nd-resolved-id"
+        assert data["available_sources"] == ["navidrome", "local"]

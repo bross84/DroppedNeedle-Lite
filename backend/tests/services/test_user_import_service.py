@@ -1,28 +1,18 @@
 """Phase 6 (AuthMultiUser D5) UserImportService tests: idempotent admin import of
-Jellyfin/Plex users into pre-provisioned auth_users + pre-linked auth_providers,
+Plex users into pre-provisioned auth_users + pre-linked auth_providers,
 driven through a real temp AuthStore with faked media repositories."""
 
 from __future__ import annotations
 
 import asyncio
-from types import SimpleNamespace
 
 import pytest
 
 from core.exceptions import RegistrationError
 from infrastructure.persistence.auth_store import AuthStore
-from repositories.jellyfin_models import JellyfinUser
 from repositories.plex_models import PlexAccount
 from services.plex_user_auth_service import PlexUserAuthService
 from services.user_import_service import UserImportService
-
-
-class _FakeJellyfinRepo:
-    def __init__(self, users):
-        self._users = users
-
-    async def get_users(self):
-        return list(self._users)
 
 
 class _FakePlexRepo:
@@ -34,80 +24,38 @@ class _FakePlexRepo:
 
 
 class _FakePrefs:
-    def __init__(self, jellyfin_url="https://jf.example.com"):
-        self._url = jellyfin_url
-
-    def get_jellyfin_connection(self):
-        return SimpleNamespace(jellyfin_url=self._url)
+    pass
 
 
-def _service(store, *, jellyfin=None, plex=None, prefs=None):
+def _service(store, *, plex=None, prefs=None):
     return UserImportService(
         store,
-        _FakeJellyfinRepo(jellyfin or []),
         _FakePlexRepo(plex or []),
         prefs or _FakePrefs(),
     )
 
 
-def test_import_jellyfin_creates_user_and_pre_linked_provider(tmp_path):
-    async def scenario():
-        store = AuthStore(tmp_path / "library.db")
-        svc = _service(store, jellyfin=[JellyfinUser(id="jf-1", name="Alice")])
-
-        result = await svc.import_users("jellyfin", ["jf-1"])
-
-        assert len(result.imported) == 1
-        assert result.linked == []
-        assert result.skipped == []
-        user = result.imported[0]
-        assert user.role == "user"  # forced - not from any request body (D5)
-        assert user.email is None  # Jellyfin exposes no email
-        assert user.username == "alice"
-        assert user.username_display == "Alice"
-        assert user.avatar_url is None  # unguarded Jellyfin URL not persisted
-
-        provider = await store.get_auth_provider("jellyfin", "jf-1")
-        assert provider is not None
-        assert provider.user_id == user.id
-        assert provider.provider_data is None  # no password, no token (AMU-3)
-
-    asyncio.run(scenario())
-
-
 def test_reimport_is_idempotent(tmp_path):
     async def scenario():
         store = AuthStore(tmp_path / "library.db")
-        svc = _service(store, jellyfin=[JellyfinUser(id="jf-1", name="Alice")])
+        account = PlexAccount(
+            uuid="plex-uuid-3",
+            username="carol",
+            title="Carol",
+            email=None,
+            thumb=None,
+            source="home",
+        )
+        svc = _service(store, plex=[account])
 
-        first = await svc.import_users("jellyfin", ["jf-1"])
+        first = await svc.import_users("plex", ["plex-uuid-3"])
         assert len(first.imported) == 1
         before = await store.count_users()
 
-        second = await svc.import_users("jellyfin", ["jf-1"])
+        second = await svc.import_users("plex", ["plex-uuid-3"])
         assert second.imported == []
-        assert second.skipped == ["jf-1"]
+        assert second.skipped == ["plex-uuid-3"]
         assert await store.count_users() == before  # no duplicate row
-
-    asyncio.run(scenario())
-
-
-def test_jellyfin_import_never_consults_email(tmp_path):
-    async def scenario():
-        store = AuthStore(tmp_path / "library.db")
-        calls: list[str] = []
-        original = store.get_user_by_email
-
-        async def spy(email):
-            calls.append(email)
-            return await original(email)
-
-        store.get_user_by_email = spy  # type: ignore[method-assign]
-        svc = _service(store, jellyfin=[JellyfinUser(id="jf-1", name="Alice")])
-
-        await svc.import_users("jellyfin", ["jf-1"])
-
-        assert calls == []  # idempotency keys only on (provider, provider_uid)
 
     asyncio.run(scenario())
 
@@ -115,12 +63,13 @@ def test_jellyfin_import_never_consults_email(tmp_path):
 def test_username_dedup_for_same_display_name(tmp_path):
     async def scenario():
         store = AuthStore(tmp_path / "library.db")
-        svc = _service(
-            store,
-            jellyfin=[JellyfinUser(id="jf-1", name="John"), JellyfinUser(id="jf-2", name="John")],
-        )
+        accounts = [
+            PlexAccount(uuid="plex-uuid-4", username="john4", title="John", email=None, thumb=None, source="home"),
+            PlexAccount(uuid="plex-uuid-5", username="john5", title="John", email=None, thumb=None, source="home"),
+        ]
+        svc = _service(store, plex=accounts)
 
-        result = await svc.import_users("jellyfin", ["jf-1", "jf-2"])
+        result = await svc.import_users("plex", ["plex-uuid-4", "plex-uuid-5"])
 
         assert len(result.imported) == 2
         usernames = sorted(u.username for u in result.imported)
@@ -212,21 +161,20 @@ def test_email_collision_links_to_existing_user(tmp_path, monkeypatch):
     asyncio.run(scenario())
 
 
-def test_list_jellyfin_marks_already_imported(tmp_path):
+def test_list_plex_marks_already_imported(tmp_path):
     async def scenario():
         store = AuthStore(tmp_path / "library.db")
-        svc = _service(
-            store,
-            jellyfin=[JellyfinUser(id="jf-1", name="Alice"), JellyfinUser(id="jf-2", name="Bob")],
-        )
-        await svc.import_users("jellyfin", ["jf-1"])
+        accounts = [
+            PlexAccount(uuid="plex-uuid-7", username="alice7", title="Alice", email=None, thumb=None, source="home"),
+            PlexAccount(uuid="plex-uuid-8", username="bob8", title="Bob", email=None, thumb=None, source="home"),
+        ]
+        svc = _service(store, plex=accounts)
+        await svc.import_users("plex", ["plex-uuid-7"])
 
-        candidates = await svc.list_jellyfin_users()
+        candidates = await svc.list_plex_users()
         by_uid = {c.provider_uid: c for c in candidates}
-        assert by_uid["jf-1"].already_imported is True
-        assert by_uid["jf-2"].already_imported is False
-        assert by_uid["jf-1"].avatar_url == "https://jf.example.com/Users/jf-1/Images/Primary"
-        assert by_uid["jf-1"].email is None
+        assert by_uid["plex-uuid-7"].already_imported is True
+        assert by_uid["plex-uuid-8"].already_imported is False
 
     asyncio.run(scenario())
 
@@ -244,9 +192,10 @@ def test_unsupported_provider_raises_registration_error(tmp_path):
 def test_unknown_uid_is_skipped_not_imported(tmp_path):
     async def scenario():
         store = AuthStore(tmp_path / "library.db")
-        svc = _service(store, jellyfin=[JellyfinUser(id="jf-1", name="Alice")])
+        account = PlexAccount(uuid="plex-uuid-9", username="dave9", title="Dave", email=None, thumb=None, source="home")
+        svc = _service(store, plex=[account])
 
-        result = await svc.import_users("jellyfin", ["does-not-exist"])
+        result = await svc.import_users("plex", ["does-not-exist"])
 
         assert result.imported == []
         assert result.skipped == ["does-not-exist"]

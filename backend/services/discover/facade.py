@@ -34,7 +34,6 @@ from infrastructure.cache.memory_cache import CacheInterface
 from infrastructure.persistence import LibraryDB, MBIDStore
 from repositories.protocols import (
     ListenBrainzRepositoryProtocol,
-    JellyfinRepositoryProtocol,
     LibraryRepositoryProtocol,
     MusicBrainzRepositoryProtocol,
     LastFmRepositoryProtocol,
@@ -63,7 +62,6 @@ class DiscoverService:
     def __init__(
         self,
         listenbrainz_repo: ListenBrainzRepositoryProtocol,
-        jellyfin_repo: JellyfinRepositoryProtocol,
         library_repo: LibraryRepositoryProtocol,
         musicbrainz_repo: MusicBrainzRepositoryProtocol,
         preferences_service: PreferencesService,
@@ -111,7 +109,6 @@ class DiscoverService:
 
         self._queue = DiscoverQueueService(
             listenbrainz_repo=listenbrainz_repo,
-            jellyfin_repo=jellyfin_repo,
             musicbrainz_repo=musicbrainz_repo,
             integration=self._integration,
             mbid_resolution=self._mbid_resolution,
@@ -125,7 +122,6 @@ class DiscoverService:
 
         self._homepage = DiscoverHomepageService(
             listenbrainz_repo=listenbrainz_repo,
-            jellyfin_repo=jellyfin_repo,
             library_repo=library_repo,
             musicbrainz_repo=musicbrainz_repo,
             integration=self._integration,

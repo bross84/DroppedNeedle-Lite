@@ -11,7 +11,6 @@ from api.v1.schemas.settings import (
     LibrarySyncSettings,
     LibraryScanScheduleSettings,
     DownloadClientConnectionSettings,
-    JellyfinConnectionSettings,
     ListenBrainzConnectionSettings,
     OIDCConnectionSettings,
     YouTubeConnectionSettings,
@@ -543,42 +542,6 @@ class PreferencesService:
         except Exception as e:  # noqa: BLE001
             logger.error(f"Failed to save Free Music settings: {e}")
             raise ConfigurationError("Failed to save Free Music settings")
-
-    def get_jellyfin_connection(self) -> JellyfinConnectionSettings:
-        config = self._load_config()
-        jellyfin_data = config.get("jellyfin_settings", {})
-        api_key = self._read_secret(
-            ("jellyfin_settings", "api_key"), jellyfin_data.get("api_key", "")
-        )
-        return JellyfinConnectionSettings(
-            jellyfin_url=jellyfin_data.get(
-                "jellyfin_url", config.get("jellyfin_url", self._settings.jellyfin_url)
-            ),
-            api_key=api_key,
-            user_id=jellyfin_data.get("user_id", ""),
-            enabled=jellyfin_data.get("enabled", False),
-            login_enabled=jellyfin_data.get("login_enabled", False),
-        )
-
-    def save_jellyfin_connection(self, settings: JellyfinConnectionSettings) -> None:
-        try:
-            config = self._load_config().copy()
-            config["jellyfin_url"] = settings.jellyfin_url
-            config["jellyfin_settings"] = {
-                "jellyfin_url": settings.jellyfin_url,
-                "api_key": encrypt(settings.api_key),
-                "user_id": settings.user_id,
-                "enabled": settings.enabled,
-                "login_enabled": settings.login_enabled,
-            }
-            self._save_config(config)
-
-            self._settings.jellyfin_url = settings.jellyfin_url
-        except Exception as e:  # noqa: BLE001
-            logger.error(f"Failed to save Jellyfin connection settings: {e}")
-            raise ConfigurationError(
-                f"Failed to save Jellyfin connection settings: {e}"
-            )
 
     def get_navidrome_connection(self) -> NavidromeConnectionSettings:
         config = self._load_config()

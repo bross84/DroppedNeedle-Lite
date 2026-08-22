@@ -57,11 +57,11 @@ describe('createImportUsersMutation', () => {
 		createImportUsersMutation();
 
 		const mutationFn = lastMutationOpts().mutationFn as (v: unknown) => Promise<unknown>;
-		await mutationFn({ provider: 'jellyfin', provider_uids: ['jf-1', 'jf-2'] });
+		await mutationFn({ provider: 'plex', provider_uids: ['px-1', 'px-2'] });
 
 		expect(mockPost).toHaveBeenCalledWith(AUTH_ENDPOINTS.adminImport, {
-			provider: 'jellyfin',
-			provider_uids: ['jf-1', 'jf-2']
+			provider: 'plex',
+			provider_uids: ['px-1', 'px-2']
 		});
 	});
 
@@ -102,12 +102,12 @@ describe('getImportCandidatesQuery', () => {
 	it('is gated by the enabled getter (disabled while the picker is closed)', async () => {
 		const { getImportCandidatesQuery } = await import('./ImportCandidatesQuery.svelte');
 		getImportCandidatesQuery(
-			() => 'jellyfin',
+			() => 'plex',
 			() => false
 		);
 
 		const opts = lastQueryOpts();
 		expect(opts.enabled).toBe(false);
-		expect(opts.queryKey).toEqual(AuthQueryKeyFactory.importCandidates('jellyfin'));
+		expect(opts.queryKey).toEqual(AuthQueryKeyFactory.importCandidates('plex'));
 	});
 });

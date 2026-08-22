@@ -12,8 +12,8 @@ def test_valid_http_url():
 
 
 def test_valid_https_url():
-    result = validate_service_url("https://jellyfin.local:8096")
-    assert result == "https://jellyfin.local:8096"
+    result = validate_service_url("https://navidrome.local:8096")
+    assert result == "https://navidrome.local:8096"
 
 
 def test_valid_localhost_url():

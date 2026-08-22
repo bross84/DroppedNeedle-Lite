@@ -6,7 +6,7 @@ the global app api_key/shared_secret (one registered app) plus the user's per-us
 session_key. Username is exposed separately via ``resolve_lastfm_username`` because
 the Last.fm repo holds no username field (reads take it per-method-call).
 
-Media servers (Navidrome/Jellyfin/Plex): the server URL and enabled flag stay
+Media servers (Navidrome/Plex): the server URL and enabled flag stay
 admin-owned in preferences; only the credential is per-user. General resolvers
 serve playback attribution. Playlist resolvers additionally serve the explicitly
 personal list/detail/import flow and give each fresh repository a user cache scope.
@@ -30,7 +30,6 @@ from services.preferences_service import PreferencesService
 from services.media_playlist_cache import invalidate_media_playlist_cache
 
 if TYPE_CHECKING:
-    from repositories.jellyfin_repository import JellyfinRepository
     from repositories.lastfm_repository import LastFmRepository
     from repositories.listenbrainz_repository import ListenBrainzRepository
     from repositories.navidrome_repository import NavidromeRepository
@@ -40,7 +39,6 @@ _LISTENBRAINZ = "listenbrainz"
 _LASTFM = "lastfm"
 _SPOTIFY = "spotify"
 _NAVIDROME = "navidrome"
-_JELLYFIN = "jellyfin"
 _PLEX = "plex"
 
 RepositoryT = TypeVar("RepositoryT")
@@ -218,31 +216,6 @@ class PerUserClientFactory:
         repo.configure(url=nd.navidrome_url, username=username, password=password)
         return repo
 
-    async def resolve_jellyfin(self, user_id: str) -> "JellyfinRepository | None":
-        jf = self._preferences_service.get_jellyfin_connection()
-        if not (jf.enabled and jf.jellyfin_url):
-            return None
-        data = await self._connections_store.get(user_id, _JELLYFIN)
-        if not data:
-            return None
-        access_token = data.get("access_token", "")
-        jellyfin_user_id = data.get("jellyfin_user_id", "")
-        if not (access_token and jellyfin_user_id):
-            return None
-
-        from repositories.jellyfin_repository import JellyfinRepository
-
-        # user access tokens ride the same `Authorization: MediaBrowser Token="…"`
-        # header as server API keys; #151 verified the API-key case on 10.11.11,
-        # the user-token case still needs a live check (PerUserPlayback DECISIONS-LIVE)
-        return JellyfinRepository(
-            http_client=self._media_http_client(),
-            cache=self._cache,
-            base_url=jf.jellyfin_url,
-            api_key=access_token,
-            user_id=jellyfin_user_id,
-        )
-
     async def resolve_plex(self, user_id: str) -> "PlexRepository | None":
         plex = self._preferences_service.get_plex_connection_raw()
         if not (plex.enabled and plex.plex_url):
@@ -301,48 +274,6 @@ class PerUserClientFactory:
             repository=repo,
             account_mode="linked",
             account_label=str(data.get("username") or "Navidrome"),
-            cache_scope=scope,
-        )
-
-    async def resolve_jellyfin_playlist(
-        self, user_id: str
-    ) -> "MediaClientResolution[JellyfinRepository] | None":
-        jf = self._preferences_service.get_jellyfin_connection()
-        if not (jf.enabled and jf.jellyfin_url):
-            raise ExternalServiceError("Jellyfin is not configured")
-        if not await self._connections_store.has_enabled(user_id, _JELLYFIN):
-            return None
-        data = await self._connections_store.get(user_id, _JELLYFIN)
-        if (
-            not data
-            or not data.get("access_token")
-            or not data.get("jellyfin_user_id")
-        ):
-            raise MediaAccountRelinkRequiredError(
-                "Reconnect Jellyfin to check your playlists"
-            )
-
-        from repositories.jellyfin_repository import JellyfinRepository
-
-        scope = _media_cache_scope(
-            user_id,
-            _JELLYFIN,
-            jf.jellyfin_url,
-            str(data["access_token"]),
-            str(data["jellyfin_user_id"]),
-        )
-        repo = JellyfinRepository(
-            http_client=self._media_http_client(),
-            cache=self._cache,
-            base_url=jf.jellyfin_url,
-            api_key=str(data["access_token"]),
-            user_id=str(data["jellyfin_user_id"]),
-            cache_scope=scope,
-        )
-        return MediaClientResolution(
-            repository=repo,
-            account_mode="linked",
-            account_label=str(data.get("username") or "Jellyfin"),
             cache_scope=scope,
         )
 
@@ -438,14 +369,6 @@ class PerUserClientFactory:
             return False
         data = await self._connections_store.get(user_id, _NAVIDROME)
         return bool(data and data.get("username") and data.get("password"))
-
-    async def is_jellyfin_linked(self, user_id: str) -> bool:
-        """Lightweight enable check (no client build) mirroring resolve_jellyfin."""
-        jf = self._preferences_service.get_jellyfin_connection()
-        if not (jf.enabled and jf.jellyfin_url):
-            return False
-        data = await self._connections_store.get(user_id, _JELLYFIN)
-        return bool(data and data.get("access_token") and data.get("jellyfin_user_id"))
 
     async def is_plex_linked(self, user_id: str) -> bool:
         """Lightweight enable check (no client build) mirroring resolve_plex."""

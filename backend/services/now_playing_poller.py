@@ -1,4 +1,4 @@
-"""Background loop that folds upstream Jellyfin/Navidrome/Plex sessions into the
+"""Background loop that folds upstream Navidrome/Plex sessions into the
 now-playing presence feed, and sweeps stale native/compat sessions.
 
 Kept separate from ``NowPlayingService`` (which owns state) so the polling/mapping is
@@ -14,28 +14,6 @@ from services.now_playing_service import ExternalSession, NowPlayingService
 logger = logging.getLogger(__name__)
 
 POLL_INTERVAL_SECONDS = 4.0
-
-
-def map_jellyfin(resp) -> list[ExternalSession]:
-    out: list[ExternalSession] = []
-    for s in resp.sessions:
-        if not s.track_name:
-            continue
-        out.append(
-            ExternalSession(
-                key=f"jellyfin:{s.session_id}",
-                user_name=s.user_name,
-                device_name=s.device_name or s.client_name,
-                track_name=s.track_name,
-                artist_name=s.artist_name,
-                album_name=s.album_name or None,
-                cover_url=s.cover_url,
-                is_paused=s.is_paused,
-                progress_ms=int(s.position_seconds * 1000),
-                duration_ms=int(s.duration_seconds * 1000),
-            )
-        )
-    return out
 
 
 def map_navidrome(resp) -> list[ExternalSession]:
@@ -94,11 +72,10 @@ def map_plex(resp) -> list[ExternalSession]:
 async def poll_external_once(
     now_playing: NowPlayingService,
     home_service,
-    jellyfin_service,
     navidrome_service,
     plex_service,
 ) -> None:
-    """Run one reconcile cycle across the three upstream integrations."""
+    """Run one reconcile cycle across the upstream integrations."""
     status = home_service.get_integration_status()
 
     async def _reconcile(source, enabled, fetch, mapper):
@@ -111,12 +88,6 @@ async def poll_external_once(
         except Exception as e:  # noqa: BLE001 - one bad source must not break the cycle
             logger.debug("now-playing %s poll failed: %s", source, e)
 
-    await _reconcile(
-        "jellyfin",
-        getattr(status, "jellyfin", False),
-        jellyfin_service.get_sessions,
-        map_jellyfin,
-    )
     await _reconcile(
         "navidrome",
         getattr(status, "navidrome", False),
@@ -131,7 +102,6 @@ async def poll_external_once(
 async def run_now_playing_presence_loop(
     now_playing: NowPlayingService,
     home_service_getter,
-    jellyfin_service_getter,
     navidrome_service_getter,
     plex_service_getter,
     interval: float = POLL_INTERVAL_SECONDS,
@@ -142,7 +112,6 @@ async def run_now_playing_presence_loop(
             await poll_external_once(
                 now_playing,
                 home_service_getter(),
-                jellyfin_service_getter(),
                 navidrome_service_getter(),
                 plex_service_getter(),
             )

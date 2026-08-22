@@ -8,7 +8,6 @@ const h = vi.hoisted(() => ({
 	connections: [] as Array<{ service: string; enabled: boolean; username: string }>,
 	isPending: false,
 	connectNavidrome: vi.fn().mockResolvedValue({}),
-	connectJellyfin: vi.fn().mockResolvedValue({}),
 	plexPin: vi.fn().mockResolvedValue({ pin_id: 7, auth_url: 'https://app.plex.tv/auth#?code=x' }),
 	plexPoll: vi.fn().mockResolvedValue({ completed: false, username: '' }),
 	disconnect: vi.fn().mockResolvedValue({})
@@ -27,7 +26,6 @@ vi.mock('$lib/queries/connections/ConnectionsQuery.svelte', () => ({
 
 vi.mock('$lib/queries/connections/ConnectionsMutations.svelte', () => ({
 	createConnectNavidromeMutation: () => ({ mutateAsync: h.connectNavidrome, isPending: false }),
-	createConnectJellyfinMutation: () => ({ mutateAsync: h.connectJellyfin, isPending: false }),
 	createPlexLinkPinMutation: () => ({ mutateAsync: h.plexPin, isPending: false }),
 	createPlexLinkPollMutation: () => ({ mutateAsync: h.plexPoll, isPending: false }),
 	createDisconnectMutation: () => ({ mutateAsync: h.disconnect, isPending: false })
@@ -36,7 +34,6 @@ vi.mock('$lib/queries/connections/ConnectionsMutations.svelte', () => ({
 import MediaServerAccountsCard from './MediaServerAccountsCard.svelte';
 
 const ALL_SERVICES: ProfileServiceConnection[] = [
-	{ name: 'Jellyfin', enabled: true, username: '', url: 'http://jf.local' },
 	{ name: 'Navidrome', enabled: true, username: 'admin', url: 'http://nd.local' },
 	{ name: 'Plex', enabled: true, username: '', url: 'http://plex.local' }
 ];
@@ -54,9 +51,8 @@ describe('MediaServerAccountsCard.svelte', () => {
 			.element(page.getByRole('heading', { name: 'Media Server Accounts', level: 2 }))
 			.toBeInTheDocument();
 		await expect.element(page.getByText('Navidrome', { exact: true })).toBeInTheDocument();
-		await expect.element(page.getByText('Jellyfin', { exact: true })).toBeInTheDocument();
 		await expect.element(page.getByText('Plex', { exact: true })).toBeInTheDocument();
-		expect(page.getByText('Plays use the shared account').elements().length).toBe(3);
+		expect(page.getByText('Plays use the shared account').elements().length).toBe(2);
 	});
 
 	it('renders nothing when no media server is enabled', async () => {
@@ -86,13 +82,13 @@ describe('MediaServerAccountsCard.svelte', () => {
 	});
 
 	it('shows the linked identity and disconnects', async () => {
-		h.connections = [{ service: 'jellyfin', enabled: true, username: 'alice_jf' }];
+		h.connections = [{ service: 'navidrome', enabled: true, username: 'alice_nd' }];
 		render(MediaServerAccountsCard, {
-			services: ALL_SERVICES.filter((s) => s.name === 'Jellyfin')
+			services: ALL_SERVICES.filter((s) => s.name === 'Navidrome')
 		});
-		await expect.element(page.getByText('Plays count as @alice_jf')).toBeInTheDocument();
+		await expect.element(page.getByText('Plays count as @alice_nd')).toBeInTheDocument();
 		await page.getByRole('button', { name: 'Disconnect' }).click();
-		expect(h.disconnect).toHaveBeenCalledWith('jellyfin');
+		expect(h.disconnect).toHaveBeenCalledWith('navidrome');
 	});
 
 	it('starts the Plex pin flow and shows the waiting state', async () => {
@@ -112,14 +108,14 @@ describe('MediaServerAccountsCard.svelte', () => {
 	});
 
 	it('surfaces a link error inline', async () => {
-		h.connectJellyfin.mockRejectedValueOnce(new Error('boom'));
+		h.connectNavidrome.mockRejectedValueOnce(new Error('boom'));
 		render(MediaServerAccountsCard, {
-			services: ALL_SERVICES.filter((s) => s.name === 'Jellyfin')
+			services: ALL_SERVICES.filter((s) => s.name === 'Navidrome')
 		});
 		await page.getByRole('button', { name: 'Connect' }).click();
-		await page.getByPlaceholder('Jellyfin username').fill('alice');
+		await page.getByPlaceholder('Navidrome username').fill('alice');
 		await page.getByPlaceholder('Password').fill('bad');
 		await page.getByRole('button', { name: 'Link account' }).click();
-		await expect.element(page.getByText('Could not sign in to Jellyfin.')).toBeInTheDocument();
+		await expect.element(page.getByText('Could not sign in to Navidrome.')).toBeInTheDocument();
 	});
 });

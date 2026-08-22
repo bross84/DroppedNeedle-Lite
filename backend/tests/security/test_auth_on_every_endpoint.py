@@ -58,8 +58,6 @@ from core.dependencies import (
     get_events_service,
     get_follow_service,
     get_geocoding_repository,
-    get_jellyfin_playback_service,
-    get_jellyfin_user_auth_service,
     get_lastfm_auth_service,
     get_library_manager,
     get_library_management_preview_service,
@@ -121,8 +119,6 @@ _SERVICE_PROVIDERS = (
     get_events_service,
     get_follow_service,
     get_geocoding_repository,
-    get_jellyfin_playback_service,
-    get_jellyfin_user_auth_service,
     get_lastfm_auth_service,
     get_library_manager,
     get_library_management_preview_service,
@@ -833,17 +829,6 @@ _USER_ENDPOINTS = [
     # carry CurrentUserDep so scrobbles/sessions land on the caller's own
     # upstream account. GET/HEAD stream proxies stay dependency-free (guarded by
     # AuthMiddleware in production, which this harness doesn't mount).
-    ("POST", "/api/v1/stream/jellyfin/item-1/start", None),
-    (
-        "POST",
-        "/api/v1/stream/jellyfin/item-1/progress",
-        {"play_session_id": "s-1", "position_seconds": 1.0, "is_paused": False},
-    ),
-    (
-        "POST",
-        "/api/v1/stream/jellyfin/item-1/stop",
-        {"play_session_id": "s-1", "position_seconds": 1.0},
-    ),
     ("POST", "/api/v1/stream/navidrome/item-1/scrobble", None),
     ("POST", "/api/v1/stream/navidrome/item-1/now-playing", None),
     ("POST", "/api/v1/stream/navidrome/item-1/stopped", None),
@@ -852,7 +837,6 @@ _USER_ENDPOINTS = [
     ("POST", "/api/v1/stream/plex/rk-1/stopped", None),
     # Media-server per-user account linking (issue #138)
     ("PUT", "/api/v1/me/connections/navidrome", {"username": "u", "password": "p"}),
-    ("PUT", "/api/v1/me/connections/jellyfin", {"username": "u", "password": "p"}),
     ("POST", "/api/v1/me/connections/plex/auth/pin", None),
     ("GET", "/api/v1/me/connections/plex/auth/poll?pin_id=1", None),
 ]

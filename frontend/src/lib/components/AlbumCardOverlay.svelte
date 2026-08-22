@@ -30,7 +30,7 @@
 	let isShuffling = $state(false);
 
 	let hasPlaybackSource = $derived(
-		$integrationStore.localfiles || $integrationStore.navidrome || $integrationStore.jellyfin
+		$integrationStore.localfiles || $integrationStore.navidrome
 	);
 
 	function getMeta(): AlbumCardMeta {

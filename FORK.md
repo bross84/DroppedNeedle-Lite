@@ -19,11 +19,12 @@ Forked from upstream commit `abe79f3`.
 | **Background upgrade scan** | An opt-in timer that re-acquired better copies on its own. Re-acquisition should be a deliberate action. |
 | **Follow auto-download** | Following an artist now subscribes you to its release feed, nothing more. This also removed the per-artist admin approval system it required. |
 | **Lidarr Import** | Existed to bulk-import artists as followed-with-auto-download, and was built entirely on the approval-batch machinery above. |
+| **Jellyfin** | The inbound Jellyfin playback source, library browsing, and Jellyfin login/user import. Not used as a playback source here. |
 
 Deliberately kept, despite sharing vocabulary with the above: the inbound
-Jellyfin, Navidrome and Plex playback sources; Jellyfin/Plex login and user
-import; the Wanted watcher's own "download automatically when a verified copy
-appears"; and the weekly-mix auto-request grant.
+Navidrome and Plex playback sources; Plex login and user import; the Wanted
+watcher's own "download automatically when a verified copy appears"; and the
+weekly-mix auto-request grant.
 
 ## Support
 

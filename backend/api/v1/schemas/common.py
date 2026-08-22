@@ -9,7 +9,6 @@ GenreArtistMap = dict[str, str | None]
 
 class IntegrationStatus(AppStruct):
     listenbrainz: bool
-    jellyfin: bool
     download_client: bool
     youtube: bool
     lastfm: bool

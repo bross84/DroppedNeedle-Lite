@@ -1,4 +1,4 @@
-"""Tests for source playlist list, detail, and import across Plex, Navidrome, and Jellyfin."""
+"""Tests for source playlist list, detail, and import across Plex and Navidrome."""
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, PropertyMock
@@ -7,7 +7,6 @@ import pytest
 
 from core.exceptions import (
     ExternalServiceError,
-    JellyfinAuthError,
     MediaAccountRelinkRequiredError,
     NavidromeAuthError,
     PlexAuthError,
@@ -15,11 +14,9 @@ from core.exceptions import (
 )
 from repositories.plex_models import PlexMedia, PlexPart, PlexPlaylist, PlexTrack
 from repositories.navidrome_models import SubsonicPlaylist, SubsonicSong
-from repositories.jellyfin_models import JellyfinItem
 from repositories.playlist_repository import PlaylistRecord
 from services.plex_library_service import PlexLibraryService
 from services.navidrome_library_service import NavidromeLibraryService
-from services.jellyfin_library_service import JellyfinLibraryService
 from services.per_user_client_factory import MediaClientResolution
 from tests.helpers import mock_user
 
@@ -80,28 +77,6 @@ def _navidrome_service(playlists=None, playlist_detail=None) -> NavidromeLibrary
     return NavidromeLibraryService(navidrome_repo=repo, preferences_service=prefs)
 
 
-def _jellyfin_service(playlists=None, items=None) -> JellyfinLibraryService:
-    repo = MagicMock()
-    repo.get_playlists = AsyncMock(return_value=playlists or [])
-    repo.get_playlist = AsyncMock(return_value=(playlists[0] if playlists else None))
-    repo.get_playlist_items = AsyncMock(return_value=items or [])
-    repo.get_recently_played = AsyncMock(return_value=[])
-    repo.get_recently_added = AsyncMock(return_value=[])
-    repo.get_favorites = AsyncMock(return_value=[])
-    repo.get_genres = AsyncMock(return_value=[])
-    repo.get_most_played_artists = AsyncMock(return_value=[])
-    repo.get_most_played_albums = AsyncMock(return_value=[])
-    repo.get_library_stats = AsyncMock(return_value={"album_count": 0, "artist_count": 0, "track_count": 0})
-    repo.get_albums = AsyncMock(return_value=([], 0))
-    repo.get_album_detail = AsyncMock(return_value=None)
-    type(repo).stats_ttl = PropertyMock(return_value=600)
-    prefs = MagicMock()
-    conn = MagicMock()
-    conn.enabled = True
-    prefs.get_jellyfin_connection_raw.return_value = conn
-    return JellyfinLibraryService(jellyfin_repo=repo, preferences_service=prefs)
-
-
 def _plex_playlist(key="pl-1", title="My Plex Playlist", leaf=3, dur=180000, smart=False) -> PlexPlaylist:
     return PlexPlaylist(ratingKey=key, title=title, leafCount=leaf, duration=dur, smart=smart, composite="/art/1")
 
@@ -117,14 +92,6 @@ def _navidrome_playlist(pid="nd-pl-1", name="ND Playlist", songs=2, dur=300) -> 
 
 def _navidrome_song(sid="ns-1", title="Song", artist="Artist", album="Album") -> SubsonicSong:
     return SubsonicSong(id=sid, title=title, artist=artist, album=album, albumId="alb-1", artistId="art-1", duration=180, track=1, discNumber=1)
-
-
-def _jellyfin_item(iid="jf-1", name="JF Item", item_type="Playlist", child_count=5, ticks=3_000_000_000) -> JellyfinItem:
-    return JellyfinItem(id=iid, name=name, type=item_type, child_count=child_count, duration_ticks=ticks, image_tag="abc", date_created="2024-01-01")
-
-
-def _jellyfin_track(iid="jft-1", name="JF Track", artist="Artist", album="Album") -> JellyfinItem:
-    return JellyfinItem(id=iid, name=name, type="Audio", artist_name=artist, album_name=album, album_id="ja-1", artist_id="jar-1", duration_ticks=2_000_000_000, index_number=1, parent_index_number=1)
 
 
 class TestPlexListPlaylists:
@@ -293,75 +260,6 @@ class TestNavidromeImportPlaylist:
         assert track_dicts[0]["track_source_id"] == "ns-1"
 
 
-class TestJellyfinListPlaylists:
-    @pytest.mark.asyncio
-    async def test_returns_summaries(self):
-        svc = _jellyfin_service(playlists=[_jellyfin_item()])
-        result = await svc.list_playlists()
-        assert len(result) == 1
-        assert result[0].id == "jf-1"
-        assert result[0].name == "JF Item"
-        assert result[0].duration_seconds == 300
-        assert result[0].cover_url == "/api/v1/jellyfin/playlist-image/jf-1/jf-1"
-
-
-class TestJellyfinPlaylistDetail:
-    @pytest.mark.asyncio
-    async def test_returns_detail(self):
-        pl = _jellyfin_item()
-        tracks = [_jellyfin_track()]
-        svc = _jellyfin_service(playlists=[pl], items=tracks)
-        detail = await svc.get_playlist_detail("jf-1")
-        assert detail.id == "jf-1"
-        assert len(detail.tracks) == 1
-        assert detail.tracks[0].track_name == "JF Track"
-        assert detail.tracks[0].duration_seconds == 200
-
-
-class TestJellyfinImportPlaylist:
-    @pytest.mark.asyncio
-    async def test_import_new(self):
-        pl = _jellyfin_item()
-        tracks = [_jellyfin_track()]
-        svc = _jellyfin_service(playlists=[pl], items=tracks)
-        ps = _mock_playlist_service()
-        result = await svc.import_playlist("jf-1", ps, requesting=_REQ)
-        assert result.tracks_imported == 1
-        assert result.already_imported is False
-
-    @pytest.mark.asyncio
-    async def test_import_track_keys_correct(self):
-        pl = _jellyfin_item()
-        tracks = [_jellyfin_track()]
-        svc = _jellyfin_service(playlists=[pl], items=tracks)
-        ps = _mock_playlist_service()
-        await svc.import_playlist("jf-1", ps, requesting=_REQ)
-        track_dicts = ps.add_tracks.call_args[0][2]
-        assert track_dicts[0]["track_name"] == "JF Track"
-        assert track_dicts[0]["source_type"] == "jellyfin"
-        assert track_dicts[0]["track_source_id"] == "jft-1"
-
-    @pytest.mark.asyncio
-    async def test_import_idempotent(self):
-        existing = PlaylistRecord(id="ex-1", name="Exists", cover_image_path=None, created_at="2024-01-01", updated_at="2024-01-01")
-        svc = _jellyfin_service()
-        ps = _mock_playlist_service(existing=existing)
-        result = await svc.import_playlist("jf-1", ps, requesting=_REQ)
-        assert result.already_imported is True
-        ps.create_playlist.assert_not_awaited()
-
-    @pytest.mark.asyncio
-    async def test_rollback_on_failure(self):
-        pl = _jellyfin_item()
-        tracks = [_jellyfin_track()]
-        svc = _jellyfin_service(playlists=[pl], items=tracks)
-        ps = _mock_playlist_service()
-        ps.add_tracks = AsyncMock(side_effect=Exception("fail"))
-        with pytest.raises(ExternalServiceError):
-            await svc.import_playlist("jf-1", ps, requesting=_REQ)
-        ps.delete_playlist.assert_awaited_once_with("new-pl-1", _REQ)
-
-
 def _playlist_flags(imported_by_user: dict[str, set[str]]) -> MagicMock:
     playlist_service = MagicMock()
     playlist_service.get_imported_source_ids = AsyncMock(
@@ -381,56 +279,9 @@ def _resolution(repo, label: str) -> MediaClientResolution:
 
 class TestPersonalPlaylistResolution:
     @pytest.mark.asyncio
-    async def test_jellyfin_list_and_import_flags_are_separated_by_user(self):
-        alice_repo = MagicMock()
-        alice_repo.get_playlists = AsyncMock(return_value=[_jellyfin_item(name="Alice list")])
-        bob_repo = MagicMock()
-        bob_repo.get_playlists = AsyncMock(return_value=[_jellyfin_item(name="Bob list")])
-        factory = MagicMock()
-        factory.resolve_jellyfin_playlist = AsyncMock(
-            side_effect=lambda user_id: _resolution(
-                alice_repo if user_id == "alice" else bob_repo, user_id
-            )
-        )
-        shared = _jellyfin_service(playlists=[_jellyfin_item(name="Shared list")])
-        shared._client_factory = factory
-        playlist_service = _playlist_flags({"alice": {"jf-1"}, "bob": set()})
-
-        alice = await shared.list_user_playlists(
-            mock_user(user_id="alice"), playlist_service
-        )
-        bob = await shared.list_user_playlists(
-            mock_user(user_id="bob"), playlist_service
-        )
-
-        assert alice.account_mode == "linked"
-        assert alice.account_label == "alice"
-        assert alice.playlists[0].name == "Alice list"
-        assert alice.playlists[0].is_imported is True
-        assert bob.playlists[0].name == "Bob list"
-        assert bob.playlists[0].is_imported is False
-        shared._jellyfin.get_playlists.assert_not_awaited()
-
-    @pytest.mark.asyncio
-    async def test_unlinked_user_gets_explicit_shared_account_result(self):
-        service = _jellyfin_service(playlists=[_jellyfin_item(name="Shared list")])
-        factory = MagicMock()
-        factory.resolve_jellyfin_playlist = AsyncMock(return_value=None)
-        service._client_factory = factory
-
-        result = await service.list_user_playlists(
-            mock_user(user_id="unlinked"), _playlist_flags({})
-        )
-
-        assert result.account_mode == "shared"
-        assert result.account_label == "Shared Jellyfin account"
-        assert result.playlists[0].name == "Shared list"
-
-    @pytest.mark.asyncio
     @pytest.mark.parametrize(
         ("source", "auth_error"),
         [
-            ("jellyfin", JellyfinAuthError("revoked")),
             ("navidrome", NavidromeAuthError("revoked")),
             ("plex", PlexAuthError("revoked")),
         ],
@@ -441,14 +292,7 @@ class TestPersonalPlaylistResolution:
         factory = MagicMock()
         playlist_service = _playlist_flags({})
 
-        if source == "jellyfin":
-            service = _jellyfin_service(playlists=[_jellyfin_item(name="Shared")])
-            factory.resolve_jellyfin_playlist = AsyncMock(
-                return_value=_resolution(linked_repo, "alice")
-            )
-            service._client_factory = factory
-            shared_get = service._jellyfin.get_playlists
-        elif source == "navidrome":
+        if source == "navidrome":
             service = _navidrome_service(playlists=[_navidrome_playlist(name="Shared")])
             factory.resolve_navidrome_playlist = AsyncMock(
                 return_value=_resolution(linked_repo, "alice")
@@ -468,54 +312,3 @@ class TestPersonalPlaylistResolution:
                 mock_user(user_id="alice"), playlist_service
             )
         shared_get.assert_not_awaited()
-
-    @pytest.mark.asyncio
-    async def test_direct_jellyfin_detail_id_must_be_visible_to_requesting_user(self):
-        linked_repo = MagicMock()
-        linked_repo.get_playlists = AsyncMock(
-            return_value=[_jellyfin_item(iid="alice-only")]
-        )
-        linked_repo.get_playlist = AsyncMock()
-        linked_repo.get_playlist_items = AsyncMock()
-        factory = MagicMock()
-        factory.resolve_jellyfin_playlist = AsyncMock(
-            return_value=_resolution(linked_repo, "alice")
-        )
-        service = _jellyfin_service()
-        service._client_factory = factory
-
-        with pytest.raises(ResourceNotFoundError):
-            await service.get_user_playlist_detail(
-                "bob-only", mock_user(user_id="alice")
-            )
-        linked_repo.get_playlist.assert_not_awaited()
-        linked_repo.get_playlist_items.assert_not_awaited()
-
-    @pytest.mark.asyncio
-    async def test_playlist_artwork_uses_the_requesting_users_repository(self):
-        alice_repo = MagicMock()
-        alice_repo.get_playlists = AsyncMock(return_value=[_jellyfin_item()])
-        alice_repo.get_playlist_items = AsyncMock(return_value=[])
-        alice_repo.proxy_image = AsyncMock(return_value=(b"alice", "image/png"))
-        bob_repo = MagicMock()
-        bob_repo.get_playlists = AsyncMock(return_value=[_jellyfin_item()])
-        bob_repo.get_playlist_items = AsyncMock(return_value=[])
-        bob_repo.proxy_image = AsyncMock(return_value=(b"bob", "image/png"))
-        factory = MagicMock()
-        factory.resolve_jellyfin_playlist = AsyncMock(
-            side_effect=lambda user_id: _resolution(
-                alice_repo if user_id == "alice" else bob_repo, user_id
-            )
-        )
-        service = _jellyfin_service()
-        service._client_factory = factory
-
-        alice_image = await service.get_playlist_image(
-            "jf-1", "jf-1", mock_user(user_id="alice"), 500
-        )
-        bob_image = await service.get_playlist_image(
-            "jf-1", "jf-1", mock_user(user_id="bob"), 500
-        )
-
-        assert alice_image[0] == b"alice"
-        assert bob_image[0] == b"bob"

@@ -190,7 +190,6 @@ def _seed_source(scratch: Path) -> tuple[Path, Path]:
                 "schema_version": 1,
                 "connect_apps": {
                     "subsonic_enabled": True,
-                    "jellyfin_enabled": True,
                 },
                 "library_scan_schedule": {"scan_frequency": "manual"},
                 "library_settings": {

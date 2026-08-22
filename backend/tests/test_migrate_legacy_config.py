@@ -38,7 +38,7 @@ def _read(path):
 
 def test_migrates_all_legacy_keys_losslessly(tmp_path, monkeypatch):
     path = tmp_path / "config.json"
-    _write(path, {**_LEGACY, "jellyfin_url": "http://jelly:8096"})
+    _write(path, {**_LEGACY, "contact_email": "keep@example.com"})
     _point_config_at(monkeypatch, path)
 
     migrate_legacy_config()
@@ -57,7 +57,7 @@ def test_migrates_all_legacy_keys_losslessly(tmp_path, monkeypatch):
     for key in _LEGACY:
         assert key not in result
     # unrelated keys are untouched
-    assert result["jellyfin_url"] == "http://jelly:8096"
+    assert result["contact_email"] == "keep@example.com"
 
 
 def test_idempotent_does_not_clobber_existing_backup(tmp_path, monkeypatch):
@@ -76,14 +76,14 @@ def test_idempotent_does_not_clobber_existing_backup(tmp_path, monkeypatch):
 
 def test_noop_on_clean_config(tmp_path, monkeypatch):
     path = tmp_path / "config.json"
-    _write(path, {"jellyfin_url": "http://jelly:8096"})
+    _write(path, {"contact_email": "keep@example.com"})
     _point_config_at(monkeypatch, path)
 
     migrate_legacy_config()
 
     result = _read(path)
     assert "_legacy_lidarr" not in result
-    assert result == {"jellyfin_url": "http://jelly:8096"}
+    assert result == {"contact_email": "keep@example.com"}
 
 
 def test_noop_when_config_file_missing(tmp_path, monkeypatch):

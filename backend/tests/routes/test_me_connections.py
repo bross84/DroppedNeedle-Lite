@@ -12,7 +12,6 @@ from fastapi import FastAPI
 
 from api.v1.routes.me_connections import router as me_router
 from core.dependencies import (
-    get_jellyfin_user_auth_service,
     get_lastfm_auth_service,
     get_per_user_client_factory,
     get_personal_mix_service,
@@ -68,19 +67,9 @@ def ctx(tmp_path: Path):
     prefs_service.get_navidrome_connection_raw.return_value = SimpleNamespace(
         enabled=True, navidrome_url="http://nd.local"
     )
-    prefs_service.get_jellyfin_connection.return_value = SimpleNamespace(
-        enabled=True, jellyfin_url="http://jf.local"
-    )
     prefs_service.get_plex_connection_raw.return_value = SimpleNamespace(
         enabled=True, plex_url="http://plex.local"
     )
-
-    jellyfin_user_auth = AsyncMock()
-    jellyfin_user_auth.authenticate_credentials.return_value = {
-        "access_token": "jf-token-secret",
-        "jellyfin_user_id": "jf-uid-1",
-        "username": "alice_jf",
-    }
 
     plex_user_auth = AsyncMock()
     plex_user_auth.create_login_pin.return_value = (123, "https://app.plex.tv/auth#?code=abc")
@@ -117,7 +106,6 @@ def ctx(tmp_path: Path):
     app.dependency_overrides[get_preferences_service] = lambda: prefs_service
     app.dependency_overrides[get_personal_mix_service] = lambda: personal_mix_service
     app.dependency_overrides[get_per_user_client_factory] = lambda: client_factory
-    app.dependency_overrides[get_jellyfin_user_auth_service] = lambda: jellyfin_user_auth
     app.dependency_overrides[get_plex_user_auth_service] = lambda: plex_user_auth
     override_user_auth(app, user_id="user-a")
     client = build_test_client(app)
@@ -125,7 +113,7 @@ def ctx(tmp_path: Path):
         client=client, app=app, conn_store=conn_store, prefs_store=prefs_store,
         settings_service=settings_service, personal_mix_service=personal_mix_service,
         client_factory=client_factory, prefs_service=prefs_service,
-        jellyfin_user_auth=jellyfin_user_auth, plex_user_auth=plex_user_auth,
+        plex_user_auth=plex_user_auth,
     )
 
 
@@ -371,38 +359,6 @@ def test_connect_navidrome_400_when_admin_disabled(ctx):
         "/me/connections/navidrome", json={"username": "a", "password": "b"}
     )
     assert resp.status_code == 400
-
-
-def test_connect_jellyfin_stores_token_never_password(ctx):
-    resp = ctx.client.put(
-        "/me/connections/jellyfin", json={"username": "alice_jf", "password": "jf-pass-secret"}
-    )
-    assert resp.status_code == 200
-    assert resp.json()["username"] == "alice_jf"
-
-    data = asyncio.run(ctx.conn_store.get("user-a", "jellyfin"))
-    assert data == {
-        "access_token": "jf-token-secret",
-        "jellyfin_user_id": "jf-uid-1",
-        "username": "alice_jf",
-    }
-    assert "password" not in data
-    body = ctx.client.get("/me/connections").text
-    assert "jf-token-secret" not in body
-    assert "jf-pass-secret" not in body
-
-
-def test_connect_jellyfin_maps_auth_failure_to_400(ctx):
-    from core.exceptions import AuthenticationError
-
-    ctx.jellyfin_user_auth.authenticate_credentials.side_effect = AuthenticationError(
-        "Invalid Jellyfin username or password"
-    )
-    resp = ctx.client.put(
-        "/me/connections/jellyfin", json={"username": "alice_jf", "password": "wrong"}
-    )
-    assert resp.status_code == 400
-    assert asyncio.run(ctx.conn_store.get("user-a", "jellyfin")) is None
 
 
 def test_plex_link_pin_returns_auth_url(ctx):

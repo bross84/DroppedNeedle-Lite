@@ -8,16 +8,10 @@ import type { ImportCandidateListResponse } from './types';
  *  authenticated `api` client (the import flow runs post-session, unlike login).
  *  `provider`/`enabled` are getters so the query reacts to tab switches and only
  *  fires while the picker is open. */
-export const getImportCandidatesQuery = (
-	provider: () => 'jellyfin' | 'plex',
-	enabled: () => boolean
-) =>
+export const getImportCandidatesQuery = (provider: () => 'plex', enabled: () => boolean) =>
 	createQuery(() => ({
 		queryKey: AuthQueryKeyFactory.importCandidates(provider()),
 		enabled: enabled(),
 		queryFn: ({ signal }) =>
-			api.get<ImportCandidateListResponse>(
-				provider() === 'plex' ? AUTH_ENDPOINTS.adminImportPlex : AUTH_ENDPOINTS.adminImportJellyfin,
-				{ signal }
-			)
+			api.get<ImportCandidateListResponse>(AUTH_ENDPOINTS.adminImportPlex, { signal })
 	}));

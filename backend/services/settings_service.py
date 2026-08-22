@@ -3,7 +3,6 @@ import logging
 import msgspec
 
 from api.v1.schemas.settings import (
-    JellyfinConnectionSettings,
     ListenBrainzConnectionSettings,
     NavidromeConnectionSettings,
     YouTubeConnectionSettings,
@@ -23,7 +22,6 @@ from infrastructure.cache.cache_keys import (
     ARTIST_INFO_PREFIX,
     ALBUM_INFO_PREFIX,
     LIBRARY_ARTIST_ALBUMS_PREFIX,
-    JELLYFIN_PREFIX,
     LOCAL_FILES_PREFIX,
     SOURCE_RESOLUTION_PREFIX,
     musicbrainz_prefixes,
@@ -33,15 +31,8 @@ from infrastructure.cache.cache_keys import (
 )
 from infrastructure.cache.memory_cache import InMemoryCache, CacheInterface
 from infrastructure.http.client import get_http_client
-from repositories.jellyfin_models import JellyfinUser
 
 logger = logging.getLogger(__name__)
-
-
-class JellyfinVerifyResult(msgspec.Struct):
-    success: bool
-    message: str
-    users: list[JellyfinUser] | None = None
 
 
 class ListenBrainzVerifyResult(msgspec.Struct):
@@ -91,43 +82,6 @@ class SettingsService:
         self._plex_library_getter = plex_library_getter
         self._discovery_snapshot_store = discovery_snapshot_store
 
-    async def verify_jellyfin(
-        self, settings: JellyfinConnectionSettings
-    ) -> JellyfinVerifyResult:
-        try:
-            from infrastructure.validators import validate_service_url
-
-            validate_service_url(settings.jellyfin_url, label="Jellyfin URL")
-
-            from repositories.jellyfin_repository import JellyfinRepository
-
-            JellyfinRepository.reset_circuit_breaker()
-
-            app_settings = get_settings()
-            http_client = get_http_client(app_settings)
-            temp_cache = InMemoryCache(max_entries=100)
-
-            temp_repo = JellyfinRepository(http_client=http_client, cache=temp_cache)
-            temp_repo.configure(
-                base_url=settings.jellyfin_url,
-                api_key=settings.api_key,
-                user_id=settings.user_id,
-            )
-
-            success, message = await temp_repo.validate_connection()
-
-            users = []
-            if success:
-                jf_users = await temp_repo.fetch_users_direct()
-                users = [JellyfinUser(id=u.id, name=u.name) for u in jf_users]
-
-            return JellyfinVerifyResult(success=success, message=message, users=users)
-        except Exception as e:  # noqa: BLE001
-            logger.exception(f"Failed to verify Jellyfin connection: {e}")
-            return JellyfinVerifyResult(
-                success=False, message="Couldn't finish the connection test"
-            )
-
     async def verify_listenbrainz(
         self, settings: ListenBrainzConnectionSettings
     ) -> ListenBrainzVerifyResult:
@@ -173,7 +127,6 @@ class SettingsService:
         total = 0
         for prefix in home_prefixes():
             total += await self._cache.clear_prefix(prefix)
-        total += await self._cache.clear_prefix(JELLYFIN_PREFIX)
         for prefix in listenbrainz_prefixes():
             total += await self._cache.clear_prefix(prefix)
         for prefix in lastfm_prefixes():
@@ -192,56 +145,6 @@ class SettingsService:
         cleared = await self._cache.clear_prefix(SOURCE_RESOLUTION_PREFIX)
         logger.info(f"Cleared {cleared} source-resolution cache entries")
         return cleared
-
-    async def on_jellyfin_settings_changed(self) -> None:
-        from repositories.jellyfin_repository import JellyfinRepository
-        from core.dependencies import (
-            get_jellyfin_repository,
-            get_jellyfin_playback_service,
-            get_jellyfin_library_service,
-            get_home_service,
-            get_home_charts_service,
-            get_mbid_store,
-            get_target_coverart_repository,
-            get_target_consumer_composition,
-            get_target_discover_queue_manager,
-            get_target_discover_service,
-            get_target_genre_cover_prewarm_service,
-            get_target_home_charts_service,
-            get_target_home_service,
-            get_target_search_service,
-            get_target_wrapped_service,
-        )
-        from core.dependencies.auth_providers import (
-            get_user_import_service,
-            get_jellyfin_user_auth_service,
-        )
-
-        JellyfinRepository.reset_circuit_breaker()
-        get_jellyfin_repository.cache_clear()
-        get_jellyfin_playback_service.cache_clear()
-        get_jellyfin_library_service.cache_clear()
-        get_home_service.cache_clear()
-        get_home_charts_service.cache_clear()
-        get_target_coverart_repository.cache_clear()
-        get_target_consumer_composition.cache_clear()
-        get_target_search_service.cache_clear()
-        get_target_genre_cover_prewarm_service.cache_clear()
-        get_target_home_service.cache_clear()
-        get_target_home_charts_service.cache_clear()
-        get_target_wrapped_service.cache_clear()
-        get_target_discover_service.cache_clear()
-        get_target_discover_queue_manager.cache_clear()
-        # The import + SSO-login services capture the jellyfin repo singleton;
-        # rebuild them so a newly-configured Jellyfin is enumerable and usable for
-        # login without an app restart.
-        get_user_import_service.cache_clear()
-        get_jellyfin_user_auth_service.cache_clear()
-        mbid_store = get_mbid_store()
-        await mbid_store.clear_jellyfin_mbid_index()
-        await self.clear_home_cache()
-        await self.clear_source_resolution_cache()
-        logger.info("Jellyfin settings change: all caches/singletons reset")
 
     async def on_navidrome_settings_changed(self, enabled: bool = False) -> None:
         from repositories.navidrome_repository import NavidromeRepository

@@ -14,7 +14,7 @@ class NowPlayingReport(AppStruct):
     artist_name: str
     album_name: str | None = None
     cover_url: str = ""
-    # 'local' | 'youtube' | 'jellyfin' | 'navidrome' | 'plex' (the web player's source)
+    # 'local' | 'youtube' | 'navidrome' | 'plex' (the web player's source)
     source: str = "local"
     device: str = "web"
     is_paused: bool = False

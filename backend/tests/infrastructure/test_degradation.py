@@ -31,10 +31,10 @@ class TestDegradationContext:
 
     def test_record_error(self):
         ctx = DegradationContext()
-        ctx.record(IntegrationResult.error(source="jellyfin", msg="timeout"))
-        assert ctx.summary() == {"jellyfin": "error"}
+        ctx.record(IntegrationResult.error(source="navidrome", msg="timeout"))
+        assert ctx.summary() == {"navidrome": "error"}
         assert ctx.has_degradation() is True
-        assert ctx.degraded_summary() == {"jellyfin": "error"}
+        assert ctx.degraded_summary() == {"navidrome": "error"}
 
     def test_record_degraded(self):
         ctx = DegradationContext()
@@ -60,24 +60,24 @@ class TestDegradationContext:
 
     def test_cannot_downgrade(self):
         ctx = DegradationContext()
-        ctx.record(IntegrationResult.error(source="jellyfin", msg="down"))
-        ctx.record(IntegrationResult.ok(data=[1], source="jellyfin"))
-        assert ctx.summary() == {"jellyfin": "error"}
+        ctx.record(IntegrationResult.error(source="navidrome", msg="down"))
+        ctx.record(IntegrationResult.ok(data=[1], source="navidrome"))
+        assert ctx.summary() == {"navidrome": "error"}
 
     def test_multiple_sources(self):
         ctx = DegradationContext()
         ctx.record(IntegrationResult.ok(data=[], source="musicbrainz"))
-        ctx.record(IntegrationResult.error(source="jellyfin", msg="down"))
+        ctx.record(IntegrationResult.error(source="navidrome", msg="down"))
         ctx.record(
             IntegrationResult.degraded(data={}, source="audiodb", msg="slow")
         )
         assert ctx.summary() == {
             "musicbrainz": "ok",
-            "jellyfin": "error",
+            "navidrome": "error",
             "audiodb": "degraded",
         }
         assert ctx.degraded_summary() == {
-            "jellyfin": "error",
+            "navidrome": "error",
             "audiodb": "degraded",
         }
 

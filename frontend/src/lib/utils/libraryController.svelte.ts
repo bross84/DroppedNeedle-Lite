@@ -20,7 +20,7 @@ export interface SidebarData<TAlbum> {
 }
 
 export interface LibraryAdapter<TAlbum> {
-	sourceType: 'jellyfin' | 'navidrome' | 'local' | 'plex';
+	sourceType: 'navidrome' | 'local' | 'plex';
 
 	getAlbumId(album: TAlbum): string | number;
 	getAlbumName(album: TAlbum): string;

@@ -30,7 +30,6 @@
 		Landmark,
 		PanelLeft
 	} from 'lucide-svelte';
-	import JellyfinIcon from '$lib/components/JellyfinIcon.svelte';
 	import NavidromeIcon from '$lib/components/NavidromeIcon.svelte';
 	import PlexIcon from '$lib/components/PlexIcon.svelte';
 	import SpotifyIcon from '$lib/components/SpotifyIcon.svelte';
@@ -40,11 +39,7 @@
 	const updateCheckQuery = getUpdateCheckQuery();
 	const updateAvailable = $derived(updateCheckQuery.data?.update_available ?? false);
 
-	const connectionMap: Record<
-		string,
-		'jellyfin' | 'navidrome' | 'plex' | 'youtube' | 'localfiles'
-	> = {
-		jellyfin: 'jellyfin',
+	const connectionMap: Record<string, 'navidrome' | 'plex' | 'youtube' | 'localfiles'> = {
 		navidrome: 'navidrome',
 		plex: 'plex',
 		youtube: 'youtube'
@@ -72,7 +67,6 @@
 					{ id: 'indexers', label: 'Indexers', tier: 'setup', icon: Search }
 				]
 			: []),
-		{ id: 'jellyfin', label: 'Jellyfin', tier: 'setup', icon: JellyfinIcon },
 		{ id: 'navidrome', label: 'Navidrome', tier: 'setup', icon: NavidromeIcon },
 		{ id: 'plex', label: 'Plex', tier: 'setup', icon: PlexIcon },
 		{ id: 'youtube', label: 'YouTube', tier: 'setup', icon: Youtube },

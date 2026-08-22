@@ -73,7 +73,6 @@ def client(mock_home_service, mock_charts_service):
 def _make_status(localfiles: bool) -> HomeIntegrationStatus:
     return HomeIntegrationStatus(
         listenbrainz=False,
-        jellyfin=False,
         download_client=False,
         library=True,
         youtube=False,

@@ -20,7 +20,7 @@
 >
 > See [FORK.md](FORK.md) for what was removed and why.
 
-DroppedNeedle-Lite is a self-hosted music request and discovery app with a **built-in native library and download engine** (no Lidarr required). Search the full MusicBrainz catalogue, request whole albums or single tracks, and let the engine index your library while it drives downloads through your own slskd or Usenet/SABnzbd. Its optional Library Management system can write tags and organize files after an administrator previews and enables it. Stream from Jellyfin, Navidrome, Plex, or your local files, get recommendations from your listening history, and scrobble to ListenBrainz and Last.fm. It all runs as a single Docker container, configured from the web UI.
+DroppedNeedle-Lite is a self-hosted music request and discovery app with a **built-in native library and download engine** (no Lidarr required). Search the full MusicBrainz catalogue, request whole albums or single tracks, and let the engine index your library while it drives downloads through your own slskd or Usenet/SABnzbd. Its optional Library Management system can write tags and organize files after an administrator previews and enables it. Stream from Navidrome, Plex, or your local files, get recommendations from your listening history, and scrobble to ListenBrainz and Last.fm. It all runs as a single Docker container, configured from the web UI.
 
 ---
 
@@ -30,7 +30,6 @@ DroppedNeedle-Lite is a self-hosted music request and discovery app with a **bui
 <img src="Images/Discover.webp" alt="Discover page with personalized album recommendations" width="100%" />
 <img src="Images/Library.webp" alt="Library overview with statistics and recent additions" width="100%" />
 <img src="Images/ListeningRoom.webp" alt="Listening Room - local files library with format and storage stats" width="100%" />
-<img src="Images/Jellyfin.webp" alt="Jellyfin library view" width="100%" />
 <img src="Images/Settings.webp" alt="Settings" width="100%" />
 
 ---
@@ -238,7 +237,7 @@ The engine speaks a `DownloadClientProtocol`, never slskd directly: `client_name
 
 ### Cover art
 
-With Lidarr removed, display covers resolve on demand through `AlbumCoverFetcher`: AudioDB, then local sources (an existing library or Jellyfin), then the MusicBrainz Cover Art Archive, then a best-release fallback. First success wins. Library Management uses a separate, pinned artwork decision for the exact MusicBrainz edition, so a later Apply or Undo does not silently switch to whichever display fallback is available. Wikidata is part of the artist-image chain, not the album-cover chain.
+With Lidarr removed, display covers resolve on demand through `AlbumCoverFetcher`: AudioDB, then local sources (an existing library), then the MusicBrainz Cover Art Archive, then a best-release fallback. First success wins. Library Management uses a separate, pinned artwork decision for the exact MusicBrainz edition, so a later Apply or Undo does not silently switch to whichever display fallback is available. Wikidata is part of the artist-image chain, not the album-cover chain.
 
 ### Auth posture
 
@@ -418,7 +417,7 @@ slskd and Usenet can be enabled side by side - the source priority control decid
 
 ## Recommended Stack
 
-DroppedNeedle brings its own library and download engine; you supply the download client. For playback, connect Jellyfin, Navidrome, Plex, or mount your music folder directly into the container.
+DroppedNeedle brings its own library and download engine; you supply the download client. For playback, connect Navidrome, Plex, or mount your music folder directly into the container.
 
 | Service | Role |
 |-|-|
@@ -446,13 +445,13 @@ The first account you create at first-run setup is always an admin. After that, 
 
 You sign in with a username and password. Usernames are case-insensitive, and you can change yours later from your profile. Email is optional everywhere; add one if you want it for account linking, but it is never used to sign in.
 
-You can also sign in through Jellyfin, Plex, or any OIDC-compatible provider (Authelia, Keycloak, Authentik, and so on); see [Setting Up OIDC](#setting-up-oidc) below. If one of those is your only login, you can add a password from your profile and then sign in by username as well.
+You can also sign in through Plex, or any OIDC-compatible provider (Authelia, Keycloak, Authentik, and so on); see [Setting Up OIDC](#setting-up-oidc) below. If one of those is your only login, you can add a password from your profile and then sign in by username as well.
 
 Every login method is switched on or off from the web UI. No environment variables are needed.
 
 ### Importing users
 
-Instead of creating accounts by hand, an admin can bring in existing users from Jellyfin or Plex. Open Settings > Users, click Import, choose a service, and select the accounts to add; for Plex this includes your Home and managed users as well as your shared friends. No passwords are set during import. Each person signs in with their own Jellyfin or Plex login, and DroppedNeedle links that login to the account the import created for them. Imported users start with the User role, and re-running an import skips anyone already added.
+Instead of creating accounts by hand, an admin can bring in existing users from Plex. Open Settings > Users, click Import, and select the accounts to add; this includes your Home and managed users as well as your shared friends. No passwords are set during import. Each person signs in with their own Plex login, and DroppedNeedle links that login to the account the import created for them. Imported users start with the User role, and re-running an import skips anyone already added.
 
 ### Sessions
 
@@ -484,7 +483,6 @@ A global storage cap and per-user quotas keep the library from filling the disk.
 
 DroppedNeedle has a full audio player that supports multiple playback sources per track:
 
-- Jellyfin, with configurable codec (AAC, MP3, FLAC, Opus, and others) and bitrate. Playback events are reported back to Jellyfin automatically.
 - Navidrome, streaming via the Subsonic API.
 - Plex Media Server, with direct-play audio streaming and native Plex scrobbling. Supports multi-library setups.
 - Local files, served directly from a mounted music directory.
@@ -518,7 +516,7 @@ Follow an artist to watch for new releases, and optionally auto-download them th
 
 Browse your native library by artist or album with search, filtering, sorting, and pagination. View recently added albums and library statistics. Resolve unmatched files from the manual-review queue, preview tag and organization changes through Library Management, rescan albums, and remove albums directly from the UI. Explicit removal deletes the selected files, updates the catalog, and refreshes album and artist statistics.
 
-Jellyfin, Navidrome, Plex, and local file sources each get their own library view with play, shuffle, and queue actions.
+Navidrome, Plex, and local file sources each get their own library view with play, shuffle, and queue actions.
 
 ### Free Music
 
@@ -546,7 +544,7 @@ Every track you play can be scrobbled to your own ListenBrainz and Last.fm accou
 
 ### Playlists
 
-Create playlists from any mix of Jellyfin, Navidrome, Plex, local, YouTube, and imported Spotify tracks. Reorder by dragging, set custom cover art, and play everything through the same player.
+Create playlists from any mix of Navidrome, Plex, local, YouTube, and imported Spotify tracks. Reorder by dragging, set custom cover art, and play everything through the same player.
 
 Import playlists from Spotify. Track metadata and album art are pulled on import, and the playlist stays live with periodic SSE refreshes so new tracks you add on Spotify appear automatically.
 
@@ -570,7 +568,6 @@ Set a display name and avatar, change your username/email/password, link your ow
 | [Cover Art Archive](https://coverartarchive.org/) | Album artwork |
 | [TheAudioDB](https://www.theaudiodb.com/) | Artist and album images (fanart, banners, logos, CD art) |
 | [Wikidata](https://www.wikidata.org/) | Artist descriptions and external links |
-| [Jellyfin](https://jellyfin.org/) | Audio streaming and library browsing |
 | [Navidrome](https://www.navidrome.org/) | Audio streaming via Subsonic API |
 | [Plex](https://www.plex.tv/) | Audio streaming and library browsing via Plex Media Server |
 | [ListenBrainz](https://listenbrainz.org/) | Listening history, discovery, scrobbling, weekly playlists |
@@ -624,7 +621,6 @@ is not a way to override permissions supplied by a download client.
 | Library paths, naming template, scan schedule, AcoustID key | Settings > Library |
 | Library Management profiles, root assignments, automatic triggers, previews, recovery, and history | Library Management |
 | slskd URL and API key, SABnzbd/Usenet URL and API key, Newznab indexers, quality tiers, verification, wanted watcher | Settings > Download Client |
-| Jellyfin URL and API key | Settings > Jellyfin |
 | Navidrome URL and credentials | Settings > Navidrome |
 | Plex URL, token (OAuth or manual), music libraries, scrobble toggle | Settings > Plex |
 | Local files directory path | Settings > Local Files |
@@ -636,7 +632,7 @@ is not a way to override permissions supplied by a download client.
 | Home page layout preferences | Settings > Preferences |
 | AudioDB settings and cache TTLs | Settings > Advanced |
 | HSTS header and HIBP password breach checking | Settings > Security |
-| User accounts, roles, and user import (Jellyfin/Plex) | Settings > Users |
+| User accounts, roles, and user import (Plex) | Settings > Users |
 
 ### Setting Up Last.fm
 
@@ -675,10 +671,6 @@ Under Settings > Advanced, you can toggle AudioDB on or off, switch between dire
 ---
 
 ## Playback Sources
-
-### Jellyfin
-
-Audio is transcoded on the Jellyfin server and streamed to the browser. Supported codecs include AAC, MP3, Opus, FLAC, Vorbis, ALAC, WAV, and WMA. Bitrate is configurable between 32 kbps and 320 kbps. Playback start, progress, and stop events are reported back to Jellyfin.
 
 ### Local Files
 

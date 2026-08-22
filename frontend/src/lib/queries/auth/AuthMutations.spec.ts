@@ -153,7 +153,7 @@ describe('auth mutations route through api.global', () => {
 
 describe('AuthProvidersQuery', () => {
 	it('fetches the providers endpoint via api.global.get', async () => {
-		mockGet.mockResolvedValue({ local: true, plex: false, jellyfin: false, oidc: false });
+		mockGet.mockResolvedValue({ local: true, plex: false, oidc: false });
 		const { getAuthProvidersQuery } = await import('./AuthProvidersQuery.svelte');
 		getAuthProvidersQuery();
 

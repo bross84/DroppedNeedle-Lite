@@ -85,38 +85,6 @@
 		unit="min"
 	/>
 	<SettingsNumberField
-		label="Jellyfin Recent (Backend)"
-		description="Default: 5 minutes"
-		bind:value={data.cache_ttl_jellyfin_recently_played}
-		min={1}
-		max={60}
-		unit="min"
-	/>
-	<SettingsNumberField
-		label="Jellyfin Favorites (Backend)"
-		description="Default: 5 minutes"
-		bind:value={data.cache_ttl_jellyfin_favorites}
-		min={1}
-		max={60}
-		unit="min"
-	/>
-	<SettingsNumberField
-		label="Jellyfin Genres (Backend)"
-		description="Default: 60 minutes"
-		bind:value={data.cache_ttl_jellyfin_genres}
-		min={1}
-		max={1440}
-		unit="min"
-	/>
-	<SettingsNumberField
-		label="Jellyfin Stats (Backend)"
-		description="Default: 10 minutes"
-		bind:value={data.cache_ttl_jellyfin_library_stats}
-		min={1}
-		max={60}
-		unit="min"
-	/>
-	<SettingsNumberField
 		label="Plex Albums (Backend)"
 		description="Default: 5 minutes"
 		bind:value={data.cache_ttl_plex_albums}

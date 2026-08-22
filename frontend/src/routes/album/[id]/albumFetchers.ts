@@ -4,7 +4,6 @@ import type {
 	SimilarAlbumsResponse,
 	YouTubeLink,
 	YouTubeTrackLink,
-	JellyfinAlbumMatch,
 	LocalAlbumMatch,
 	NavidromeAlbumMatch,
 	PlexAlbumMatch,
@@ -61,13 +60,6 @@ export async function fetchYouTubeTrackLinks(
 		.get<YouTubeTrackLink[]>(API.youtube.trackLinks(albumId), { signal })
 		.catch(() => null);
 	return data ? data.sort(compareDiscTrack) : [];
-}
-
-export async function fetchJellyfinMatch(
-	albumId: string,
-	signal?: AbortSignal
-): Promise<JellyfinAlbumMatch | null> {
-	return api.get<JellyfinAlbumMatch>(API.jellyfinLibrary.albumMatch(albumId), { signal });
 }
 
 export async function fetchLocalMatch(

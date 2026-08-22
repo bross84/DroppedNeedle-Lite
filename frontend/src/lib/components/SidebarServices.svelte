@@ -7,7 +7,6 @@
 	import { playerStore } from '$lib/stores/player.svelte';
 	import { getSectionPrefsQuery } from '$lib/queries/section-prefs/SectionPrefsQuery.svelte';
 	import YouTubeIcon from '$lib/components/YouTubeIcon.svelte';
-	import JellyfinIcon from '$lib/components/JellyfinIcon.svelte';
 	import NavidromeIcon from '$lib/components/NavidromeIcon.svelte';
 	import PlexIcon from '$lib/components/PlexIcon.svelte';
 	import SidebarServiceHint from '$lib/components/SidebarServiceHint.svelte';
@@ -32,7 +31,6 @@
 
 	const anyEntryVisible = $derived(
 		showsEntry('youtube', integrations.current.youtube) ||
-			showsEntry('jellyfin', integrations.current.jellyfin) ||
 			showsEntry('navidrome', integrations.current.navidrome) ||
 			showsEntry('plex', integrations.current.plex) ||
 			showsEntry('localfiles', integrations.current.localfiles)
@@ -58,36 +56,6 @@
 	{:else if integrations.current.loaded && authStore.isAdmin}
 		<SidebarServiceHint label="YouTube" settingsTab="youtube">
 			{#snippet icon()}<YouTubeIcon class="h-6 w-6 text-error" />{/snippet}
-		</SidebarServiceHint>
-	{/if}
-{/if}
-
-{#if !hidden.has('jellyfin')}
-	{#if integrations.current.jellyfin}
-		<li>
-			<a
-				href="/library/jellyfin"
-				class="is-drawer-close:tooltip is-drawer-close:tooltip-right"
-				data-tip="Jellyfin"
-			>
-				<div class="relative inline-flex">
-					<JellyfinIcon class="h-6 w-6 text-info" />
-					{#if nowPlayingMerged.isSourcePlaying('jellyfin')}
-						<span class="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-primary animate-pulse"
-						></span>
-					{/if}
-				</div>
-				<span class="is-drawer-close:hidden">Jellyfin</span>
-				{#if nowPlayingMerged.isSourcePlaying('jellyfin')}
-					<div class="now-playing-bars now-playing-bars--sm ml-auto is-drawer-close:hidden">
-						<span></span><span></span><span></span>
-					</div>
-				{/if}
-			</a>
-		</li>
-	{:else if integrations.current.loaded && authStore.isAdmin}
-		<SidebarServiceHint label="Jellyfin" settingsTab="jellyfin">
-			{#snippet icon()}<JellyfinIcon class="h-6 w-6 text-info" />{/snippet}
 		</SidebarServiceHint>
 	{/if}
 {/if}

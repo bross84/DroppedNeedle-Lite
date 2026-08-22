@@ -1,4 +1,4 @@
-"""Admin import of users from Jellyfin/Plex (Phase 6, D5).
+"""Admin import of users from Plex (Phase 6, D5).
 
 Enumerates accounts from the shared media server and pre-provisions DroppedNeedle
 accounts: each import creates an auth_users row (role="user") plus a pre-linked
@@ -7,7 +7,6 @@ store). On the user's first SSO login the existing _find_or_create_user matches
 the pre-seeded provider_uid, so no admin-set password is needed.
 
 The join key (provider_uid) MUST equal exactly what the live login produces:
-- Jellyfin: the user Id from GET /Users.
 - Plex: the account uuid (== account.uuid from get_token_details).
 """
 
@@ -48,36 +47,12 @@ class UserImportService:
     def __init__(
         self,
         auth_store: AuthStore,
-        jellyfin_repository,
         plex_repository,
         preferences_service,
     ) -> None:
         self._store = auth_store
-        self._jellyfin = jellyfin_repository
         self._plex = plex_repository
         self._prefs = preferences_service
-
-    async def list_jellyfin_users(self) -> list[ImportCandidate]:
-        users = await self._jellyfin.get_users()
-        base_url = (self._prefs.get_jellyfin_connection().jellyfin_url or "").rstrip("/")
-        candidates: list[ImportCandidate] = []
-        for user in users:
-            existing = await self._store.get_auth_provider("jellyfin", user.id)
-            # Best-effort picker thumbnail; GET /Users drops HasPrimaryImage, so we
-            # cannot guard it here - the UI falls back to the placeholder on a 404,
-            # and import_users does NOT persist this URL (see _import_one).
-            avatar_url = f"{base_url}/Users/{user.id}/Images/Primary" if base_url else None
-            candidates.append(
-                ImportCandidate(
-                    provider="jellyfin",
-                    provider_uid=user.id,
-                    display_name=user.name,
-                    avatar_url=avatar_url,
-                    email=None,  # Jellyfin does not expose email
-                    already_imported=existing is not None,
-                )
-            )
-        return candidates
 
     async def list_plex_users(self) -> list[ImportCandidate]:
         accounts = await self._plex.enumerate_users()
@@ -99,9 +74,7 @@ class UserImportService:
     async def import_users(self, provider: str, provider_uids: list[str]) -> ImportResult:
         # Re-fetch the candidates server-side - never trust client-supplied
         # display names/emails. Keyed by provider_uid for lookup.
-        if provider == "jellyfin":
-            catalog = {c.provider_uid: c for c in await self.list_jellyfin_users()}
-        elif provider == "plex":
+        if provider == "plex":
             catalog = {c.provider_uid: c for c in await self.list_plex_users()}
         else:
             raise RegistrationError(f"Unsupported import provider: {provider}")
@@ -165,8 +138,7 @@ class UserImportService:
                 )
                 return ("linked", existing_user)
 
-        # New user. Plex thumbs are real fetched URLs; the Jellyfin avatar is an
-        # unguarded constructed URL, so we do not persist it (AMU-7 open risk).
+        # New user. Plex thumbs are real fetched URLs.
         avatar_url = candidate.avatar_url if provider == "plex" else None
         user_id = str(uuid.uuid4())
 

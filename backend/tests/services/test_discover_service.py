@@ -56,12 +56,6 @@ def _make_prefs(
         source=primary_source
     )
 
-    jf_settings = MagicMock()
-    jf_settings.enabled = False
-    jf_settings.jellyfin_url = ""
-    jf_settings.api_key = ""
-    prefs.get_jellyfin_connection.return_value = jf_settings
-
     download_client = MagicMock()
     download_client.enabled = False
     download_client.url = ""
@@ -111,7 +105,6 @@ def _make_service(
     lfm_repo.get_user_top_albums = AsyncMock(return_value=[])
     lfm_repo.get_user_recent_tracks = AsyncMock(return_value=[])
 
-    jf_repo = AsyncMock()
     library_repo = AsyncMock()
     mb_repo = AsyncMock()
     prefs = _make_prefs(
@@ -141,7 +134,6 @@ def _make_service(
 
     service = DiscoverService(
         listenbrainz_repo=lb_repo,
-        jellyfin_repo=jf_repo,
         library_repo=library_repo,
         musicbrainz_repo=mb_repo,
         preferences_service=prefs,
@@ -242,11 +234,6 @@ class TestCacheKeyUserAware:
 class TestBuildServicePrompts:
     def _make_all_enabled(self) -> DiscoverService:
         prefs = _make_prefs(lb_enabled=True, lfm_enabled=True)
-        jf = MagicMock()
-        jf.enabled = True
-        jf.jellyfin_url = "http://jf"
-        jf.api_key = "jf-key"
-        prefs.get_jellyfin_connection.return_value = jf
         download_client = MagicMock()
         download_client.enabled = True
         download_client.url = "http://slskd"
@@ -254,7 +241,6 @@ class TestBuildServicePrompts:
         prefs.is_download_source_ready.return_value = True
         service = DiscoverService(
             listenbrainz_repo=AsyncMock(),
-            jellyfin_repo=AsyncMock(),
             library_repo=AsyncMock(),
             musicbrainz_repo=AsyncMock(),
             preferences_service=prefs,
@@ -292,7 +278,7 @@ class TestBuildServicePrompts:
             lb_enabled=False, lfm_enabled=False
         )
         services = {p.service for p in prompts}
-        assert services == {"download-client", "listenbrainz", "jellyfin", "lastfm"}
+        assert services == {"download-client", "listenbrainz", "lastfm"}
 
     def test_lb_prompt_mentions_lastfm(self):
         service = self._make_all_enabled()

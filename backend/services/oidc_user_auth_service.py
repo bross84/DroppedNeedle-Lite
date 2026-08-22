@@ -42,14 +42,12 @@ class OIDCUserAuthService:
         return self._prefs.get_oidc_connection()
 
     def get_enabled_providers(self) -> AuthProvidersResponse:
-        jellyfin_cfg = self._prefs.get_jellyfin_connection()
         plex_cfg = self._prefs.get_plex_connection()
         oidc_cfg = self.get_config()
 
         return AuthProvidersResponse(
             local = True,
             plex = plex_cfg.login_enabled,
-            jellyfin = jellyfin_cfg.login_enabled,
             oidc = oidc_cfg.enabled and bool(oidc_cfg.issuer) and bool(oidc_cfg.client_id),
         )
 

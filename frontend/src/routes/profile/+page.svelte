@@ -36,7 +36,6 @@
 		createSetPasswordMutation,
 		createUploadAvatarMutation
 	} from '$lib/queries/profile/ProfileMutations.svelte';
-	import JellyfinIcon from '$lib/components/JellyfinIcon.svelte';
 	import NavidromeIcon from '$lib/components/NavidromeIcon.svelte';
 	import PlexIcon from '$lib/components/PlexIcon.svelte';
 	import type { ProfileServiceConnection } from '$lib/queries/profile/types';
@@ -68,7 +67,7 @@
 	);
 	const mediaAccountsEnabled = $derived(
 		profile?.services.some(
-			(service) => service.enabled && ['Navidrome', 'Jellyfin', 'Plex'].includes(service.name)
+			(service) => service.enabled && ['Navidrome', 'Plex'].includes(service.name)
 		) ?? false
 	);
 
@@ -297,7 +296,6 @@
 	}
 
 	function getServiceIcon(name: string) {
-		if (name === 'Jellyfin') return JellyfinIcon;
 		if (name === 'Navidrome') return NavidromeIcon;
 		if (name === 'Plex') return PlexIcon;
 		if (name === 'ListenBrainz') return Music;
@@ -306,7 +304,6 @@
 	}
 
 	function getServiceColor(name: string): string {
-		if (name === 'Jellyfin') return 'text-purple-400';
 		if (name === 'Navidrome') return 'text-green-400';
 		if (name === 'Plex') return 'text-amber-400';
 		if (name === 'ListenBrainz') return 'text-orange-400';
@@ -315,7 +312,6 @@
 	}
 
 	function getServiceBorderColor(name: string): string {
-		if (name === 'Jellyfin') return 'border-purple-500/30';
 		if (name === 'Navidrome') return 'border-green-500/30';
 		if (name === 'Plex') return 'border-amber-500/30';
 		if (name === 'ListenBrainz') return 'border-orange-500/30';
@@ -330,21 +326,18 @@
 			return `https://www.last.fm/user/${encodeURIComponent(service.username)}`;
 		if (service.name === 'ListenBrainz')
 			return `https://listenbrainz.org/user/${encodeURIComponent(service.username)}`;
-		if (service.name === 'Jellyfin' && service.url) return service.url;
 		if (service.name === 'Navidrome' && service.url) return service.url;
 		if (service.name === 'Plex' && service.url) return service.url;
 		return null;
 	}
 
 	function getSourceIcon(source: string) {
-		if (source === 'Jellyfin') return JellyfinIcon;
 		if (source === 'Navidrome') return NavidromeIcon;
 		if (source === 'Local Files') return HardDrive;
 		return Database;
 	}
 
 	function getSourceColor(source: string): string {
-		if (source === 'Jellyfin') return 'text-purple-400';
 		if (source === 'Navidrome') return 'text-green-400';
 		if (source === 'Local Files') return 'text-teal-400';
 		return 'text-base-content';

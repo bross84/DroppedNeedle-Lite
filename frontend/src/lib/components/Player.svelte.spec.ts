@@ -41,7 +41,7 @@ vi.mock('$lib/queries/lyrics/LyricsQuery.svelte', () => ({
 import { playerStore } from '$lib/stores/player.svelte';
 import Player from './Player.svelte';
 
-function makeTrack(sourceType: 'navidrome' | 'jellyfin' | 'youtube' | 'local' | 'plex', id = 'v1') {
+function makeTrack(sourceType: 'navidrome' | 'youtube' | 'local' | 'plex', id = 'v1') {
 	return {
 		trackSourceId: id,
 		trackName: 'Test Track',

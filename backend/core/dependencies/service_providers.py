@@ -41,7 +41,6 @@ from .repo_providers import (
     get_wikidata_repository,
     get_listenbrainz_repository,
     get_lrclib_repository,
-    get_jellyfin_repository,
     get_navidrome_repository,
     get_plex_repository,
     get_coverart_repository,
@@ -789,7 +788,6 @@ def get_library_management_post_commit_service() -> (
         get_cache(),
         get_disk_cache(),
         get_discovery_snapshot_store(),
-        get_jellyfin_repository,
         get_artist_identity_reconciliation_service().enqueue_album,
     )
 
@@ -806,7 +804,6 @@ def get_library_management_notification_service() -> (
 
     return LibraryManagementNotificationService(
         get_native_library_store(),
-        get_jellyfin_repository,
     )
 
 
@@ -1808,7 +1805,6 @@ def get_library_service() -> "LibraryService":
     artist_discovery_service = get_artist_discovery_service()
     audiodb_image_service = get_audiodb_image_service()
     local_files_service = get_local_files_service()
-    jellyfin_library_service = get_jellyfin_library_service()
     navidrome_library_service = get_navidrome_library_service()
     sync_state_store = get_sync_state_store()
     genre_index = get_genre_index()
@@ -1822,7 +1818,6 @@ def get_library_service() -> "LibraryService":
         artist_discovery_service=artist_discovery_service,
         audiodb_image_service=audiodb_image_service,
         local_files_service=local_files_service,
-        jellyfin_library_service=jellyfin_library_service,
         navidrome_library_service=navidrome_library_service,
         navidrome_folder_scope_service=get_navidrome_folder_scope_service(),
         sync_state_store=sync_state_store,
@@ -1859,7 +1854,6 @@ def _build_home_service(
 
     settings = get_settings()
     listenbrainz_repo = get_listenbrainz_repository()
-    jellyfin_repo = get_jellyfin_repository()
     musicbrainz_repo = get_musicbrainz_repository()
     preferences_service = get_preferences_service()
     memory_cache = get_cache()
@@ -1867,7 +1861,6 @@ def _build_home_service(
     audiodb_image_service = get_audiodb_image_service()
     return HomeService(
         listenbrainz_repo=listenbrainz_repo,
-        jellyfin_repo=jellyfin_repo,
         library_repo=library_repo,
         musicbrainz_repo=musicbrainz_repo,
         preferences_service=preferences_service,
@@ -2200,7 +2193,6 @@ def _build_discover_service(
     from services.home_transformers import HomeDataTransformers
 
     listenbrainz_repo = get_listenbrainz_repository()
-    jellyfin_repo = get_jellyfin_repository()
     musicbrainz_repo = get_musicbrainz_repository()
     preferences_service = get_preferences_service()
     memory_cache = get_cache()
@@ -2227,12 +2219,11 @@ def _build_discover_service(
         album_discovery=album_discovery or get_album_discovery_service(),
         genre_index=genre_index,
         integration=radio_integration,
-        transformers=HomeDataTransformers(jellyfin_repo),
+        transformers=HomeDataTransformers(),
     )
 
     return DiscoverService(
         listenbrainz_repo=listenbrainz_repo,
-        jellyfin_repo=jellyfin_repo,
         library_repo=library_repo,
         musicbrainz_repo=musicbrainz_repo,
         preferences_service=preferences_service,
@@ -2345,15 +2336,6 @@ def get_target_discover_queue_manager() -> "DiscoverQueueManager":
 
 
 @singleton
-def get_jellyfin_playback_service() -> "JellyfinPlaybackService":
-    from services.jellyfin_playback_service import JellyfinPlaybackService
-
-    jellyfin_repo = get_jellyfin_repository()
-    cache = get_cache()
-    return JellyfinPlaybackService(jellyfin_repo, cache, get_per_user_client_factory())
-
-
-@singleton
 def get_local_files_service() -> "LocalFilesService":
     from services.local_files_service import LocalFilesService
 
@@ -2361,17 +2343,6 @@ def get_local_files_service() -> "LocalFilesService":
     preferences_service = get_preferences_service()
     cache = get_cache()
     return LocalFilesService(library_repo, preferences_service, cache)
-
-
-@singleton
-def get_jellyfin_library_service() -> "JellyfinLibraryService":
-    from services.jellyfin_library_service import JellyfinLibraryService
-
-    jellyfin_repo = get_jellyfin_repository()
-    preferences_service = get_preferences_service()
-    return JellyfinLibraryService(
-        jellyfin_repo, preferences_service, get_per_user_client_factory()
-    )
 
 
 @singleton

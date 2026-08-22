@@ -24,7 +24,6 @@ const session: LibraryManagementActivationSession = {
 		external_refresh: {
 			enabled: false,
 			plex_enabled: false,
-			jellyfin_enabled: false,
 			navidrome_enabled: false,
 			retry_attempts: 3,
 			retry_delay_seconds: 30
@@ -44,7 +43,6 @@ const session: LibraryManagementActivationSession = {
 		external_refresh: {
 			enabled: false,
 			plex_enabled: false,
-			jellyfin_enabled: false,
 			navidrome_enabled: false,
 			retry_attempts: 3,
 			retry_delay_seconds: 30

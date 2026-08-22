@@ -68,19 +68,18 @@ ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 MAX_COVER_SIZE = 2 * 1024 * 1024
 _MIME_TO_EXT = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
 _SAFE_ID_RE = re.compile(r"^[a-f0-9\-]+$")
-VALID_SOURCE_TYPES = {"local", "jellyfin", "navidrome", "plex", "youtube", ""}
+VALID_SOURCE_TYPES = {"local", "navidrome", "plex", "youtube", ""}
 MAX_NAME_LENGTH = 100
 # Albums in a playlist are resolved against external sources concurrently. A
 # large playlist (300+ tracks) can span hundreds of albums; resolving them one
 # at a time turned the synchronous /resolve-sources call into hundreds of serial
 # round-trips and made big playlists appear to hang. Bound the fan-out so we
-# don't hammer Navidrome/Plex/Jellyfin all at once.
+# don't hammer Navidrome/Plex all at once.
 _ALBUM_RESOLVE_CONCURRENCY = 8
 
 _SOURCE_TYPE_ALIASES = {
     "local": "local",
     "howler": "local",
-    "jellyfin": "jellyfin",
     "navidrome": "navidrome",
     "plex": "plex",
     "youtube": "youtube",
@@ -487,7 +486,6 @@ class PlaylistService:
         track_id: str,
         source_type: Optional[str] = None,
         available_sources: Optional[list[str]] = None,
-        jf_service: object = None,
         local_service: object = None,
         nd_service: object = None,
         plex_service: object = None,
@@ -528,7 +526,6 @@ class PlaylistService:
                 ) = await self._resolve_new_source_id(
                     current_track,
                     normalized_source,
-                    jf_service,
                     local_service,
                     nd_service,
                     plex_service,
@@ -607,7 +604,6 @@ class PlaylistService:
         self,
         playlist_id: str,
         requesting: UserRecord | None = None,
-        jf_service: object = None,
         local_service: object = None,
         nd_service: object = None,
         plex_service: object = None,
@@ -640,7 +636,6 @@ class PlaylistService:
         ) -> tuple[
             dict[tuple[int, int], tuple[str, str]],
             dict[tuple[int, int], tuple[str, str]],
-            dict[tuple[int, int], tuple[str, str]],
             dict[tuple[int, int], tuple[str, str, str]],
         ]:
             representative = album_tracks[0]
@@ -648,7 +643,6 @@ class PlaylistService:
                 try:
                     return await self._resolve_album_sources(
                         representative.album_id,
-                        jf_service,
                         local_service,
                         nd_service,
                         plex_service,
@@ -670,7 +664,7 @@ class PlaylistService:
                         representative.album_id,
                         exc_info=True,
                     )
-                    return ({}, {}, {}, {})
+                    return ({}, {}, {})
 
         resolved_maps = await asyncio.gather(
             *(_resolve_group(album_tracks) for _album_id, album_tracks in grouped)
@@ -681,7 +675,6 @@ class PlaylistService:
         file_links: dict[str, str] = {}
 
         for (_album_id, album_tracks), (
-            jf_by_num,
             local_by_num,
             nd_by_num,
             plex_by_num,
@@ -694,9 +687,6 @@ class PlaylistService:
                     sources.add(t.source_type)
 
                 disc_key = (t.disc_number or 1, t.track_number)
-                jf_track = jf_by_num.get(disc_key)
-                if jf_track and _fuzzy_name_match(t.track_name, jf_track[0]):
-                    sources.add("jellyfin")
 
                 local_track = local_by_num.get(disc_key)
                 if local_track and _fuzzy_name_match(t.track_name, local_track[0]):
@@ -744,7 +734,6 @@ class PlaylistService:
     async def _resolve_album_sources(
         self,
         album_id: str,
-        jf_service: object,
         local_service: object,
         nd_service: object = None,
         plex_service: object = None,
@@ -753,7 +742,6 @@ class PlaylistService:
         user_id: str = "global",
         navidrome_folder_ids: tuple[str, ...] | None = None,
     ) -> tuple[
-        dict[tuple[int, int], tuple[str, str]],
         dict[tuple[int, int], tuple[str, str]],
         dict[tuple[int, int], tuple[str, str]],
         dict[tuple[int, int], tuple[str, str, str]],
@@ -774,60 +762,18 @@ class PlaylistService:
         )
         if self._cache:
             cached = await self._cache.get(cache_key)
-            if cached is not None:
-                if len(cached) == 2:
-                    return (
-                        _normalize_source_map(cached[0]),
-                        _normalize_source_map(cached[1]),
-                        {},
-                        {},
-                    )
-                if len(cached) == 3:
-                    return (
-                        _normalize_source_map(cached[0]),
-                        _normalize_source_map(cached[1]),
-                        _normalize_source_map(cached[2]),
-                        {},
-                    )
+            if cached is not None and len(cached) == 3:
                 return (
                     _normalize_source_map(cached[0]),
                     _normalize_source_map(cached[1]),
                     _normalize_source_map(cached[2]),
-                    _normalize_source_map(cached[3]),
                 )
 
-        jf_by_num: dict[tuple[int, int], tuple[str, str]] = {}
         local_by_num: dict[tuple[int, int], tuple[str, str]] = {}
         nd_by_num: dict[tuple[int, int], tuple[str, str]] = {}
         plex_by_num: dict[tuple[int, int], tuple[str, str, str]] = {}
 
-        # Pre-fix Jellyfin imports stored the Jellyfin album GUID as album_id,
-        # which the MBID-keyed Jellyfin/local lookups can never match. Re-key it
-        # via the album's provider ids so legacy rows resolve without a
-        # migration. The cache key above stays the original album_id.
         match_album_id = album_id
-        if jf_service is not None:
-            try:
-                match = await jf_service.match_album_by_mbid(album_id)
-                if not match.found:
-                    mbid = await jf_service.resolve_album_mbid(album_id)
-                    if isinstance(mbid, str) and mbid and mbid != album_id:
-                        match_album_id = mbid
-                        match = await jf_service.match_album_by_mbid(mbid)
-                if match.found:
-                    for t in match.tracks:
-                        key = _safe_track_number(t.track_number)
-                        if key is not None:
-                            jf_by_num[(getattr(t, "disc_number", 1) or 1, key)] = (
-                                t.title,
-                                t.jellyfin_id,
-                            )
-            except Exception:  # noqa: BLE001
-                logger.debug(
-                    "Jellyfin source resolution failed for album %s",
-                    album_id,
-                    exc_info=True,
-                )
 
         if local_service is not None:
             try:
@@ -892,7 +838,7 @@ class PlaylistService:
                     exc_info=True,
                 )
 
-        resolved = (jf_by_num, local_by_num, nd_by_num, plex_by_num)
+        resolved = (local_by_num, nd_by_num, plex_by_num)
         if self._cache:
             await self._cache.set(cache_key, resolved, ttl_seconds=3600)
         return resolved
@@ -901,7 +847,6 @@ class PlaylistService:
         self,
         track: PlaylistTrackRecord,
         new_source_type: str,
-        jf_service: object,
         local_service: object,
         nd_service: object = None,
         plex_service: object = None,
@@ -915,13 +860,11 @@ class PlaylistService:
             )
 
         (
-            jf_by_num,
             local_by_num,
             nd_by_num,
             plex_by_num,
         ) = await self._resolve_album_sources(
             track.album_id,
-            jf_service,
             local_service,
             nd_service,
             plex_service,
@@ -932,14 +875,6 @@ class PlaylistService:
         )
 
         disc_key = (track.disc_number or 1, track.track_number)
-
-        if new_source_type == "jellyfin":
-            match_info = jf_by_num.get(disc_key)
-            if match_info and _fuzzy_name_match(track.track_name, match_info[0]):
-                return (match_info[1], None)
-            raise SourceResolutionError(
-                f"Track '{track.track_name}' not found in Jellyfin for album {track.album_id}"
-            )
 
         if new_source_type == "local":
             match_info = local_by_num.get(disc_key)

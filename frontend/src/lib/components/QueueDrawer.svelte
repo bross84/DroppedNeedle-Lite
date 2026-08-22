@@ -5,7 +5,6 @@
 	import { playbackToast } from '$lib/stores/playbackToast.svelte';
 	import { getCoverUrl } from '$lib/utils/errorHandling';
 	import { X, GripVertical, ListMusic, Disc3, Shuffle, Trash2 } from 'lucide-svelte';
-	import JellyfinIcon from '$lib/components/JellyfinIcon.svelte';
 	import LocalFilesIcon from '$lib/components/LocalFilesIcon.svelte';
 	import NavidromeIcon from '$lib/components/NavidromeIcon.svelte';
 	import PlexIcon from '$lib/components/PlexIcon.svelte';
@@ -312,11 +311,7 @@
 							{/if}
 
 							<div class="shrink-0">
-								{#if item.sourceType === 'jellyfin'}
-									<span title="Jellyfin" style="color: rgb(var(--brand-jellyfin));">
-										<JellyfinIcon class="h-3.5 w-3.5" />
-									</span>
-								{:else if item.sourceType === 'navidrome'}
+								{#if item.sourceType === 'navidrome'}
 									<span title="Navidrome" style="color: rgb(var(--brand-navidrome));">
 										<NavidromeIcon class="h-3.5 w-3.5" />
 									</span>

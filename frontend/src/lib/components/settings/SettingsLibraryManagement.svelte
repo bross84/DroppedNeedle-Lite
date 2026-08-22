@@ -1305,13 +1305,6 @@
 								><input
 									type="checkbox"
 									class="checkbox checkbox-xs"
-									bind:checked={draft.external_refresh.jellyfin_enabled}
-								/><span>Jellyfin</span></label
-							>
-							<label
-								><input
-									type="checkbox"
-									class="checkbox checkbox-xs"
 									bind:checked={draft.external_refresh.navidrome_enabled}
 								/><span>Navidrome</span></label
 							>

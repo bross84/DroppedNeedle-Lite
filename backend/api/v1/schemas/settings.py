@@ -347,17 +347,6 @@ class NewznabIndexerSettings(AppStruct):
         self.url = self.url.rstrip("/")
 
 
-class JellyfinConnectionSettings(AppStruct):
-    jellyfin_url: str = "http://jellyfin:8096"
-    api_key: str = ""
-    user_id: str = ""
-    enabled: bool = False
-    login_enabled: bool = False
-
-    def __post_init__(self) -> None:
-        self.jellyfin_url = self.jellyfin_url.rstrip("/")
-
-
 class OIDCConnectionSettings(AppStruct):
     enabled: bool = False
     issuer: str = ""
@@ -487,17 +476,6 @@ class PlexOAuthPinResponse(AppStruct):
 class PlexOAuthPollResponse(AppStruct):
     completed: bool
     auth_token: str = ""
-
-
-class JellyfinUserInfo(AppStruct):
-    id: str
-    name: str
-
-
-class JellyfinVerifyResponse(AppStruct):
-    success: bool
-    message: str
-    users: list[JellyfinUserInfo] = []
 
 
 class ListenBrainzConnectionSettings(AppStruct):

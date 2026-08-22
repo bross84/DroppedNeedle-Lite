@@ -9,7 +9,6 @@ from api.v1.schemas.library_management import (
     NamingScriptSettings,
     ProfileNotificationSettings,
 )
-from core.exceptions import ExternalServiceError, JellyfinAuthError
 from models.library_management import LibraryManagementExternalRefreshDelivery
 from models.library_management_planning import PinnedLibraryManagementProfile
 from services.native.library_management_notification_service import (
@@ -35,11 +34,11 @@ def _pending() -> LibraryManagementExternalRefreshDelivery:
 
 @pytest.mark.asyncio
 async def test_notification_failure_is_retryable_and_does_not_touch_parent() -> None:
+    """No external refresh protocol is currently implemented; every claimed
+    delivery must fail as retryable rather than silently vanishing."""
     store = AsyncMock()
     store.claim_library_management_external_refresh.return_value = _pending()
-    jellyfin = AsyncMock()
-    jellyfin.refresh_library.side_effect = ExternalServiceError("offline")
-    service = LibraryManagementNotificationService(store, lambda: jellyfin)
+    service = LibraryManagementNotificationService(store)
 
     operation_id = await service.run_once("worker-1", now=10.0)
 
@@ -53,26 +52,6 @@ async def test_notification_failure_is_retryable_and_does_not_touch_parent() -> 
         now=10.0,
     )
     store.finish_operation_job.assert_not_called()
-
-
-@pytest.mark.asyncio
-async def test_notification_auth_failure_is_permanent() -> None:
-    store = AsyncMock()
-    store.claim_library_management_external_refresh.return_value = _pending()
-    jellyfin = AsyncMock()
-    jellyfin.refresh_library.side_effect = JellyfinAuthError("unauthorized")
-    service = LibraryManagementNotificationService(store, lambda: jellyfin)
-
-    await service.run_once("worker-1", now=10.0)
-
-    store.finish_library_management_external_refresh.assert_awaited_once_with(
-        "delivery-1",
-        "worker-1",
-        succeeded=False,
-        retryable=False,
-        failure_code="EXTERNAL_REFRESH_AUTH_FAILED",
-        now=10.0,
-    )
 
 
 @pytest.mark.asyncio
@@ -100,16 +79,9 @@ async def test_existing_operation_supervisor_dispatches_delivery_when_idle() -> 
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    ("configured", "expected_state", "expected_failure"),
-    [
-        (True, "pending", None),
-        (False, "unavailable", "EXTERNAL_REFRESH_NOT_CONFIGURED"),
-    ],
-)
-async def test_post_commit_enqueues_verified_jellyfin_delivery(
-    configured: bool, expected_state: str, expected_failure: str | None
-) -> None:
+async def test_post_commit_enqueues_unavailable_external_refresh_for_enabled_target() -> None:
+    """No external refresh protocol is implemented for any target yet, so an
+    enabled target is enqueued straight into the unavailable/terminal state."""
     pinned = PinnedLibraryManagementProfile(
         profile=LibraryManagementProfile(
             id="profile-1",
@@ -138,8 +110,7 @@ async def test_post_commit_enqueues_verified_jellyfin_delivery(
     preferences.get_library_management_settings_raw.return_value = SimpleNamespace(
         external_refresh=SimpleNamespace(
             enabled=True,
-            jellyfin_enabled=True,
-            plex_enabled=False,
+            plex_enabled=True,
             navidrome_enabled=False,
             retry_attempts=3,
             retry_delay_seconds=30,
@@ -148,24 +119,21 @@ async def test_post_commit_enqueues_verified_jellyfin_delivery(
     memory_cache = AsyncMock()
     disk_cache = AsyncMock()
     discovery = AsyncMock()
-    jellyfin = MagicMock()
-    jellyfin.is_configured.return_value = configured
     service = LibraryManagementPostCommitService(
         store,
         preferences,
         memory_cache,
         disk_cache,
         discovery,
-        lambda: jellyfin,
     )
 
     await service.after_commit({"track-1"}, {"album-1"})
 
     delivery = store.ensure_library_management_external_refresh.await_args.args[0]
     assert delivery.operation_job_id == "operation-1"
-    assert delivery.target == "jellyfin"
-    assert delivery.state == expected_state
-    assert delivery.failure_code == expected_failure
+    assert delivery.target == "plex"
+    assert delivery.state == "unavailable"
+    assert delivery.failure_code == "EXTERNAL_REFRESH_PROTOCOL_UNAVAILABLE"
     assert delivery.max_attempts == 4
     memory_cache.clear_prefix.assert_awaited()
     disk_cache.delete_album.assert_awaited_once_with("release-group-1")
@@ -195,7 +163,6 @@ async def test_post_commit_skips_external_delivery_when_profile_opted_out() -> N
         AsyncMock(),
         AsyncMock(),
         AsyncMock(),
-        lambda: MagicMock(),
     )
 
     await service.after_commit({"track-1"}, {"album-1"})
@@ -217,7 +184,6 @@ async def test_post_commit_derives_import_album_for_artist_reconciliation() -> N
         AsyncMock(),
         AsyncMock(),
         AsyncMock(),
-        lambda: MagicMock(),
         reconcile_album,
     )
 
@@ -254,15 +220,12 @@ async def test_reconciliation_failure_does_not_skip_durable_external_refresh(
     preferences.get_library_management_settings_raw.return_value = SimpleNamespace(
         external_refresh=SimpleNamespace(
             enabled=True,
-            jellyfin_enabled=True,
-            plex_enabled=False,
+            plex_enabled=True,
             navidrome_enabled=False,
             retry_attempts=3,
             retry_delay_seconds=30,
         )
     )
-    jellyfin = MagicMock()
-    jellyfin.is_configured.return_value = True
     reconcile_album = AsyncMock(side_effect=RuntimeError("queue unavailable"))
     service = LibraryManagementPostCommitService(
         store,
@@ -270,7 +233,6 @@ async def test_reconciliation_failure_does_not_skip_durable_external_refresh(
         AsyncMock(),
         AsyncMock(),
         AsyncMock(),
-        lambda: jellyfin,
         reconcile_album,
     )
 
