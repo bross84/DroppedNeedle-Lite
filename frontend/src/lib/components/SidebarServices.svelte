@@ -8,7 +8,6 @@
 	import { getSectionPrefsQuery } from '$lib/queries/section-prefs/SectionPrefsQuery.svelte';
 	import YouTubeIcon from '$lib/components/YouTubeIcon.svelte';
 	import NavidromeIcon from '$lib/components/NavidromeIcon.svelte';
-	import PlexIcon from '$lib/components/PlexIcon.svelte';
 	import SidebarServiceHint from '$lib/components/SidebarServiceHint.svelte';
 	import SidebarVisualiser from '$lib/components/SidebarVisualiser.svelte';
 
@@ -32,7 +31,6 @@
 	const anyEntryVisible = $derived(
 		showsEntry('youtube', integrations.current.youtube) ||
 			showsEntry('navidrome', integrations.current.navidrome) ||
-			showsEntry('plex', integrations.current.plex) ||
 			showsEntry('localfiles', integrations.current.localfiles)
 	);
 </script>
@@ -86,36 +84,6 @@
 	{:else if integrations.current.loaded && authStore.isAdmin}
 		<SidebarServiceHint label="Navidrome" settingsTab="navidrome">
 			{#snippet icon()}<NavidromeIcon class="h-6 w-6 text-primary" />{/snippet}
-		</SidebarServiceHint>
-	{/if}
-{/if}
-
-{#if !hidden.has('plex')}
-	{#if integrations.current.plex}
-		<li>
-			<a
-				href="/library/plex"
-				class="is-drawer-close:tooltip is-drawer-close:tooltip-right"
-				data-tip="Plex"
-			>
-				<div class="relative inline-flex">
-					<PlexIcon class="h-6 w-6" style="color: rgb(var(--brand-plex))" />
-					{#if nowPlayingMerged.isSourcePlaying('plex')}
-						<span class="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-primary animate-pulse"
-						></span>
-					{/if}
-				</div>
-				<span class="is-drawer-close:hidden">Plex</span>
-				{#if nowPlayingMerged.isSourcePlaying('plex')}
-					<div class="now-playing-bars now-playing-bars--sm ml-auto is-drawer-close:hidden">
-						<span></span><span></span><span></span>
-					</div>
-				{/if}
-			</a>
-		</li>
-	{:else if integrations.current.loaded && authStore.isAdmin}
-		<SidebarServiceHint label="Plex" settingsTab="plex">
-			{#snippet icon()}<PlexIcon class="h-6 w-6" style="color: rgb(var(--brand-plex))" />{/snippet}
 		</SidebarServiceHint>
 	{/if}
 {/if}

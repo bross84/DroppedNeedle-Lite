@@ -9,8 +9,6 @@ export function resolveSourceUrl(item: QueueItem): string | undefined {
 			return item.streamUrl ?? API.stream.local(item.trackSourceId);
 		case 'navidrome':
 			return item.streamUrl ?? API.stream.navidrome(item.trackSourceId);
-		case 'plex':
-			return item.streamUrl ?? API.stream.plex(item.trackSourceId);
 	}
 }
 
@@ -20,8 +18,6 @@ export function buildPrefetchUrl(item: QueueItem): string | null {
 			return null;
 		case 'navidrome':
 			return API.stream.navidrome(item.trackSourceId);
-		case 'plex':
-			return API.stream.plex(item.trackSourceId);
 		case 'local':
 			return API.stream.local(item.trackSourceId);
 		default:
@@ -38,8 +34,6 @@ export function buildStreamUrlForSource(
 			return API.stream.local(trackSourceId);
 		case 'navidrome':
 			return API.stream.navidrome(trackSourceId);
-		case 'plex':
-			return API.stream.plex(trackSourceId);
 		default:
 			return undefined;
 	}

@@ -31,7 +31,6 @@
 		PanelLeft
 	} from 'lucide-svelte';
 	import NavidromeIcon from '$lib/components/NavidromeIcon.svelte';
-	import PlexIcon from '$lib/components/PlexIcon.svelte';
 	import SpotifyIcon from '$lib/components/SpotifyIcon.svelte';
 
 	const integration = fromStore(integrationStore);
@@ -39,9 +38,8 @@
 	const updateCheckQuery = getUpdateCheckQuery();
 	const updateAvailable = $derived(updateCheckQuery.data?.update_available ?? false);
 
-	const connectionMap: Record<string, 'navidrome' | 'plex' | 'youtube' | 'localfiles'> = {
+	const connectionMap: Record<string, 'navidrome' | 'youtube' | 'localfiles'> = {
 		navidrome: 'navidrome',
-		plex: 'plex',
 		youtube: 'youtube'
 	};
 
@@ -68,7 +66,6 @@
 				]
 			: []),
 		{ id: 'navidrome', label: 'Navidrome', tier: 'setup', icon: NavidromeIcon },
-		{ id: 'plex', label: 'Plex', tier: 'setup', icon: PlexIcon },
 		{ id: 'youtube', label: 'YouTube', tier: 'setup', icon: Youtube },
 		...(authStore.isAdmin ? [{ id: 'lastfm', label: 'Last.fm', tier: 'setup', icon: Radio }] : []),
 		...(authStore.isAdmin

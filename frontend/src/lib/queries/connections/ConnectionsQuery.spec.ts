@@ -37,9 +37,7 @@ import {
 	createConnectNavidromeMutation,
 	createDisconnectMutation,
 	createLastFmExchangeSessionMutation,
-	createLastFmRequestTokenMutation,
-	createPlexLinkPinMutation,
-	createPlexLinkPollMutation
+	createLastFmRequestTokenMutation
 } from './ConnectionsMutations.svelte';
 
 const mockGet = vi.mocked(api.global.get);
@@ -135,18 +133,6 @@ describe('connection mutations hit the correct endpoints', () => {
 			password: 'pw'
 		});
 	});
-
-	it('plex link pin -> POST', async () => {
-		const m = createPlexLinkPinMutation() as unknown as Opts;
-		await m.mutationFn(undefined);
-		expect(mockPost.mock.calls[0][0]).toBe(CONNECTIONS_ENDPOINTS.plexAuthPin);
-	});
-
-	it('plex link poll -> GET with pin id', async () => {
-		const m = createPlexLinkPollMutation() as unknown as Opts;
-		await m.mutationFn(7);
-		expect(mockGet.mock.calls[0][0]).toBe(CONNECTIONS_ENDPOINTS.plexAuthPoll(7));
-	});
 });
 
 describe('mutation onSuccess invalidates the user-scoped key', () => {
@@ -154,18 +140,6 @@ describe('mutation onSuccess invalidates the user-scoped key', () => {
 		const spy = vi.spyOn(queryClient, 'invalidateQueries');
 		const m = createDisconnectMutation() as unknown as Opts;
 		await m.onSuccess!({ service: 'lastfm', deleted: true });
-		expect(spy.mock.calls[0][0]).toEqual(
-			expect.objectContaining({ queryKey: ['me', 'connections', 'userA'] })
-		);
-		spy.mockRestore();
-	});
-
-	it('plex poll invalidates only once the link completes', async () => {
-		const spy = vi.spyOn(queryClient, 'invalidateQueries');
-		const m = createPlexLinkPollMutation() as unknown as Opts;
-		await m.onSuccess!({ completed: false, username: '' });
-		expect(spy).not.toHaveBeenCalled();
-		await m.onSuccess!({ completed: true, username: 'alice' });
 		expect(spy.mock.calls[0][0]).toEqual(
 			expect.objectContaining({ queryKey: ['me', 'connections', 'userA'] })
 		);

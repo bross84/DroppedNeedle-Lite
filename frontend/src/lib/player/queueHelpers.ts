@@ -3,7 +3,6 @@ import type {
 	LocalTrackInfo,
 	NativeTrackListItem,
 	NavidromeTrackInfo,
-	PlexTrackInfo,
 	YouTubeTrackLink
 } from '$lib/types';
 import type { PlaylistTrack } from '$lib/api/playlists';
@@ -35,7 +34,6 @@ export interface TrackSourceData {
 	trackLength?: number;
 	navidromeTrack?: NavidromeTrackInfo | null;
 	localTrack?: LocalTrackInfo | null;
-	plexTrack?: PlexTrackInfo | null;
 }
 
 export function normalizeDiscNumber(discNumber: number | null | undefined): number {
@@ -82,16 +80,6 @@ export function selectBestSource(
 			format
 		};
 	}
-	if (data.plexTrack) {
-		if (!data.plexTrack.part_key) return null;
-		const format = normalizeCodec(data.plexTrack.codec);
-		return {
-			sourceType: 'plex',
-			trackSourceId: data.plexTrack.part_key,
-			streamUrl: API.stream.plex(data.plexTrack.part_key),
-			format
-		};
-	}
 	return null;
 }
 
@@ -99,7 +87,6 @@ export function getAvailableSources(data: TrackSourceData): SourceType[] {
 	const sources: SourceType[] = [];
 	if (data.localTrack) sources.push('local');
 	if (data.navidromeTrack) sources.push('navidrome');
-	if (data.plexTrack?.part_key) sources.push('plex');
 	return sources;
 }
 
@@ -112,7 +99,6 @@ export function buildQueueItem(meta: TrackMeta, data: TrackSourceData): QueueIte
 	const sourceIds: Partial<Record<import('$lib/player/types').SourceType, string>> = {};
 	if (data.localTrack) sourceIds.local = String(data.localTrack.track_file_id);
 	if (data.navidromeTrack) sourceIds.navidrome = data.navidromeTrack.navidrome_id;
-	if (data.plexTrack?.part_key) sourceIds.plex = data.plexTrack.part_key;
 
 	return {
 		trackSourceId: best.trackSourceId,
@@ -129,8 +115,7 @@ export function buildQueueItem(meta: TrackMeta, data: TrackSourceData): QueueIte
 		format: best.format,
 		availableSources: getAvailableSources(data),
 		sourceIds,
-		duration: data.trackLength,
-		plexRatingKey: data.plexTrack?.plex_id
+		duration: data.trackLength
 	};
 }
 
@@ -181,32 +166,6 @@ export function buildQueueItemsFromLocal(tracks: LocalTrackInfo[], meta: TrackMe
 	}));
 }
 
-export function buildQueueItemsFromPlex(tracks: PlexTrackInfo[], meta: TrackMeta): QueueItem[] {
-	const normalizedCoverUrl = getCoverUrl(meta.coverUrl, meta.albumId);
-	return tracks
-		.filter((t) => t.part_key)
-		.map((t) => {
-			const format = normalizeCodec(t.codec);
-			return {
-				trackSourceId: t.part_key!,
-				trackName: t.title,
-				artistName: meta.artistName,
-				trackNumber: t.track_number,
-				discNumber: normalizeDiscNumber(t.disc_number),
-				albumId: meta.albumId,
-				albumName: meta.albumName,
-				coverUrl: normalizedCoverUrl,
-				sourceType: 'plex' as const,
-				artistId: meta.artistId,
-				streamUrl: API.stream.plex(t.part_key!),
-				format,
-				availableSources: ['plex'] as SourceType[],
-				duration: t.duration_seconds,
-				plexRatingKey: t.plex_id
-			};
-		});
-}
-
 export function buildQueueItemFromYouTube(track: YouTubeTrackLink, meta: TrackMeta): QueueItem {
 	const normalizedCoverUrl = getCoverUrl(meta.coverUrl, meta.albumId);
 	return {
@@ -234,7 +193,6 @@ export function buildQueueItemsFromYouTube(
 function resolveStreamUrl(sourceType: string, trackSourceId: string): string | undefined {
 	if (sourceType === 'local') return API.stream.local(trackSourceId);
 	if (sourceType === 'navidrome') return API.stream.navidrome(trackSourceId);
-	if (sourceType === 'plex') return API.stream.plex(trackSourceId);
 	return undefined;
 }
 
@@ -272,8 +230,7 @@ export function playlistTrackToQueueItem(track: PlaylistTrack): QueueItem | null
 		availableSources,
 		sourceIds,
 		duration: track.duration ?? undefined,
-		playlistTrackId: track.id,
-		plexRatingKey: track.source_type === 'plex' ? (track.plex_rating_key ?? undefined) : undefined
+		playlistTrackId: track.id
 	};
 }
 
@@ -313,24 +270,4 @@ export function buildDiscoveryQueueFromLocal(tracks: NativeTrackListItem[]): Que
 		availableSources: ['local'] as SourceType[],
 		duration: t.duration_seconds ?? undefined
 	}));
-}
-
-export function buildDiscoveryQueueFromPlex(tracks: PlexTrackInfo[]): QueueItem[] {
-	return tracks
-		.filter((t) => t.part_key)
-		.map((t) => ({
-			trackSourceId: t.part_key!,
-			trackName: t.title,
-			artistName: t.artist_name,
-			trackNumber: t.track_number,
-			discNumber: normalizeDiscNumber(t.disc_number),
-			albumId: '',
-			albumName: t.album_name,
-			coverUrl: t.image_url ?? null,
-			sourceType: 'plex' as const,
-			streamUrl: API.stream.plex(t.part_key!),
-			format: normalizeCodec(t.codec),
-			availableSources: ['plex'] as SourceType[],
-			duration: t.duration_seconds
-		}));
 }

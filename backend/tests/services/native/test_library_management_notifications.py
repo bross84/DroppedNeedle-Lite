@@ -110,8 +110,7 @@ async def test_post_commit_enqueues_unavailable_external_refresh_for_enabled_tar
     preferences.get_library_management_settings_raw.return_value = SimpleNamespace(
         external_refresh=SimpleNamespace(
             enabled=True,
-            plex_enabled=True,
-            navidrome_enabled=False,
+            navidrome_enabled=True,
             retry_attempts=3,
             retry_delay_seconds=30,
         )
@@ -131,7 +130,7 @@ async def test_post_commit_enqueues_unavailable_external_refresh_for_enabled_tar
 
     delivery = store.ensure_library_management_external_refresh.await_args.args[0]
     assert delivery.operation_job_id == "operation-1"
-    assert delivery.target == "plex"
+    assert delivery.target == "navidrome"
     assert delivery.state == "unavailable"
     assert delivery.failure_code == "EXTERNAL_REFRESH_PROTOCOL_UNAVAILABLE"
     assert delivery.max_attempts == 4
@@ -220,8 +219,7 @@ async def test_reconciliation_failure_does_not_skip_durable_external_refresh(
     preferences.get_library_management_settings_raw.return_value = SimpleNamespace(
         external_refresh=SimpleNamespace(
             enabled=True,
-            plex_enabled=True,
-            navidrome_enabled=False,
+            navidrome_enabled=True,
             retry_attempts=3,
             retry_delay_seconds=30,
         )

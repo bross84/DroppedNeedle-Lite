@@ -17,7 +17,6 @@ from api.v1.schemas.settings import (
     ScrobbleSettings,
     PrimaryMusicSourceSettings,
     PlexConnectionSettings,
-    PlexVerifyResponse,
     MusicBrainzConnectionSettings,
     SecuritySettings,
     OIDCConnectionSettings,
@@ -34,7 +33,6 @@ from api.v1.schemas.settings import (
     WrappedSettings,
     WrappedSettingsResponse,
 )
-from api.v1.schemas.plex import PlexLibrarySectionInfo
 from api.v1.schemas.common import VerifyConnectionResponse
 from api.v1.schemas.advanced_settings import (
     AdvancedSettingsFrontend,
@@ -227,7 +225,6 @@ async def get_frontend_cache_ttls(
         discover_queue=backend_settings.frontend_ttl_discover_queue,
         search=backend_settings.frontend_ttl_search,
         local_files_sidebar=backend_settings.frontend_ttl_local_files_sidebar,
-        plex_sidebar=backend_settings.frontend_ttl_plex_sidebar,
         playlist_sources=backend_settings.frontend_ttl_playlist_sources,
         discover_queue_polling_interval=backend_settings.discover_queue_polling_interval,
         discover_queue_auto_generate=backend_settings.discover_queue_auto_generate,
@@ -317,41 +314,13 @@ async def update_plex_settings(
 ):
     try:
         preferences_service.save_plex_connection(settings)
-        await settings_service.on_plex_settings_changed(enabled=settings.enabled)
+        await settings_service.on_plex_settings_changed()
         logger.info("Updated Plex connection settings")
         return preferences_service.get_plex_connection()
     except ConfigurationError as e:
         logger.warning("Configuration error updating Plex settings: %s", e)
         raise HTTPException(
             status_code=400, detail="Plex settings are incomplete or invalid"
-        )
-
-
-@router.post("/plex/verify", response_model=PlexVerifyResponse)
-async def verify_plex_connection(
-    settings: PlexConnectionSettings = MsgSpecBody(PlexConnectionSettings),
-    settings_service: SettingsService = Depends(get_settings_service),
-):
-    result = await settings_service.verify_plex(settings)
-    libs = [PlexLibrarySectionInfo(key=k, title=t) for k, t in result.libraries]
-    return PlexVerifyResponse(
-        valid=result.valid, message=result.message, libraries=libs
-    )
-
-
-@router.get("/plex/libraries", response_model=list[PlexLibrarySectionInfo])
-async def get_plex_libraries(
-    settings_service: SettingsService = Depends(get_settings_service),
-):
-    try:
-        libs = await settings_service.get_plex_libraries()
-        return [PlexLibrarySectionInfo(key=k, title=t) for k, t in libs]
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.exception("Failed to fetch Plex libraries: %s", e)
-        raise HTTPException(
-            status_code=502, detail="Could not fetch libraries from Plex"
         )
 
 

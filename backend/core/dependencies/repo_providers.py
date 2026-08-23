@@ -196,14 +196,6 @@ def get_plex_repository() -> "PlexRepository":
             token=plex_settings.plex_token,
             client_id=client_id,
         )
-    adv = preferences.get_advanced_settings()
-    repo.configure_cache_ttls(
-        list_ttl=adv.cache_ttl_plex_albums,
-        search_ttl=adv.cache_ttl_plex_search,
-        genres_ttl=adv.cache_ttl_plex_genres,
-        detail_ttl=adv.cache_ttl_plex_albums,
-        stats_ttl=adv.cache_ttl_plex_stats,
-    )
     return repo
 
 

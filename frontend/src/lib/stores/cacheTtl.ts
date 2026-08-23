@@ -5,10 +5,6 @@ import { updateHomeCacheTTL } from '$lib/utils/homeCache';
 import { updateDiscoveryCacheTTL } from '$lib/stores/discoveryCache';
 import { updateDiscoverQueueCacheTTL } from '$lib/utils/discoverQueueCache';
 import { updateSearchCacheTTL } from '$lib/stores/search';
-import {
-	updatePlexSidebarCacheTTL,
-	updatePlexAlbumsListCacheTTL
-} from '$lib/utils/plexLibraryCache';
 import { updateLocalFilesSidebarCacheTTL } from '$lib/utils/localFilesCache';
 import { recentlyAddedStore } from '$lib/stores/recentlyAdded';
 
@@ -20,7 +16,6 @@ export interface CacheTTLs {
 	discoverQueue: number;
 	search: number;
 	localFilesSidebar: number;
-	plexSidebar: number;
 	playlistSources: number;
 	discoverQueuePollingInterval: number;
 	discoverQueueAutoGenerate: boolean;
@@ -34,7 +29,6 @@ const DEFAULTS: CacheTTLs = {
 	discoverQueue: CACHE_TTL.DISCOVER_QUEUE,
 	search: CACHE_TTL.SEARCH,
 	localFilesSidebar: CACHE_TTL.LOCAL_FILES_SIDEBAR,
-	plexSidebar: CACHE_TTL.PLEX_SIDEBAR,
 	playlistSources: CACHE_TTL.PLAYLIST_SOURCES,
 	discoverQueuePollingInterval: 4000,
 	discoverQueueAutoGenerate: true
@@ -50,8 +44,6 @@ function applyTTLs(ttls: CacheTTLs): void {
 	updateDiscoverQueueCacheTTL(ttls.discoverQueue);
 	updateSearchCacheTTL(ttls.search);
 	updateLocalFilesSidebarCacheTTL(ttls.localFilesSidebar);
-	updatePlexSidebarCacheTTL(ttls.plexSidebar);
-	updatePlexAlbumsListCacheTTL(ttls.plexSidebar);
 }
 
 export async function initCacheTTLs(): Promise<void> {
@@ -68,7 +60,6 @@ export async function initCacheTTLs(): Promise<void> {
 			discoverQueue: (data.discover_queue as number) ?? DEFAULTS.discoverQueue,
 			search: (data.search as number) ?? DEFAULTS.search,
 			localFilesSidebar: (data.local_files_sidebar as number) ?? DEFAULTS.localFilesSidebar,
-			plexSidebar: (data.plex_sidebar as number) ?? DEFAULTS.plexSidebar,
 			playlistSources: (data.playlist_sources as number) ?? DEFAULTS.playlistSources,
 			discoverQueuePollingInterval:
 				(data.discover_queue_polling_interval as number) ?? DEFAULTS.discoverQueuePollingInterval,

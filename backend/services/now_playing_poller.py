@@ -1,4 +1,4 @@
-"""Background loop that folds upstream Navidrome/Plex sessions into the
+"""Background loop that folds upstream Navidrome sessions into the
 now-playing presence feed, and sweeps stale native/compat sessions.
 
 Kept separate from ``NowPlayingService`` (which owns state) so the polling/mapping is
@@ -47,33 +47,10 @@ def map_navidrome(resp) -> list[ExternalSession]:
     return out
 
 
-def map_plex(resp) -> list[ExternalSession]:
-    out: list[ExternalSession] = []
-    for s in resp.sessions:
-        if not s.track_title:
-            continue
-        out.append(
-            ExternalSession(
-                key=f"plex:{s.session_id}",
-                user_name=s.user_name,
-                device_name=s.player_device,
-                track_name=s.track_title,
-                artist_name=s.artist_name,
-                album_name=s.album_name or None,
-                cover_url=s.cover_url,
-                is_paused=s.player_state == "paused",
-                progress_ms=s.progress_ms,
-                duration_ms=s.duration_ms,
-            )
-        )
-    return out
-
-
 async def poll_external_once(
     now_playing: NowPlayingService,
     home_service,
     navidrome_service,
-    plex_service,
 ) -> None:
     """Run one reconcile cycle across the upstream integrations."""
     status = home_service.get_integration_status()
@@ -94,16 +71,12 @@ async def poll_external_once(
         navidrome_service.get_now_playing,
         map_navidrome,
     )
-    await _reconcile(
-        "plex", getattr(status, "plex", False), plex_service.get_sessions, map_plex
-    )
 
 
 async def run_now_playing_presence_loop(
     now_playing: NowPlayingService,
     home_service_getter,
     navidrome_service_getter,
-    plex_service_getter,
     interval: float = POLL_INTERVAL_SECONDS,
 ) -> None:
     while True:
@@ -113,7 +86,6 @@ async def run_now_playing_presence_loop(
                 now_playing,
                 home_service_getter(),
                 navidrome_service_getter(),
-                plex_service_getter(),
             )
         except asyncio.CancelledError:
             break

@@ -19,7 +19,6 @@ from core.dependencies import (
     get_free_music_service,
     get_home_charts_service,
     get_navidrome_library_service,
-    get_plex_library_service,
     get_settings_service,
     get_scrobble_service,
     get_personal_mix_service,
@@ -42,7 +41,6 @@ from core.dependencies import (
     get_target_free_music_service,
     get_target_home_charts_service,
     get_target_navidrome_library_service,
-    get_target_plex_library_service,
     get_target_settings_service,
     get_target_personal_mix_service,
     get_target_quota_service,
@@ -221,10 +219,6 @@ def test_isolated_target_application_mounts_target_catalog_and_compat_routes() -
     assert (
         app.dependency_overrides[get_navidrome_library_service]
         is get_target_navidrome_library_service
-    )
-    assert (
-        app.dependency_overrides[get_plex_library_service]
-        is get_target_plex_library_service
     )
     assert app.dependency_overrides[get_settings_service] is get_target_settings_service
     assert app.dependency_overrides[get_events_watcher_getter]() is (
@@ -718,7 +712,6 @@ def test_target_provider_call_graph_has_no_direct_legacy_catalog_edge() -> None:
         "get_genre_index",
         "get_album_release_pin_store",
         "get_navidrome_library_service",
-        "get_plex_library_service",
         "get_library_policy_service",
         "get_discover_queue_manager",
     }
@@ -770,9 +763,6 @@ def test_target_provider_call_graph_has_no_direct_legacy_catalog_edge() -> None:
     assert (
         "get_target_library_repository()"
         in sources["get_target_navidrome_library_service"]
-    )
-    assert (
-        "get_target_library_repository()" in sources["get_target_plex_library_service"]
     )
 
 

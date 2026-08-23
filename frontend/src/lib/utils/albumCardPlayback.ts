@@ -10,10 +10,8 @@ import type { QueueItem } from '$lib/player/types';
 import type {
 	LocalAlbumMatch,
 	NavidromeAlbumMatch,
-	PlexAlbumMatch,
 	LocalTrackInfo,
-	NavidromeTrackInfo,
-	PlexTrackInfo
+	NavidromeTrackInfo
 } from '$lib/types';
 
 export interface AlbumCardMeta {
@@ -24,7 +22,7 @@ export interface AlbumCardMeta {
 	artistId?: string;
 }
 
-type SourceResult = { source: 'local' | 'navidrome' | 'plex'; items: QueueItem[] };
+type SourceResult = { source: 'local' | 'navidrome'; items: QueueItem[] };
 
 function buildLocalItems(tracks: LocalTrackInfo[], meta: AlbumCardMeta): QueueItem[] {
 	const cover = getCoverUrl(meta.coverUrl, meta.mbid);
@@ -58,28 +56,6 @@ function buildNavidromeItems(tracks: NavidromeTrackInfo[], meta: AlbumCardMeta):
 		streamUrl: API.stream.navidrome(t.navidrome_id),
 		format: normalizeCodec(t.codec)
 	}));
-}
-
-function buildPlexItems(tracks: PlexTrackInfo[], meta: AlbumCardMeta): QueueItem[] {
-	const cover = getCoverUrl(meta.coverUrl, meta.mbid);
-	return tracks
-		.filter((t) => t.part_key)
-		.map((t) => {
-			return {
-				trackSourceId: t.part_key!,
-				trackName: t.title,
-				artistName: meta.artistName,
-				trackNumber: t.track_number,
-				albumId: meta.mbid,
-				albumName: meta.albumName,
-				coverUrl: cover,
-				sourceType: 'plex' as const,
-				artistId: meta.artistId,
-				streamUrl: API.stream.plex(t.part_key!),
-				format: normalizeCodec(t.codec),
-				plexRatingKey: t.plex_id
-			};
-		});
 }
 
 export async function fetchAlbumQueueItems(
@@ -119,28 +95,10 @@ export async function fetchAlbumQueueItems(
 		);
 	}
 
-	if (status.plex) {
-		const plexUrl = new URL(API.plexLibrary.albumMatch(meta.mbid), window.location.origin);
-		if (meta.albumName) plexUrl.searchParams.set('name', meta.albumName);
-		if (meta.artistName) plexUrl.searchParams.set('artist', meta.artistName);
-		probes.push(
-			api.global
-				.get<PlexAlbumMatch>(plexUrl.toString(), { signal })
-				.then((data) => {
-					if (!data?.found || data.tracks.length === 0) return null;
-					return {
-						source: 'plex' as const,
-						items: buildPlexItems(data.tracks, meta)
-					};
-				})
-				.catch(() => null)
-		);
-	}
-
 	if (probes.length === 0) return [];
 
 	const results = await Promise.all(probes);
-	const priority: Array<'local' | 'navidrome' | 'plex'> = ['local', 'navidrome', 'plex'];
+	const priority: Array<'local' | 'navidrome'> = ['local', 'navidrome'];
 	for (const src of priority) {
 		const hit = results.find((r) => r?.source === src);
 		if (hit) return hit.items;

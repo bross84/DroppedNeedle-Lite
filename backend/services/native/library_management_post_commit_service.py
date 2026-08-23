@@ -135,7 +135,6 @@ class LibraryManagementPostCommitService:
         now = time.time()
         max_attempts = external.retry_attempts + 1
         enabled_targets = (
-            ("plex", external.plex_enabled),
             ("navidrome", external.navidrome_enabled),
         )
         for target, enabled in enabled_targets:

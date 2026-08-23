@@ -100,8 +100,6 @@ from api.v1.routes import me_connections as me_connections_routes
 from api.v1.routes import system as system_routes
 from api.v1.routes import spotify as spotify_routes
 from api.v1.routes import now_playing as now_playing_routes
-from api.v1.routes import plex_library as plex_library_routes
-from api.v1.routes import plex_auth as plex_auth_routes
 from api.v1.routes import version as version_routes
 from api.v1.routes import download as download_routes
 from api.v1.routes import auth as auth_routes
@@ -412,12 +410,11 @@ async def lifespan(app: FastAPI):
     TaskRegistry.get_instance().register("orphan-staging-cleanup", _orphan_task)
 
     # live now-playing presence: TTL-sweep stale native/compat sessions + poll the
-    # upstream Navidrome/Plex servers into the shared SSE feed
+    # upstream Navidrome server into the shared SSE feed
     from core.dependencies import (
         get_now_playing_service,
         get_home_service,
         get_navidrome_library_service,
-        get_plex_library_service,
     )
     from services.now_playing_poller import run_now_playing_presence_loop
 
@@ -426,7 +423,6 @@ async def lifespan(app: FastAPI):
             get_now_playing_service(),
             get_home_service,
             get_navidrome_library_service,
-            get_plex_library_service,
         )
     )
     TaskRegistry.get_instance().register("now-playing-presence", _now_playing_task)
@@ -633,22 +629,6 @@ async def lifespan(app: FastAPI):
         )
         TaskRegistry.get_instance().register("navidrome-mbid-warmup", nav_mbid_task)
 
-    plex_settings = preferences_service.get_plex_connection()
-    if plex_settings.enabled:
-        from core.tasks import warm_plex_mbid_cache
-
-        plex_mbid_task = asyncio.create_task(warm_plex_mbid_cache())
-        plex_mbid_task.add_done_callback(
-            lambda t: None
-            if t.cancelled()
-            else (
-                logger.error("Plex MBID cache warming failed: %s", t.exception())
-                if t.exception()
-                else None
-            )
-        )
-        TaskRegistry.get_instance().register("plex-mbid-warmup", plex_mbid_task)
-
     from core.dependencies import get_requests_page_service
 
     requests_page_service = get_requests_page_service()
@@ -824,8 +804,6 @@ v1_router.include_router(requests_page_routes.router)
 v1_router.include_router(stream_routes.router)
 v1_router.include_router(navidrome_library_routes.router)
 v1_router.include_router(navidrome_preferences_routes.router)
-v1_router.include_router(plex_library_routes.router)
-v1_router.include_router(plex_auth_routes.router)
 v1_router.include_router(local_library_routes.router)
 v1_router.include_router(lastfm_routes.router)
 v1_router.include_router(scrobble_routes.router)

@@ -43,7 +43,6 @@ class _Conn:
     username = ""
     user_id = ""
     navidrome_url = ""
-    plex_url = ""
 
 
 class _FakePrefs:
@@ -54,9 +53,6 @@ class _FakePrefs:
         return _Conn()
 
     def get_navidrome_connection(self):
-        return _Conn()
-
-    def get_plex_connection(self):
         return _Conn()
 
 
@@ -111,7 +107,7 @@ def test_get_profile_returns_own_row(tmp_path):
     assert body["username"] == "owner"
     assert body["email"] == "owner@example.com"
     assert body["providers"] == ["local"]
-    assert {s["name"] for s in body["services"]} == {"ListenBrainz", "Last.fm", "Navidrome", "Plex"}
+    assert {s["name"] for s in body["services"]} == {"ListenBrainz", "Last.fm", "Navidrome"}
 
 
 def test_get_profile_is_self_scoped(tmp_path):

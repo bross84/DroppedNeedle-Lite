@@ -109,8 +109,6 @@ from services.local_files_service import LocalFilesService
 from services.compat.native_lyrics_service import NativeLyricsService
 from services.navidrome_library_service import NavidromeLibraryService
 from services.navidrome_playback_service import NavidromePlaybackService
-from services.plex_library_service import PlexLibraryService
-from services.plex_playback_service import PlexPlaybackService
 from services.playlist_service import PlaylistService
 from services.lastfm_auth_service import LastFmAuthService
 from services.scrobble_service import ScrobbleService
@@ -203,8 +201,6 @@ from .service_providers import (
     get_local_files_service,
     get_navidrome_library_service,
     get_navidrome_playback_service,
-    get_plex_library_service,
-    get_plex_playback_service,
     get_version_service,
 )
 from .compat_providers import get_native_lyrics_service
@@ -410,10 +406,6 @@ NavidromePlaybackServiceDep = Annotated[
     NavidromePlaybackService, Depends(get_navidrome_playback_service)
 ]
 PlexRepositoryDep = Annotated[PlexRepository, Depends(get_plex_repository)]
-PlexLibraryServiceDep = Annotated[PlexLibraryService, Depends(get_plex_library_service)]
-PlexPlaybackServiceDep = Annotated[
-    PlexPlaybackService, Depends(get_plex_playback_service)
-]
 CacheStatusServiceDep = Annotated[CacheStatusService, Depends(get_cache_status_service)]
 GitHubRepositoryDep = Annotated[GitHubRepository, Depends(get_github_repository)]
 VersionServiceDep = Annotated[VersionService, Depends(get_version_service)]

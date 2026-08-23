@@ -5,7 +5,6 @@
 	import { scrobbleManager } from '$lib/stores/scrobble.svelte';
 	import YouTubePlayer from '$lib/components/YouTubePlayer.svelte';
 	import NavidromeIcon from '$lib/components/NavidromeIcon.svelte';
-	import PlexIcon from '$lib/components/PlexIcon.svelte';
 	import QueueDrawer from '$lib/components/QueueDrawer.svelte';
 	import EqPanel from '$lib/components/EqPanel.svelte';
 	import LyricsPanel from '$lib/components/LyricsPanel.svelte';
@@ -370,11 +369,6 @@
 					<div class="hidden sm:flex items-center gap-2" style="color: rgb(var(--brand-navidrome))">
 						<NavidromeIcon class="h-5 w-5" />
 						<span class="text-sm font-medium">Navidrome</span>
-					</div>
-				{:else if playerStore.nowPlaying.sourceType === 'plex'}
-					<div class="hidden sm:flex items-center gap-2" style="color: rgb(var(--brand-plex))">
-						<PlexIcon class="h-5 w-5" />
-						<span class="text-sm font-medium">Plex</span>
 					</div>
 				{:else if playerStore.nowPlaying.sourceType === 'local'}
 					<div
