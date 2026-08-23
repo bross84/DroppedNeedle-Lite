@@ -148,7 +148,8 @@ function buildTrackQueueItem(
 		trackPosition: track.position,
 		discNumber: normalizeDiscNumber(track.disc_number),
 		trackTitle: track.title,
-		trackLength: resolvedLocal?.duration_seconds ?? resolvedNavidrome?.duration_seconds ?? undefined,
+		trackLength:
+			resolvedLocal?.duration_seconds ?? resolvedNavidrome?.duration_seconds ?? undefined,
 		localTrack: resolvedLocal,
 		navidromeTrack: resolvedNavidrome
 	};

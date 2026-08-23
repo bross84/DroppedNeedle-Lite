@@ -133,7 +133,6 @@ describe('connection mutations hit the correct endpoints', () => {
 			password: 'pw'
 		});
 	});
-
 });
 
 describe('mutation onSuccess invalidates the user-scoped key', () => {
