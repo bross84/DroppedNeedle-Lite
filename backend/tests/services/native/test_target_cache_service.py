@@ -120,7 +120,7 @@ def test_catalog_cache_prefixes_cover_every_target_projection() -> None:
         "library:",
         "home_response:",
         "discover_response:",
-        "genre_artwork:v2:",
+        "genre_artwork:v3:",
         "compat_library:",
         "local_files_",
         "artist_info:",

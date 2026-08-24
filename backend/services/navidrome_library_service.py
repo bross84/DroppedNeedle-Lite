@@ -573,6 +573,33 @@ class NavidromeLibraryService:
         merged = merged[:count]
         return NavidromeGenreSongsResponse(songs=merged, genre=",".join(capped))
 
+    async def get_genre_artwork_candidates(
+        self, genre: str, count: int = 60
+    ) -> list[dict[str, str]]:
+        """Distinct albums for a genre, in Navidrome's relevance order.
+
+        Used to pick a handful of real cover thumbnails for a genre tile —
+        deliberately reads through Navidrome directly rather than any local
+        catalog mirror, since that mirror is empty for anyone (like the
+        default setup) who never runs DroppedNeedle's own scanner/importer.
+        """
+        songs = await self._navidrome.get_songs_by_genre(genre=genre, count=count)
+        seen: set[str] = set()
+        candidates: list[dict[str, str]] = []
+        for song in songs:
+            if not song.albumId or song.albumId in seen:
+                continue
+            seen.add(song.albumId)
+            candidates.append(
+                {
+                    "album_id": song.albumId,
+                    "album_title": song.album,
+                    "album_artist_name": song.artist,
+                    "artist_key": song.artistId or song.artist,
+                }
+            )
+        return candidates
+
     async def get_music_folders(self) -> list[NavidromeMusicFolder]:
         folders = await self._navidrome.get_music_folders()
         return [NavidromeMusicFolder(id=f.id, name=f.name) for f in folders]

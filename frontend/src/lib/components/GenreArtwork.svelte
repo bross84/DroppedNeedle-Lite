@@ -33,12 +33,12 @@
 				data-testid="genre-artwork-cell"
 			>
 				<AlbumImage
-					albumId={album.album_id}
-					coverVersion={album.cover_version}
+					customUrl={album.image_url}
 					alt=""
 					size="full"
 					rounded="none"
 					showPlaceholder={false}
+					retryOnError={false}
 					testId="genre-artwork-image"
 					className="h-full w-full"
 				/>
