@@ -126,17 +126,9 @@ def get_cached_local_artwork_service() -> "CachedLocalArtworkService":
 
 @singleton
 def get_genre_artwork_service() -> "GenreArtworkService":
-    from core.config import get_settings
     from services.home.genre_artwork_service import GenreArtworkService
 
-    from .cache_providers import get_native_library_store
-
-    return GenreArtworkService(
-        get_native_library_store(),
-        get_cache(),
-        get_cached_local_artwork_service(),
-        get_settings().cache_dir / "genre_sections",
-    )
+    return GenreArtworkService(get_navidrome_library_service(), get_cache())
 
 
 @singleton

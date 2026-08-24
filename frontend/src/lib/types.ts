@@ -441,7 +441,7 @@ export type GenreArtworkAlbum = {
 	album_id: string;
 	album_title: string;
 	album_artist_name: string | null;
-	cover_version: number;
+	image_url: string;
 };
 
 export type GenreArtwork = {

@@ -7,12 +7,12 @@ import GenreArtwork from './GenreArtwork.svelte';
 function artwork(count: number): GenreArtworkModel {
 	return {
 		kind: count ? 'collage' : 'gradient',
-		version: `v2:${count}:test`,
+		version: `v3:test`,
 		albums: Array.from({ length: count }, (_, index) => ({
 			album_id: `00000000-0000-4000-8000-00000000000${index}`,
 			album_title: `Album ${index}`,
 			album_artist_name: `Artist ${index}`,
-			cover_version: index + 1
+			image_url: `/api/v1/navidrome/cover/00000000-0000-4000-8000-00000000000${index}`
 		}))
 	};
 }
@@ -38,15 +38,12 @@ describe('GenreArtwork.svelte', () => {
 		}
 	});
 
-	it('keeps the gradient visible when a cached local cover disappears', async () => {
+	it('keeps the gradient visible when a Navidrome cover fails to load', async () => {
 		renderArtwork(1);
 		const image = page.getByTestId('genre-artwork-image');
 		await expect
 			.element(image)
-			.toHaveAttribute(
-				'data-src',
-				'/api/v1/library/albums/00000000-0000-4000-8000-000000000000/artwork/cached?v=1'
-			);
+			.toHaveAttribute('data-src', '/api/v1/navidrome/cover/00000000-0000-4000-8000-000000000000');
 
 		image.element().dispatchEvent(new Event('error'));
 

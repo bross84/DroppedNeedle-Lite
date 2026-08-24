@@ -60,7 +60,7 @@ DAILY_MIX_PREFIX = "daily_mix:"
 TOP_PICKS_PREFIX = "top_picks:"
 GENRE_ARTIST_PREFIX = "genre_artist:"
 GENRE_SECTION_PREFIX = "genre_section:"
-GENRE_ARTWORK_PREFIX = "genre_artwork:v2:"
+GENRE_ARTWORK_PREFIX = "genre_artwork:v3:"
 
 SOURCE_RESOLUTION_PREFIX = "source_resolution"
 

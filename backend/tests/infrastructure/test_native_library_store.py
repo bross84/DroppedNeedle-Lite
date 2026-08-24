@@ -1292,8 +1292,8 @@ async def test_revisions_are_scoped_monotonic_and_stale_safe(
 
 
 @pytest.mark.asyncio
-async def test_genre_artwork_candidates_fold_membership_and_revision_changes(
-    store: NativeLibraryStore, db_path: Path
+async def test_genre_listing_folds_case_and_diacritic_variants(
+    store: NativeLibraryStore,
 ) -> None:
     first = _membership("genre-1")
     second = _membership("genre-2")
@@ -1301,100 +1301,11 @@ async def test_genre_artwork_candidates_fold_membership_and_revision_changes(
     second.tracks[0].genre = "Rock"
     await store.create_catalog_membership(first)
     await store.create_catalog_membership(second)
-    await store.set_artwork(
-        LocalArtworkAssociation(
-            local_album_id=first.album.id,
-            cover_url="cached",
-            source="manual",
-            source_locator="first.bin",
-            updated_at=2,
-        ),
-        expected_album_revision=1,
-    )
-    await store.set_artwork(
-        LocalArtworkAssociation(
-            local_album_id=second.album.id,
-            cover_url="cached",
-            source="manual",
-            source_locator="second.bin",
-            updated_at=2,
-        ),
-        expected_album_revision=1,
-    )
 
     genres = await store.list_target_genres()
-    before = await store.list_genre_artwork_candidates(["rÖCK"])
 
     assert len(genres) == 1
     assert genres[0]["song_count"] == 2
-    assert {row["album_id"] for row in before["rÖCK"]["candidates"]} == {
-        first.album.id,
-        second.album.id,
-    }
-    revision = before["rÖCK"]["revision"]
-
-    with sqlite3.connect(db_path) as connection:
-        connection.execute(
-            "UPDATE local_tracks SET availability = 'missing' WHERE id = ?",
-            (second.tracks[0].id,),
-        )
-
-    after = await store.list_genre_artwork_candidates(["Rock"])
-    assert [row["album_id"] for row in after["Rock"]["candidates"]] == [first.album.id]
-    assert after["Rock"]["revision"] > revision
-
-
-@pytest.mark.asyncio
-async def test_genre_artwork_revisions_target_old_new_artwork_and_retirement(
-    store: NativeLibraryStore, db_path: Path
-) -> None:
-    membership = _membership("genre-revision")
-    membership.tracks[0].genre = "Rock"
-    await store.create_catalog_membership(membership)
-    initial = await store.list_genre_artwork_candidates(["Rock", "Jazz"])
-    rock_revision = initial["Rock"]["revision"]
-    jazz_revision = initial["Jazz"]["revision"]
-
-    with sqlite3.connect(db_path) as connection:
-        connection.execute(
-            "UPDATE local_tracks SET genre = 'Jazz', genre_folded = 'jazz' WHERE id = ?",
-            (membership.tracks[0].id,),
-        )
-    moved = await store.list_genre_artwork_candidates(["Rock", "Jazz"])
-    assert moved["Rock"]["revision"] > rock_revision
-    assert moved["Jazz"]["revision"] > jazz_revision
-
-    await store.set_artwork(
-        LocalArtworkAssociation(
-            local_album_id=membership.album.id,
-            cover_url=None,
-            source="manual",
-            source_locator="cover.bin",
-            updated_at=2,
-        ),
-        expected_album_revision=1,
-    )
-    with_artwork = await store.list_genre_artwork_candidates(["Jazz"])
-    assert with_artwork["Jazz"]["revision"] > moved["Jazz"]["revision"]
-
-    with sqlite3.connect(db_path) as connection:
-        connection.execute(
-            "DELETE FROM local_album_artwork WHERE local_album_id = ?",
-            (membership.album.id,),
-        )
-    without_artwork = await store.list_genre_artwork_candidates(["Jazz"])
-    assert without_artwork["Jazz"]["revision"] > with_artwork["Jazz"]["revision"]
-    assert without_artwork["Jazz"]["candidates"] == []
-    assert await store.get_cached_local_artwork_context(membership.album.id, 1) is None
-
-    with sqlite3.connect(db_path) as connection:
-        connection.execute(
-            "UPDATE local_albums SET retired_into_album_id = id WHERE id = ?",
-            (membership.album.id,),
-        )
-    retired = await store.list_genre_artwork_candidates(["Jazz"])
-    assert retired["Jazz"]["revision"] > without_artwork["Jazz"]["revision"]
-    assert retired["Jazz"]["candidates"] == []
 
 
 @pytest.mark.asyncio

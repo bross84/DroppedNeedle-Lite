@@ -228,7 +228,7 @@ class HomeChartsService:
         return GenreDetailResponse(
             genre=genre,
             genre_artwork=genre_artwork.get(
-                genre, GenreArtwork(kind="gradient", version="v2:0:e3b0c44298fc")
+                genre, GenreArtwork(kind="gradient", version="v3:e3b0c44298fc")
             ),
             library=library_section,
             popular=popular_section,

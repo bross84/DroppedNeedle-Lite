@@ -80,7 +80,7 @@ class DiscoverPreview(AppStruct):
 class GenreArtworkAlbum(AppStruct):
     album_id: str
     album_title: str
-    cover_version: int
+    image_url: str
     album_artist_name: str | None = None
 
 
