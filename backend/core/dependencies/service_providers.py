@@ -128,7 +128,7 @@ def get_cached_local_artwork_service() -> "CachedLocalArtworkService":
 def get_genre_artwork_service() -> "GenreArtworkService":
     from services.home.genre_artwork_service import GenreArtworkService
 
-    return GenreArtworkService(get_navidrome_library_service(), get_cache())
+    return GenreArtworkService(get_navidrome_library_service())
 
 
 @singleton

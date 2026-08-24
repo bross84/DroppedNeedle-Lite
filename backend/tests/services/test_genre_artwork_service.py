@@ -4,15 +4,11 @@ from unittest.mock import AsyncMock
 import pytest
 
 from api.v1.schemas.home import GenreArtwork
-from infrastructure.cache.memory_cache import InMemoryCache
 from services.home.genre_artwork_service import GenreArtworkService
 
 
-def test_service_constructor_takes_navidrome_and_cache_only() -> None:
-    assert list(inspect.signature(GenreArtworkService).parameters) == [
-        "navidrome",
-        "cache",
-    ]
+def test_service_constructor_takes_navidrome_only() -> None:
+    assert list(inspect.signature(GenreArtworkService).parameters) == ["navidrome"]
 
 
 def _candidate(
@@ -37,20 +33,14 @@ def _navidrome(payload: dict[str, list[dict[str, str]]]) -> AsyncMock:
 
 
 @pytest.mark.asyncio
-async def test_batch_fetches_each_uncached_genre_once_and_caches_gradient_absence() -> (
-    None
-):
+async def test_batch_fetches_every_genre_from_navidrome_in_parallel() -> None:
     navidrome = _navidrome({"Latin": [], "Electronic": []})
-    cache = InMemoryCache()
-    service = GenreArtworkService(navidrome, cache)
+    service = GenreArtworkService(navidrome)
 
-    first = await service.get_artwork_batch(["Latin", "Electronic"])
-    second = await service.get_artwork_batch(["Latin", "Electronic"])
+    result = await service.get_artwork_batch(["Latin", "Electronic"])
 
     assert navidrome.get_genre_artwork_candidates.await_count == 2
-    assert first == second
-    assert all(item.kind == "gradient" for item in first.values())
-    assert cache.size() == 2
+    assert all(item.kind == "gradient" for item in result.values())
 
 
 @pytest.mark.asyncio
@@ -63,7 +53,7 @@ async def test_selection_prefers_artist_diversity_and_caps_at_four() -> None:
         _candidate("e", artist_key="fourth"),
     ]
     navidrome = _navidrome({"Rock": candidates})
-    service = GenreArtworkService(navidrome, InMemoryCache())
+    service = GenreArtworkService(navidrome)
 
     result = await service.get_artwork_batch(["Rock"])
     selected = result["Rock"].albums
@@ -80,21 +70,19 @@ async def test_selection_prefers_artist_diversity_and_caps_at_four() -> None:
 @pytest.mark.asyncio
 async def test_no_candidates_falls_back_to_gradient() -> None:
     navidrome = _navidrome({"Jazz": []})
-    service = GenreArtworkService(navidrome, InMemoryCache())
+    service = GenreArtworkService(navidrome)
 
     result = await service.get_artwork_batch(["Jazz"])
 
-    assert result["Jazz"] == GenreArtwork(kind="gradient", version="v3:e3b0c44298fc")
+    assert result["Jazz"] == GenreArtwork(kind="gradient", version="e3b0c44298fc")
 
 
 @pytest.mark.asyncio
-async def test_cached_entry_is_reused_without_a_second_navidrome_call() -> None:
+async def test_every_call_asks_navidrome_fresh_no_internal_cache() -> None:
     navidrome = _navidrome({"Indie": [_candidate("x", artist_key="one")]})
-    cache = InMemoryCache()
-    service = GenreArtworkService(navidrome, cache)
+    service = GenreArtworkService(navidrome)
 
-    first = await service.get_artwork_batch(["Indie"])
-    second = await service.get_artwork_batch(["Indie"])
+    await service.get_artwork_batch(["Indie"])
+    await service.get_artwork_batch(["Indie"])
 
-    assert navidrome.get_genre_artwork_candidates.await_count == 1
-    assert first == second
+    assert navidrome.get_genre_artwork_candidates.await_count == 2

@@ -7,29 +7,22 @@ import hashlib
 from typing import TYPE_CHECKING
 
 from api.v1.schemas.home import GenreArtwork, GenreArtworkAlbum
-from infrastructure.cache.cache_keys import GENRE_ARTWORK_PREFIX
-from infrastructure.cache.memory_cache import CacheInterface
 
 if TYPE_CHECKING:
     from services.navidrome_library_service import NavidromeLibraryService
 
-ALGORITHM_VERSION = "v3"
-GENRE_ARTWORK_TTL_SECONDS = 86_400
-
 
 class GenreArtworkService:
-    def __init__(
-        self,
-        navidrome: "NavidromeLibraryService",
-        cache: CacheInterface,
-    ) -> None:
-        self._navidrome = navidrome
-        self._cache = cache
+    """Picks a handful of real album covers per genre, straight from Navidrome.
 
-    @staticmethod
-    def _cache_key(genre: str) -> str:
-        folded = genre.strip().casefold()
-        return f"{GENRE_ARTWORK_PREFIX}{ALGORITHM_VERSION}:{folded}"
+    Deliberately uncached beyond NavidromeRepository's own short-lived list
+    cache (5 minutes): this runs fresh on every Home/Discover load (see
+    HomeService._apply_genre_artwork), so a tag correction made in Navidrome
+    shows up on the user's next page load instead of waiting out a long TTL.
+    """
+
+    def __init__(self, navidrome: "NavidromeLibraryService") -> None:
+        self._navidrome = navidrome
 
     @staticmethod
     def _select(candidates: list[dict[str, str]]) -> GenreArtwork:
@@ -57,28 +50,14 @@ class GenreArtworkService:
         return GenreArtwork(
             kind="collage" if selected else "gradient",
             albums=selected,
-            version=f"{ALGORITHM_VERSION}:{digest}",
+            version=digest,
         )
 
     async def get_artwork_batch(self, genres: list[str]) -> dict[str, GenreArtwork]:
-        result: dict[str, GenreArtwork] = {}
-        misses: list[str] = []
-        for genre in genres:
-            cached = await self._cache.get(self._cache_key(genre))
-            if isinstance(cached, GenreArtwork):
-                result[genre] = cached
-            else:
-                misses.append(genre)
-
-        if misses:
-            candidate_lists = await asyncio.gather(
-                *(self._navidrome.get_genre_artwork_candidates(genre) for genre in misses)
-            )
-            for genre, candidates in zip(misses, candidate_lists):
-                artwork = self._select(candidates)
-                await self._cache.set(
-                    self._cache_key(genre), artwork, GENRE_ARTWORK_TTL_SECONDS
-                )
-                result[genre] = artwork
-
-        return result
+        candidate_lists = await asyncio.gather(
+            *(self._navidrome.get_genre_artwork_candidates(genre) for genre in genres)
+        )
+        return {
+            genre: self._select(candidates)
+            for genre, candidates in zip(genres, candidate_lists)
+        }

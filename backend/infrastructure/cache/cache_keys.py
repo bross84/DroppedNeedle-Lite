@@ -60,7 +60,6 @@ DAILY_MIX_PREFIX = "daily_mix:"
 TOP_PICKS_PREFIX = "top_picks:"
 GENRE_ARTIST_PREFIX = "genre_artist:"
 GENRE_SECTION_PREFIX = "genre_section:"
-GENRE_ARTWORK_PREFIX = "genre_artwork:v3:"
 
 SOURCE_RESOLUTION_PREFIX = "source_resolution"
 
@@ -112,7 +111,6 @@ def library_identification_prefixes() -> list[str]:
         TOP_PICKS_PREFIX,
         GENRE_ARTIST_PREFIX,
         GENRE_SECTION_PREFIX,
-        GENRE_ARTWORK_PREFIX,
         COMPAT_LIBRARY_PREFIX,
         LOCAL_FILES_PREFIX,
         ARTIST_INFO_PREFIX,
@@ -253,7 +251,6 @@ def home_prefixes() -> list[str]:
         TOP_PICKS_PREFIX,
         GENRE_ARTIST_PREFIX,
         GENRE_SECTION_PREFIX,
-        GENRE_ARTWORK_PREFIX,
     ]
 
 
