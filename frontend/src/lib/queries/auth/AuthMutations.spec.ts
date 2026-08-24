@@ -107,16 +107,6 @@ describe('auth mutations route through api.global', () => {
 		expect(mockPost).toHaveBeenCalledWith(AUTH_ENDPOINTS.oidcExchange, { code: 'abc' });
 	});
 
-	it('plex pin posts to the pin endpoint with no body', async () => {
-		mockPost.mockResolvedValue({ pin_id: 'p', auth_url: 'u' });
-		const { createPlexPinMutation } = await import('./AuthMutations.svelte');
-		createPlexPinMutation();
-
-		await lastMutationFn()(undefined);
-
-		expect(mockPost).toHaveBeenCalledWith(AUTH_ENDPOINTS.plexPin);
-	});
-
 	it('password recovery posts the code and new password without a session', async () => {
 		mockPost.mockResolvedValue(undefined);
 		const { createPasswordRecoveryResetMutation } = await import('./AuthMutations.svelte');
@@ -153,7 +143,7 @@ describe('auth mutations route through api.global', () => {
 
 describe('AuthProvidersQuery', () => {
 	it('fetches the providers endpoint via api.global.get', async () => {
-		mockGet.mockResolvedValue({ local: true, plex: false, oidc: false });
+		mockGet.mockResolvedValue({ local: true, oidc: false });
 		const { getAuthProvidersQuery } = await import('./AuthProvidersQuery.svelte');
 		getAuthProvidersQuery();
 

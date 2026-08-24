@@ -23,8 +23,6 @@ from api.v1.schemas.me_connections import (
     ListenBrainzConnectRequest,
     MediaServerConnectRequest,
     PersonalMixRefreshResponse,
-    PlexLinkPinResponse,
-    PlexLinkPollResponse,
     ScrobblePreferences,
     ScrobblePreferencesUpdate,
     SpotifyAuthUrlResponse,
@@ -46,7 +44,6 @@ from core.dependencies import (
     get_now_playing_service,
     get_per_user_client_factory,
     get_personal_mix_service,
-    get_plex_user_auth_service,
     get_preferences_service,
     get_settings_service,
     get_sse_publisher,
@@ -70,7 +67,6 @@ from middleware import CurrentUserDep
 from services.lastfm_auth_service import LastFmAuthService
 from services.per_user_client_factory import PerUserClientFactory
 from services.personal_mix_service import PersonalMixService
-from services.plex_user_auth_service import PlexUserAuthService
 from services.preferences_service import PreferencesService
 from services.section_catalog import Page, sections_for, valid_keys
 from services.settings_service import SettingsService
@@ -79,7 +75,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(route_class=MsgSpecRoute, prefix="/me", tags=["me"])
 
-_SUPPORTED_SERVICES = ("lastfm", "listenbrainz", "spotify", "navidrome", "plex")
+_SUPPORTED_SERVICES = ("lastfm", "listenbrainz", "spotify", "navidrome")
 _SPOTIFY_SCOPES = "playlist-read-private playlist-read-collaborative user-read-private"
 
 
@@ -398,51 +394,6 @@ async def connect_navidrome(
     )
     await client_factory.invalidate_playlist_cache(current_user.id, "navidrome")
     return ConnectionStatus(service="navidrome", enabled=True, username=body.username)
-
-
-@router.post("/connections/plex/auth/pin", response_model=PlexLinkPinResponse)
-async def plex_link_pin(
-    current_user: CurrentUserDep,
-    auth_service: PlexUserAuthService = Depends(get_plex_user_auth_service),
-    preferences_service: PreferencesService = Depends(get_preferences_service),
-) -> PlexLinkPinResponse:
-    plex = preferences_service.get_plex_connection_raw()
-    if not (plex.enabled and plex.plex_url):
-        raise HTTPException(status_code=400, detail="Plex is not configured by the administrator")
-    try:
-        pin_id, auth_url = await auth_service.create_login_pin()
-    except AuthenticationError:
-        raise HTTPException(status_code=502, detail="Couldn't reach Plex to start account linking")
-    return PlexLinkPinResponse(pin_id=pin_id, auth_url=auth_url)
-
-
-@router.get("/connections/plex/auth/poll", response_model=PlexLinkPollResponse)
-async def plex_link_poll(
-    pin_id: int,
-    current_user: CurrentUserDep,
-    auth_service: PlexUserAuthService = Depends(get_plex_user_auth_service),
-    store: UserConnectionsStore = Depends(get_user_connections_store),
-    client_factory: PerUserClientFactory = Depends(get_per_user_client_factory),
-) -> PlexLinkPollResponse:
-    try:
-        profile = await auth_service.poll_for_link(pin_id)
-    except AuthenticationError as e:
-        # covers both "not on this server" (membership gate) and profile-fetch failures
-        raise HTTPException(status_code=403, detail=str(e))
-    if profile is None:
-        return PlexLinkPollResponse(completed=False)
-    await store.upsert(
-        current_user.id,
-        "plex",
-        {
-            "auth_token": profile["auth_token"],
-            "server_access_token": profile["server_access_token"],
-            "plex_user_id": profile["uuid"],
-            "username": profile["display_name"],
-        },
-    )
-    await client_factory.invalidate_playlist_cache(current_user.id, "plex")
-    return PlexLinkPollResponse(completed=True, username=profile["display_name"])
 
 
 @router.delete("/connections/{service}", response_model=ConnectionActionResponse)

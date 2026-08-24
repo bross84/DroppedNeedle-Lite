@@ -715,7 +715,6 @@ def create_production_target_application() -> FastAPI:
             "/api/v1/covers": (15.0, 30),
             "/api/v1/auth/login": (2.0, 5),
             "/api/v1/auth/setup": (1.0, 3),
-            "/api/v1/auth/plex/poll": (5.0, 10),
         },
     )
     if get_settings().debug:

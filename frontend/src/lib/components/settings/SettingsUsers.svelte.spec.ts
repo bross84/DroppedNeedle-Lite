@@ -26,14 +26,6 @@ vi.mock('$lib/queries/auth/AuthMutations.svelte', () => ({
 	})
 }));
 
-vi.mock('$lib/queries/auth/ImportCandidatesQuery.svelte', () => ({
-	getImportCandidatesQuery: () => ({ data: { users: [] }, isLoading: false, isError: false })
-}));
-
-vi.mock('$lib/queries/auth/UserImportMutations.svelte', () => ({
-	createImportUsersMutation: () => ({ mutateAsync: vi.fn(), isPending: false })
-}));
-
 vi.mock('$lib/queries/downloads/DownloadClientsQueries.svelte', () => ({
 	getDownloadPolicyQuery: () => ({
 		data: {

@@ -9,7 +9,6 @@ import type {
 	OidcExchangeVars,
 	PasswordRecoveryCodeResponse,
 	PasswordRecoveryResetVars,
-	PlexPinResponse,
 	SetupVars
 } from './types';
 
@@ -48,9 +47,4 @@ export const createOidcExchangeMutation = () =>
 export const createOidcAuthorizeMutation = () =>
 	createMutation(() => ({
 		mutationFn: () => api.global.post<OidcAuthorizeResponse>(AUTH_ENDPOINTS.oidcAuthorize)
-	}));
-
-export const createPlexPinMutation = () =>
-	createMutation(() => ({
-		mutationFn: () => api.global.post<PlexPinResponse>(AUTH_ENDPOINTS.plexPin)
 	}));

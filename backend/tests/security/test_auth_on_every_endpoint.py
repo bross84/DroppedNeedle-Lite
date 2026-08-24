@@ -76,7 +76,6 @@ from core.dependencies import (
     get_native_library_store,
     get_personal_mix_service,
     get_playlist_service,
-    get_plex_user_auth_service,
     get_preferences_service,
     get_request_service,
     get_requests_page_service,
@@ -136,7 +135,6 @@ _SERVICE_PROVIDERS = (
     get_native_library_store,
     get_personal_mix_service,
     get_playlist_service,
-    get_plex_user_auth_service,
     get_preferences_service,
     get_request_service,
     get_requests_page_service,
@@ -832,8 +830,6 @@ _USER_ENDPOINTS = [
     ("POST", "/api/v1/stream/navidrome/item-1/stopped", None),
     # Media-server per-user account linking (issue #138)
     ("PUT", "/api/v1/me/connections/navidrome", {"username": "u", "password": "p"}),
-    ("POST", "/api/v1/me/connections/plex/auth/pin", None),
-    ("GET", "/api/v1/me/connections/plex/auth/poll?pin_id=1", None),
 ]
 
 _ALL_ENDPOINTS = _ADMIN_ENDPOINTS + _USER_ENDPOINTS

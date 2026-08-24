@@ -11,7 +11,6 @@ class SetupStatusResponse(AppStruct):
 
 class AuthProvidersResponse(AppStruct):
     local: bool
-    plex: bool
     oidc: bool
 
 
@@ -103,42 +102,6 @@ class UserQuotaResponse(AppStruct):
     exempt: bool
 
 
-class ImportCandidateResponse(AppStruct):
-    provider: str
-    provider_uid: str
-    display_name: str
-    avatar_url: str | None = None
-    email: str | None = None
-    already_imported: bool = False
-
-
-class ImportCandidateListResponse(AppStruct):
-    users: list[ImportCandidateResponse]
-
-
-class ImportUsersRequest(AppStruct):
-    provider: str
-    provider_uids: list[str]
-
-
-class ImportUsersResponse(AppStruct):
-    imported: list[UserResponse]
-    linked: list[UserResponse]
-    skipped: list[str]
-    total_imported: int
-
-
-class PlexPinResponse(AppStruct):
-    pin_id: int
-    auth_url: str
-
-
-class PlexPollResponse(AppStruct):
-    completed: bool
-    token: str | None = None
-    user: UserResponse | None = None
-
-
 class OIDCAuthorizeResponse(AppStruct):
     redirect_url: str
 
@@ -157,17 +120,6 @@ def user_to_response(user, providers: list[str] | None = None) -> UserResponse:
         username = user.username,
         username_display = user.username_display,
         providers = providers or [],
-    )
-
-
-def import_candidate_to_response(candidate) -> ImportCandidateResponse:
-    return ImportCandidateResponse(
-        provider = candidate.provider,
-        provider_uid = candidate.provider_uid,
-        display_name = candidate.display_name,
-        avatar_url = candidate.avatar_url,
-        email = candidate.email,
-        already_imported = candidate.already_imported,
     )
 
 

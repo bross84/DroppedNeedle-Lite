@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import re
-import uuid
 
 import httpx
 
@@ -173,30 +172,6 @@ def get_navidrome_folder_preferences_store() -> "NavidromeFolderPreferencesStore
         db_path=get_settings().library_db_path,
         write_lock=get_persistence_write_lock(),
     )
-
-
-@singleton
-def get_plex_repository() -> "PlexRepository":
-    from repositories.plex_repository import PlexRepository
-
-    cache = get_cache()
-    http_client = _get_configured_http_client()
-    preferences = get_preferences_service()
-    plex_settings = preferences.get_plex_connection_raw()
-    repo = PlexRepository(http_client=http_client, cache=cache)
-    if plex_settings.enabled:
-        # plex.tv account calls (the admin user import) return 400 without
-        # X-Plex-Client-Identifier, and the id is otherwise created only by the Plex
-        # OAuth login flow - an admin who set up Plex by pasting a token has none yet.
-        client_id = preferences.get_or_create_setting(
-            "plex_client_id", lambda: str(uuid.uuid4())
-        )
-        repo.configure(
-            url=plex_settings.plex_url,
-            token=plex_settings.plex_token,
-            client_id=client_id,
-        )
-    return repo
 
 
 @singleton

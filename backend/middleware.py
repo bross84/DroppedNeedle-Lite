@@ -32,8 +32,6 @@ _PUBLIC_PATHS: frozenset[str] = frozenset({
     # Logout is public so an expired session can still clear the cookie
     "/api/v1/auth/logout",
     # Third-party login flows
-    "/api/v1/auth/plex/pin",
-    "/api/v1/auth/plex/poll",
     "/api/v1/auth/oidc/authorize",
     "/api/v1/auth/oidc/callback",
     "/api/v1/auth/oidc/exchange",

@@ -16,7 +16,6 @@ from api.v1.schemas.settings import (
     LastFmVerifyResponse,
     ScrobbleSettings,
     PrimaryMusicSourceSettings,
-    PlexConnectionSettings,
     MusicBrainzConnectionSettings,
     SecuritySettings,
     OIDCConnectionSettings,
@@ -297,31 +296,6 @@ async def verify_navidrome_connection(
 ):
     result = await settings_service.verify_navidrome(settings)
     return VerifyConnectionResponse(valid=result.valid, message=result.message)
-
-
-@router.get("/plex", response_model=PlexConnectionSettings)
-async def get_plex_settings(
-    preferences_service: PreferencesService = Depends(get_preferences_service),
-):
-    return preferences_service.get_plex_connection()
-
-
-@router.put("/plex", response_model=PlexConnectionSettings)
-async def update_plex_settings(
-    settings: PlexConnectionSettings = MsgSpecBody(PlexConnectionSettings),
-    preferences_service: PreferencesService = Depends(get_preferences_service),
-    settings_service: SettingsService = Depends(get_settings_service),
-):
-    try:
-        preferences_service.save_plex_connection(settings)
-        await settings_service.on_plex_settings_changed()
-        logger.info("Updated Plex connection settings")
-        return preferences_service.get_plex_connection()
-    except ConfigurationError as e:
-        logger.warning("Configuration error updating Plex settings: %s", e)
-        raise HTTPException(
-            status_code=400, detail="Plex settings are incomplete or invalid"
-        )
 
 
 @router.get("/listenbrainz", response_model=ListenBrainzConnectionSettings)

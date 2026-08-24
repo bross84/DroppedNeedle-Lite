@@ -2,7 +2,6 @@ import type { AuthUser } from '$lib/stores/authStore.svelte';
 
 export interface AuthProviders {
 	local: boolean;
-	plex: boolean;
 	oidc: boolean;
 }
 
@@ -49,45 +48,8 @@ export interface OidcExchangeVars {
 	code: string;
 }
 
-export interface PlexPinResponse {
-	pin_id: string;
-	auth_url: string;
-}
-
-/** Poll returns `{ completed: false }` until the user authorises, then the session. */
-export interface PlexPollResponse {
-	completed?: boolean;
-	user?: AuthSessionUser;
-}
-
 export interface OidcAuthorizeResponse {
 	redirect_url: string;
-}
-
-/** An importable media-server account (admin import picker, Phase 6 / D5). */
-export interface ImportCandidate {
-	provider: string;
-	provider_uid: string;
-	display_name: string;
-	avatar_url: string | null;
-	email: string | null;
-	already_imported: boolean;
-}
-
-export interface ImportCandidateListResponse {
-	users: ImportCandidate[];
-}
-
-export interface ImportUsersVars {
-	provider: string;
-	provider_uids: string[];
-}
-
-export interface ImportUsersResult {
-	imported: AuthSessionUser[];
-	linked: AuthSessionUser[];
-	skipped: string[];
-	total_imported: number;
 }
 
 const KNOWN_ROLES: readonly AuthUser['role'][] = ['admin', 'trusted', 'user'];

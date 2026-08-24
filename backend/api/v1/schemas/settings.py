@@ -357,7 +357,6 @@ class OIDCConnectionSettings(AppStruct):
 
 OIDC_SECRET_MASK = "oidc****"
 NAVIDROME_PASSWORD_MASK = "********"
-PLEX_TOKEN_MASK = "plex****"
 ACOUSTID_KEY_MASK = "acoustid****"
 DOWNLOAD_CLIENT_API_KEY_MASK = "slskd****"
 INDEXER_API_KEY_MASK = "indexer****"
@@ -445,18 +444,6 @@ class NavidromeConnectionSettings(AppStruct):
         self.navidrome_url = (
             self.navidrome_url.rstrip("/") if self.navidrome_url else ""
         )
-
-
-class PlexConnectionSettings(AppStruct):
-    plex_url: str = ""
-    plex_token: str = ""
-    enabled: bool = False
-    login_enabled: bool = False
-    music_library_ids: list[str] = []
-    scrobble_to_plex: bool = True
-
-    def __post_init__(self) -> None:
-        self.plex_url = self.plex_url.rstrip("/") if self.plex_url else ""
 
 
 class ListenBrainzConnectionSettings(AppStruct):
