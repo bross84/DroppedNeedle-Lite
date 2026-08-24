@@ -8,7 +8,11 @@
 		createLocalLoginMutation,
 		createOidcAuthorizeMutation
 	} from '$lib/queries/auth/AuthMutations.svelte';
-	import { toAuthUser, type AuthProviders, type AuthSessionResponse } from '$lib/queries/auth/types';
+	import {
+		toAuthUser,
+		type AuthProviders,
+		type AuthSessionResponse
+	} from '$lib/queries/auth/types';
 	import { Eye, EyeOff } from 'lucide-svelte';
 
 	type Tab = 'local' | 'oidc';
