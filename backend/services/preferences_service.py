@@ -31,7 +31,6 @@ from api.v1.schemas.settings import (
     DOWNLOAD_CLIENT_API_KEY_MASK,
     INDEXER_API_KEY_MASK,
     SABNZBD_API_KEY_MASK,
-    LIDARR_IMPORT_API_KEY_MASK,
     DownloadPolicySettings,
     NewznabIndexerSettings,
     SabnzbdConnectionSettings,

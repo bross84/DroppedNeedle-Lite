@@ -358,7 +358,7 @@ class AlbumCoverFetcher:
                 return None
             content_type = response.headers.get("content-type", "")
             if not _is_valid_image_content_type(content_type):
-                logger.warning(f"Non-image content-type from Lidarr album: {content_type}")
+                logger.warning(f"Non-image content-type from library album: {content_type}")
                 return None
             content = response.content
             task = asyncio.create_task(self._write_disk_cache(file_path, content, content_type, {"source": "library"}))

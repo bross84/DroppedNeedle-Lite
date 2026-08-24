@@ -369,7 +369,7 @@ class AlbumService:
                 else:
                     requested_mbids = set()
             except Exception:  # noqa: BLE001
-                logger.warning("Lidarr unavailable, proceeding without requested data")
+                logger.warning("Library repository unavailable, proceeding without requested data")
                 requested_mbids = set()
             is_requested = release_group_id.lower() in requested_mbids
 

@@ -117,7 +117,7 @@ class NavidromeLibraryService:
             self._dirty = True
 
     async def _resolve_album_mbid(self, name: str, artist: str) -> str | None:
-        """Resolve a release-group MBID for an album via Lidarr library matching."""
+        """Resolve a release-group MBID for an album via native library matching."""
         if not name or not artist:
             return None
         cache_key = f"{_normalize(name)}:{_normalize(artist)}"
@@ -152,7 +152,7 @@ class NavidromeLibraryService:
         return None
 
     async def _resolve_artist_mbid(self, name: str) -> str | None:
-        """Resolve an artist MBID via Lidarr library matching."""
+        """Resolve an artist MBID via native library matching."""
         if not name:
             return None
         cache_key = _normalize(name)
@@ -192,7 +192,7 @@ class NavidromeLibraryService:
             logger.warning("Failed to persist dirty Navidrome MBID cache", exc_info=True)
 
     async def _build_artist_summary(self, artist_data: object) -> NavidromeArtistSummary:
-        """Build an artist summary, enriching MBID from Lidarr if needed."""
+        """Build an artist summary, enriching MBID from the native library if needed."""
         name = getattr(artist_data, 'name', '')
         library_mbid = await self._resolve_artist_mbid(name) if name else None
         mbid = library_mbid or getattr(artist_data, 'musicBrainzId', None) or None
@@ -1098,8 +1098,9 @@ class NavidromeLibraryService:
         )
 
     async def warm_mbid_cache(self) -> None:
-        """Background task: enrich all Navidrome albums and artists with MBIDs from Lidarr library matching.
-        Loads from SQLite first for instant startup; enriches from Lidarr library matching."""
+        """Background task: enrich all Navidrome albums and artists with MBIDs from native
+        library matching. Loads from SQLite first for instant startup; enriches from the
+        native catalog."""
 
         if self._library_db:
             try:
@@ -1116,7 +1117,7 @@ class NavidromeLibraryService:
                     if norm_artist and artist_mbid:
                         self._library_artist_index[norm_artist] = artist_mbid
             except Exception:  # noqa: BLE001
-                logger.warning("Failed to build Lidarr matching indices", exc_info=True)
+                logger.warning("Failed to build native library matching indices", exc_info=True)
 
         if self._mbid_store:
             try:
@@ -1129,7 +1130,7 @@ class NavidromeLibraryService:
                 logger.warning("Failed to load Navidrome MBID cache from disk", exc_info=True)
 
         if not self._library_album_index:
-            logger.warning("Lidarr library data unavailable - Lidarr enrichment will be skipped")
+            logger.warning("Native library data unavailable - MBID enrichment will be skipped")
 
         try:
             all_albums: list[SubsonicAlbum] = []
