@@ -166,10 +166,10 @@ async def test_admin_create_user_optional_email_and_duplicate_username(tmp_path)
 @pytest.mark.asyncio
 async def test_sso_new_user_retries_on_username_index_race(tmp_path, monkeypatch):
     """A concurrent first-login that loses the username race re-derives instead of 500ing."""
-    from services.plex_user_auth_service import PlexUserAuthService
+    from services.oidc_user_auth_service import OIDCUserAuthService
 
     store = AuthStore(tmp_path / "library.db")
-    svc = PlexUserAuthService(store, None, None)
+    svc = OIDCUserAuthService(store, None, None)
 
     real_create = store.create_user
     calls = {"n": 0}
@@ -183,26 +183,24 @@ async def test_sso_new_user_retries_on_username_index_race(tmp_path, monkeypatch
     monkeypatch.setattr(store, "create_user", flaky_create)
 
     profile = {
-        "uuid": "plex-1", "email": "", "display_name": "Jane Doe",
-        "thumb": None, "auth_token": "tok",
+        "sub": "oidc-1", "email": "", "name": "Jane Doe", "thumb": None,
     }
-    user = await svc._find_or_create_user(profile, "tok")
+    user = await svc._find_or_create_user(profile, {})
     assert user.username == "jane-doe"
     assert calls["n"] >= 2  # retried after the simulated race
 
 
 @pytest.mark.asyncio
-async def test_plex_new_user_autoderives_username(tmp_path):
-    from services.plex_user_auth_service import PlexUserAuthService
+async def test_oidc_new_user_autoderives_username(tmp_path):
+    from services.oidc_user_auth_service import OIDCUserAuthService
 
     store = AuthStore(tmp_path / "library.db")
-    svc = PlexUserAuthService(store, None, None)
+    svc = OIDCUserAuthService(store, None, None)
 
     profile = {
-        "uuid": "plex-1", "email": "", "display_name": "Cool Person",
-        "thumb": None, "auth_token": "tok",
+        "sub": "oidc-1", "email": "", "name": "Cool Person", "thumb": None,
     }
-    user = await svc._find_or_create_user(profile, "tok")
+    user = await svc._find_or_create_user(profile, {})
     assert user.username == "cool-person" and user.username_display == "Cool-Person"
 
 

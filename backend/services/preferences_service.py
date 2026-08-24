@@ -22,8 +22,6 @@ from api.v1.schemas.settings import (
     NavidromeConnectionSettings,
     NAVIDROME_PASSWORD_MASK,
     OIDC_SECRET_MASK,
-    PlexConnectionSettings,
-    PLEX_TOKEN_MASK,
     MusicBrainzConnectionSettings,
     SecuritySettings,
     LibrarySettings,
@@ -589,61 +587,6 @@ class PreferencesService:
             raise ConfigurationError(
                 f"Failed to save Navidrome connection settings: {e}"
             )
-
-    def get_plex_connection(self) -> PlexConnectionSettings:
-        config = self._load_config()
-        plex_data = config.get("plex_settings", {})
-        settings = PlexConnectionSettings(
-            plex_url=plex_data.get("plex_url", ""),
-            plex_token=plex_data.get("plex_token", ""),
-            enabled=plex_data.get("enabled", False),
-            login_enabled=plex_data.get("login_enabled", False),
-            music_library_ids=plex_data.get("music_library_ids", []),
-            scrobble_to_plex=plex_data.get("scrobble_to_plex", True),
-        )
-        if settings.plex_token:
-            settings.plex_token = PLEX_TOKEN_MASK
-        return settings
-
-    def get_plex_connection_raw(self) -> PlexConnectionSettings:
-        config = self._load_config()
-        plex_data = config.get("plex_settings", {})
-        token = self._read_secret(
-            ("plex_settings", "plex_token"), plex_data.get("plex_token", "")
-        )
-        return PlexConnectionSettings(
-            plex_url=plex_data.get("plex_url", ""),
-            plex_token=token,
-            enabled=plex_data.get("enabled", False),
-            login_enabled=plex_data.get("login_enabled", False),
-            music_library_ids=plex_data.get("music_library_ids", []),
-            scrobble_to_plex=plex_data.get("scrobble_to_plex", True),
-        )
-
-    def save_plex_connection(self, settings: PlexConnectionSettings) -> None:
-        try:
-            config = self._load_config().copy()
-            current_data = config.get("plex_settings", {})
-
-            token = settings.plex_token
-            if token == PLEX_TOKEN_MASK:
-                token = current_data.get("plex_token", "")
-            else:
-                token = encrypt(token)
-
-            config["plex_settings"] = {
-                "plex_url": settings.plex_url,
-                "plex_token": token,
-                "enabled": settings.enabled,
-                "login_enabled": settings.login_enabled,
-                "music_library_ids": settings.music_library_ids,
-                "scrobble_to_plex": settings.scrobble_to_plex,
-            }
-            self._save_config(config)
-            logger.info("Saved Plex connection settings to %s", self._config_path)
-        except Exception as e:  # noqa: BLE001
-            logger.error("Failed to save Plex connection settings: %s", e)
-            raise ConfigurationError(f"Failed to save Plex connection settings: {e}")
 
     def get_listenbrainz_connection(self) -> ListenBrainzConnectionSettings:
         config = self._load_config()

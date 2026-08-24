@@ -2,29 +2,23 @@
 	import '../../auth.css';
 	import { goto } from '$app/navigation';
 	import { authStore } from '$lib/stores/authStore.svelte';
-	import { api, ApiError } from '$lib/api/client';
+	import { ApiError } from '$lib/api/client';
 	import { getAuthProvidersQuery } from '$lib/queries/auth/AuthProvidersQuery.svelte';
 	import {
 		createLocalLoginMutation,
-		createOidcAuthorizeMutation,
-		createPlexPinMutation
+		createOidcAuthorizeMutation
 	} from '$lib/queries/auth/AuthMutations.svelte';
-	import { AUTH_ENDPOINTS } from '$lib/queries/auth/endpoints';
 	import {
 		toAuthUser,
 		type AuthProviders,
-		type AuthSessionResponse,
-		type PlexPollResponse
+		type AuthSessionResponse
 	} from '$lib/queries/auth/types';
-	import { onDestroy } from 'svelte';
 	import { Eye, EyeOff } from 'lucide-svelte';
-	import PlexIcon from '$lib/components/PlexIcon.svelte';
 
-	type Tab = 'local' | 'plex' | 'oidc';
+	type Tab = 'local' | 'oidc';
 
 	const DEFAULT_PROVIDERS: AuthProviders = {
 		local: true,
-		plex: false,
 		oidc: false
 	};
 
@@ -37,8 +31,7 @@
 	$effect(() => {
 		if (tabInitialised || !providersQuery.isSuccess) return;
 		tabInitialised = true;
-		if (!providers.local && providers.plex) activeTab = 'plex';
-		else if (!providers.local && providers.oidc) activeTab = 'oidc';
+		if (!providers.local && providers.oidc) activeTab = 'oidc';
 	});
 
 	let username = $state('');
@@ -47,19 +40,9 @@
 	let localError = $state<string | null>(null);
 	const localLogin = createLocalLoginMutation();
 
-	// plex PIN request is a mutation; authorisation is polled imperatively
-	let plexLoading = $state(false);
-	let plexError = $state<string | null>(null);
-	let plexPollInterval: ReturnType<typeof setInterval> | null = null;
-	const plexPin = createPlexPinMutation();
-
 	let oidcLoading = $state(false);
 	let oidcError = $state<string | null>(null);
 	const oidcAuthorize = createOidcAuthorizeMutation();
-
-	onDestroy(() => {
-		if (plexPollInterval) clearInterval(plexPollInterval);
-	});
 
 	function storeSession(data: AuthSessionResponse) {
 		authStore.setUser(toAuthUser(data.user));
@@ -75,33 +58,6 @@
 		}
 	}
 
-	async function handlePlexLogin() {
-		plexError = null;
-		plexLoading = true;
-		if (plexPollInterval) clearInterval(plexPollInterval);
-		try {
-			const { pin_id, auth_url } = await plexPin.mutateAsync();
-			window.open(auth_url, '_blank', 'width=800,height=600');
-
-			plexPollInterval = setInterval(async () => {
-				try {
-					const data = await api.global.get<PlexPollResponse>(AUTH_ENDPOINTS.plexPoll(pin_id));
-					if (data.completed === false) return;
-					clearInterval(plexPollInterval!);
-					plexLoading = false;
-					if (data.user) storeSession({ user: data.user });
-				} catch (e) {
-					clearInterval(plexPollInterval!);
-					plexLoading = false;
-					plexError = e instanceof ApiError ? 'Plex access denied' : 'Plex login failed';
-				}
-			}, 2000);
-		} catch {
-			plexError = 'Plex login unavailable';
-			plexLoading = false;
-		}
-	}
-
 	async function handleOidcLogin() {
 		oidcError = null;
 		oidcLoading = true;
@@ -114,7 +70,7 @@
 		}
 	}
 
-	const availableTabs = $derived((['local', 'plex', 'oidc'] as Tab[]).filter((t) => providers[t]));
+	const availableTabs = $derived((['local', 'oidc'] as Tab[]).filter((t) => providers[t]));
 </script>
 
 <svelte:head>
@@ -139,13 +95,7 @@
 							class:tab-btn-active={activeTab === tab}
 							onclick={() => (activeTab = tab)}
 						>
-							{#if tab === 'plex'}<PlexIcon class="h-4 w-4" style="color: rgb(var(--brand-plex))" />
-							{/if}
-							{tab === 'local'
-								? 'Username'
-								: tab === 'oidc'
-									? 'SSO'
-									: tab.charAt(0).toUpperCase() + tab.slice(1)}
+							{tab === 'local' ? 'Username' : 'SSO'}
 						</button>
 					{/each}
 				</div>
@@ -217,32 +167,6 @@
 							Sign in
 						</button>
 					</form>
-				{:else if activeTab === 'plex'}
-					<div class="flex flex-col gap-4">
-						<div class="flex items-center gap-2 mb-1">
-							<PlexIcon class="h-5 w-5" style="color: rgb(var(--brand-plex))" />
-							<span class="text-sm font-medium">Sign in with your Plex account</span>
-						</div>
-						<p class="text-sm text-base-content/60">
-							A Plex login window will open. Sign in there and return to this page.
-						</p>
-						{#if plexError}
-							<div class="alert alert-error py-2 text-sm">{plexError}</div>
-						{/if}
-						<button
-							class="btn btn-primary w-full gap-2"
-							onclick={() => void handlePlexLogin()}
-							disabled={plexLoading}
-						>
-							{#if plexLoading}
-								<span class="loading loading-spinner loading-sm"></span>
-								Waiting for Plex…
-							{:else}
-								<PlexIcon class="h-4 w-4" style="color: currentColor" />
-								Continue with Plex
-							{/if}
-						</button>
-					</div>
 				{:else if activeTab === 'oidc'}
 					<div class="flex flex-col gap-4">
 						<p class="text-sm text-base-content/60">

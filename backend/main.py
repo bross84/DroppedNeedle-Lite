@@ -753,7 +753,6 @@ app.add_middleware(
         "/api/v1/auth/login": (2.0, 5),
         "/api/v1/auth/password-recovery/reset": (1.0, 5),
         "/api/v1/auth/setup": (1.0, 3),
-        "/api/v1/auth/plex/poll": (5.0, 10),
     },
 )
 

@@ -2,15 +2,12 @@
 	import { onMount } from 'svelte';
 	import { api } from '$lib/api/client';
 	import { authStore } from '$lib/stores/authStore.svelte';
-	import PlexIcon from '$lib/components/PlexIcon.svelte';
-	import SettingsImportUsers from '$lib/components/settings/SettingsImportUsers.svelte';
 	import {
 		UserRound,
 		ShieldCheck,
 		UserCheck,
 		UserX,
 		Plus,
-		Download,
 		Eye,
 		EyeOff,
 		RefreshCw,
@@ -68,8 +65,6 @@
 	const totalPages = $derived(Math.max(1, Math.ceil(total / PAGE_SIZE)));
 	const rangeStart = $derived(total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1);
 	const rangeEnd = $derived(Math.min(page * PAGE_SIZE, total));
-
-	let showImport = $state(false);
 
 	// Per-user quotas (CollectionManagement Feature C): rows with the editor open,
 	// plus the global defaults every user without an override inherits.
@@ -303,7 +298,6 @@
 
 	const providerLabel: Record<string, string> = {
 		local: 'Email',
-		plex: 'Plex',
 		oidc: 'SSO'
 	};
 
@@ -339,10 +333,6 @@
 			>
 				<RefreshCw class="h-4 w-4 {loading ? 'animate-spin' : ''}" />
 			</button>
-			<button class="btn btn-outline btn-sm gap-1" onclick={() => (showImport = true)}>
-				<Download class="h-4 w-4" />
-				Import
-			</button>
 			<button
 				class="btn btn-primary btn-sm gap-1"
 				onclick={() => (showCreateForm = !showCreateForm)}
@@ -352,8 +342,6 @@
 			</button>
 		</div>
 	</div>
-
-	<SettingsImportUsers bind:open={showImport} onImported={() => void loadUsers(page)} />
 
 	{#if showCreateForm}
 		<div class="bg-base-300/50 rounded-box p-4 border border-base-300">
@@ -519,9 +507,7 @@
 						<div class="flex items-center gap-1.5 shrink-0">
 							{#each user.providers as provider (provider)}
 								<div class="tooltip" data-tip={providerLabel[provider] ?? provider}>
-									{#if provider === 'plex'}
-										<PlexIcon class="h-3.5 w-3.5" style="color: rgb(var(--brand-plex))" />
-									{:else if provider === 'oidc'}
+									{#if provider === 'oidc'}
 										<KeyRound class="h-3.5 w-3.5 text-base-content/40" />
 									{:else}
 										<Mail class="h-3.5 w-3.5 text-base-content/40" />

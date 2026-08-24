@@ -167,7 +167,7 @@ def test_set_local_password_for_sso_only(tmp_path):
             id="sso-1", display_name="SSO User", role="user",
             username=username, username_display=display,
         )
-        await store.create_auth_provider(id="p-px", user_id=user.id, provider="plex", provider_uid="px-1")
+        await store.create_auth_provider(id="p-px", user_id=user.id, provider="oidc", provider_uid="px-1")
         return user
 
     user = asyncio.run(seed())

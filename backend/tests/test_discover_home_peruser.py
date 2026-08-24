@@ -47,9 +47,6 @@ def _global_prefs() -> MagicMock:
     prefs.get_navidrome_connection.return_value = _conn(
         navidrome_url="", username="", password=""
     )
-    prefs.get_plex_connection.return_value = _conn(
-        plex_url="", plex_token="", music_library_ids=[]
-    )
     prefs.is_lastfm_enabled.return_value = False
     prefs.get_lastfm_connection.return_value = _conn(
         api_key="", shared_secret="", session_key="", username=""

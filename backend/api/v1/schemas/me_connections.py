@@ -68,12 +68,3 @@ class MediaServerConnectRequest(AppStruct):
     password: str
 
 
-class PlexLinkPinResponse(AppStruct):
-    pin_id: int
-    auth_url: str
-
-
-class PlexLinkPollResponse(AppStruct):
-    completed: bool = False
-    # set once completed: the linked Plex account's display name
-    username: str = ""

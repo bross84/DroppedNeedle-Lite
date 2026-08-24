@@ -6,7 +6,6 @@ Re-exported here so ``from core.dependencies import X`` keeps working.
 from .auth_providers import (  # noqa: F401
     get_auth_store,
     get_auth_service,
-    get_plex_user_auth_service,
     get_oidc_user_auth_service,
 )
 
@@ -39,7 +38,6 @@ from .repo_providers import (  # noqa: F401
     get_lrclib_repository,
     get_navidrome_repository,
     get_navidrome_folder_preferences_store,
-    get_plex_repository,
     get_coverart_repository,
     get_target_coverart_repository,
     get_youtube_repo,
@@ -321,7 +319,6 @@ from .type_aliases import (  # noqa: F401
     NavidromeRepositoryDep,
     NavidromeLibraryServiceDep,
     NavidromePlaybackServiceDep,
-    PlexRepositoryDep,
     CacheStatusServiceDep,
     GitHubRepositoryDep,
     VersionServiceDep,

@@ -10,37 +10,29 @@ from api.v1.schemas.auth import (
     AuthProvidersResponse,
     AuthResponse,
     CreateUserRequest,
-    ImportCandidateListResponse,
-    ImportUsersRequest,
-    ImportUsersResponse,
     LoginRequest,
     OIDCAuthorizeResponse,
     OIDCExchangeRequest,
     PasswordRecoveryCodeResponse,
     PasswordRecoveryResetRequest,
-    PlexPinResponse,
-    PlexPollResponse,
     SessionListResponse,
     SetRoleRequest,
     SetupRequest,
     SetupStatusResponse,
     UserListResponse,
     UserResponse,
-    import_candidate_to_response,
     UserQuotaOverrideBody,
     UserQuotaResponse,
     session_to_response,
     user_to_response,
 )
 from core.dependencies import get_quota_service
-from core.dependencies.auth_providers import get_auth_service, get_plex_user_auth_service, get_oidc_user_auth_service, get_user_import_service
+from core.dependencies.auth_providers import get_auth_service, get_oidc_user_auth_service
 from core.exceptions import AuthenticationError, ConfigurationError, ExternalServiceError, RegistrationError
 from infrastructure.msgspec_fastapi import MsgSpecBody, MsgSpecRoute
 from middleware import CurrentAdminDep, CurrentTokenDep, CurrentUserDep
 from services.oidc_user_auth_service import OIDCUserAuthService
 from services.auth_service import AuthService
-from services.plex_user_auth_service import PlexUserAuthService
-from services.user_import_service import UserImportService
 
 logger = logging.getLogger(__name__)
 
@@ -285,38 +277,6 @@ async def admin_create_password_recovery_code(
     )
 
 
-@router.get("/admin/import/plex", response_model = ImportCandidateListResponse)
-async def admin_import_list_plex(
-    _admin: CurrentAdminDep,
-    importer: UserImportService = Depends(get_user_import_service),
-) -> ImportCandidateListResponse:
-    candidates = await importer.list_plex_users()
-    return ImportCandidateListResponse(
-        users = [import_candidate_to_response(c) for c in candidates],
-    )
-
-
-@router.post("/admin/import", response_model = ImportUsersResponse)
-async def admin_import_users(
-    _admin: CurrentAdminDep,
-    body: ImportUsersRequest = MsgSpecBody(ImportUsersRequest),
-    importer: UserImportService = Depends(get_user_import_service),
-) -> ImportUsersResponse:
-    if body.provider not in ("plex",):
-        raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST, detail = "Unsupported import provider")
-    try:
-        result = await importer.import_users(body.provider, body.provider_uids)
-    except RegistrationError as e:
-        logger.debug(f"User import failed: {e}")
-        raise HTTPException(status_code = status.HTTP_409_CONFLICT, detail = "Could not import users")
-    return ImportUsersResponse(
-        imported = [user_to_response(u) for u in result.imported],
-        linked = [user_to_response(u) for u in result.linked],
-        skipped = result.skipped,
-        total_imported = len(result.imported),
-    )
-
-
 @router.patch("/admin/users/{user_id}/role", status_code = status.HTTP_204_NO_CONTENT)
 async def admin_set_role(
     user_id: str,
@@ -394,33 +354,6 @@ async def admin_delete_user(
     except AuthenticationError as e:
         logger.debug(f"User deletion failed for user {user_id[:8]}: {e}")
         raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST, detail = "Could not delete user")
-
-
-@router.post("/plex/pin", response_model = PlexPinResponse)
-async def plex_login_pin(plex_auth: PlexUserAuthService = Depends(get_plex_user_auth_service)) -> PlexPinResponse:
-    pin_id, auth_url = await plex_auth.create_login_pin()
-    return PlexPinResponse(pin_id = pin_id, auth_url = auth_url)
-
-
-@router.get("/plex/poll", response_model = PlexPollResponse)
-async def plex_login_poll(
-    pin_id: int,
-    request: Request,
-    response: Response,
-    plex_auth: PlexUserAuthService = Depends(get_plex_user_auth_service),
-) -> PlexPollResponse:
-    try:
-        result = await plex_auth.poll_and_login(
-            pin_id, user_agent = request.headers.get("User-Agent")
-        )
-    except AuthenticationError as e:
-        logger.debug(f"Plex login rejected: {e}")
-        raise HTTPException(status_code = status.HTTP_403_FORBIDDEN, detail = "Access denied")
-    if result is None:
-        return PlexPollResponse(completed = False)
-    user, token = result
-    _set_session_cookie(response, request, token)
-    return PlexPollResponse(completed = True, token = token, user = user_to_response(user))
 
 
 @router.post("/oidc/authorize", response_model = OIDCAuthorizeResponse)

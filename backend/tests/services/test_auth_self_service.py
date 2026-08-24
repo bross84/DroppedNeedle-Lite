@@ -125,7 +125,7 @@ def test_set_local_password_for_sso_only_account(tmp_path):
             username=username, username_display=display,
         )
         await store.create_auth_provider(
-            id="p-px", user_id=user.id, provider="plex", provider_uid="px-123",
+            id="p-px", user_id=user.id, provider="oidc", provider_uid="px-123",
         )
 
         await auth.set_local_password(user.id, PASSWORD)

@@ -379,33 +379,6 @@ class SettingsService:
                 status="error", message="Couldn't finish the connection test"
             )
 
-    async def on_plex_settings_changed(self) -> None:
-        """Reset the Plex repo/circuit-breaker whenever the shared connection
-        settings (url/token/enabled, or the ``login_enabled`` toggle) are saved.
-
-        The library/playback surface is gone (Stage 2), but the repo singleton
-        still backs the Plex login flow and the admin bulk-user-import feature,
-        so both must be rebuilt here to pick up a freshly-saved connection
-        without an app restart."""
-        from repositories.plex_repository import PlexRepository
-        from core.dependencies import get_plex_repository, get_mbid_store
-        from core.dependencies.auth_providers import (
-            get_user_import_service,
-            get_plex_user_auth_service,
-        )
-
-        PlexRepository.reset_circuit_breaker()
-        get_plex_repository.cache_clear()
-        get_user_import_service.cache_clear()
-        get_plex_user_auth_service.cache_clear()
-        mbid_store = get_mbid_store()
-        await mbid_store.clear_plex_mbid_indexes()
-        new_repo = get_plex_repository()
-        await new_repo.clear_cache()
-        await self.clear_home_cache()
-        await self.clear_source_resolution_cache()
-        logger.info("Plex settings change: repo/login singletons reset")
-
     async def verify_musicbrainz(
         self, settings: MusicBrainzConnectionSettings
     ) -> MusicBrainzVerifyResult:

@@ -30,30 +30,6 @@ def get_auth_service() -> "AuthService":
 
 
 @singleton
-def get_plex_user_auth_service() -> "PlexUserAuthService":
-    from services.plex_user_auth_service import PlexUserAuthService
-    from core.dependencies.repo_providers import get_plex_repository, get_user_connections_store
-    return PlexUserAuthService(
-        auth_store = get_auth_store(),
-        plex_repository = get_plex_repository(),
-        preferences_service = get_preferences_service(),
-        connections_store = get_user_connections_store(),
-        cache = get_cache(),
-    )
-
-
-@singleton
-def get_user_import_service() -> "UserImportService":
-    from services.user_import_service import UserImportService
-    from core.dependencies.repo_providers import get_plex_repository
-    return UserImportService(
-        auth_store = get_auth_store(),
-        plex_repository = get_plex_repository(),
-        preferences_service = get_preferences_service(),
-    )
-
-
-@singleton
 def get_oidc_user_auth_service() -> "OIDCUserAuthService":
     from services.oidc_user_auth_service import OIDCUserAuthService
     from core.dependencies.cache_providers import get_cache

@@ -28,7 +28,6 @@ from repositories.youtube import YouTubeRepository
 from repositories.lastfm_repository import LastFmRepository
 from repositories.playlist_repository import PlaylistRepository
 from repositories.navidrome_repository import NavidromeRepository
-from repositories.plex_repository import PlexRepository
 from repositories.github_repository import GitHubRepository
 from services.preferences_service import PreferencesService
 from services.native.library_policy_service import LibraryPolicyService
@@ -137,7 +136,6 @@ from .repo_providers import (
     get_request_history_store,
     get_wanted_store,
     get_navidrome_repository,
-    get_plex_repository,
     get_github_repository,
 )
 from .service_providers import (
@@ -405,7 +403,6 @@ NavidromeLibraryServiceDep = Annotated[
 NavidromePlaybackServiceDep = Annotated[
     NavidromePlaybackService, Depends(get_navidrome_playback_service)
 ]
-PlexRepositoryDep = Annotated[PlexRepository, Depends(get_plex_repository)]
 CacheStatusServiceDep = Annotated[CacheStatusService, Depends(get_cache_status_service)]
 GitHubRepositoryDep = Annotated[GitHubRepository, Depends(get_github_repository)]
 VersionServiceDep = Annotated[VersionService, Depends(get_version_service)]

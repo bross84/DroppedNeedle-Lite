@@ -1094,16 +1094,12 @@ async def test_target_home_projects_identified_and_local_only_catalog_rows(
         api_key="",
         navidrome_url="",
         password="",
-        plex_url="",
-        plex_token="",
-        music_library_ids=[],
         api_enabled=False,
     )
     preferences = SimpleNamespace(
         get_listenbrainz_connection=lambda: disabled,
         get_youtube_connection=lambda: disabled,
         get_navidrome_connection=lambda: disabled,
-        get_plex_connection=lambda: disabled,
         is_download_source_ready=lambda: False,
         is_lastfm_enabled=lambda: False,
     )

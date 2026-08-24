@@ -166,35 +166,6 @@ async def test_navidrome_settings_change_rebuilds_every_captured_repository():
 
 
 @pytest.mark.asyncio(loop_scope="function")
-async def test_plex_settings_change_clears_user_import_service():
-    """Configuring Plex must rebuild the login/admin-import singletons too - the
-    library/playback surface is gone (Stage 2), but the repo singleton still backs
-    the Plex login flow and the admin bulk-user-import feature."""
-    from unittest.mock import patch, MagicMock, AsyncMock
-
-    service, _cache = await _build_service()
-    mbid = MagicMock()
-    mbid.clear_plex_mbid_indexes = AsyncMock()
-    plex_repo = MagicMock()
-    plex_repo.clear_cache = AsyncMock()
-    import_fn = MagicMock()
-    auth_fn = MagicMock()
-
-    with (
-        patch(
-            "core.dependencies.get_plex_repository", MagicMock(return_value=plex_repo)
-        ),
-        patch("core.dependencies.get_mbid_store", MagicMock(return_value=mbid)),
-        patch("core.dependencies.auth_providers.get_user_import_service", import_fn),
-        patch("core.dependencies.auth_providers.get_plex_user_auth_service", auth_fn),
-    ):
-        await service.on_plex_settings_changed()
-
-    import_fn.cache_clear.assert_called_once()
-    auth_fn.cache_clear.assert_called_once()
-
-
-@pytest.mark.asyncio(loop_scope="function")
 async def test_youtube_settings_change_clears_home_cache():
     """on_youtube_settings_changed should reset singleton AND clear home caches."""
     from unittest.mock import patch, MagicMock
