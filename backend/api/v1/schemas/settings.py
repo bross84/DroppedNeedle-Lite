@@ -362,7 +362,6 @@ ACOUSTID_KEY_MASK = "acoustid****"
 DOWNLOAD_CLIENT_API_KEY_MASK = "slskd****"
 INDEXER_API_KEY_MASK = "indexer****"
 SABNZBD_API_KEY_MASK = "sabnzbd****"
-LIDARR_IMPORT_API_KEY_MASK = "lidarr****"
 SPOTIFY_SECRET_MASK = "spotify****"
 
 

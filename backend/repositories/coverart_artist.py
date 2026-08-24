@@ -265,7 +265,7 @@ class ArtistImageFetcher:
                 return None
             content_type = response.headers.get("content-type", "")
             if not _is_valid_image_content_type(content_type):
-                logger.warning(f"[IMG:Lidarr] Non-image content-type ({content_type}) for {artist_id[:8]}")
+                logger.warning(f"[IMG:Library] Non-image content-type ({content_type}) for {artist_id[:8]}")
                 return None
             content = response.content
             task = asyncio.create_task(self._write_disk_cache(file_path, content, content_type, {"source": "library"}))

@@ -263,7 +263,7 @@ class DiscoverQueueService:
                         True, mbids
                     )
             except Exception:  # noqa: BLE001
-                logger.warning("Failed to load album MBIDs from Lidarr for validation")
+                logger.warning("Failed to load album MBIDs from the library for validation")
         if not library_mbids:
             return mbids
         lowered_library = {lm.lower() for lm in library_mbids}

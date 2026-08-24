@@ -264,7 +264,7 @@ class MbidResolutionService:
             artists = await self._library_repo.get_home_artists(limit=500)
             return {a.get("mbid", "").lower() for a in artists if a.get("mbid")}
         except Exception:  # noqa: BLE001
-            logger.warning("Failed to fetch library artists from Lidarr")
+            logger.warning("Failed to fetch library artists")
             return set()
 
     async def get_library_album_mbids(
@@ -287,7 +287,7 @@ class MbidResolutionService:
                 if album.musicbrainz_id
             }
         except Exception:  # noqa: BLE001
-            logger.warning("Failed to fetch library album MBIDs from Lidarr")
+            logger.warning("Failed to fetch library album MBIDs")
             return set()
 
     async def get_user_listened_release_group_mbids(

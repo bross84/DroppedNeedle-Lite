@@ -695,7 +695,7 @@ class ArtistService:
                 requested_mbids = await self._library_repo.get_requested_mbids()
             except Exception as exc:  # noqa: BLE001
                 logger.warning(
-                    f"Lidarr unavailable, proceeding without requested data: {exc}"
+                    f"Library repository unavailable, proceeding without requested data: {exc}"
                 )
                 requested_mbids = set()
         elif self._ownership is not None:
@@ -727,7 +727,7 @@ class ArtistService:
             library_failed = any(isinstance(r, BaseException) for r in library_results)
             if library_failed:
                 logger.warning(
-                    f"Lidarr unavailable for artist {artist_id}, proceeding with MusicBrainz data only"
+                    f"Library repository unavailable for artist {artist_id}, proceeding with MusicBrainz data only"
                 )
             library_mbids = (
                 library_results[0]

@@ -273,7 +273,7 @@ async def debug_artist_cover(
 ):
     """
     Debug endpoint that returns diagnostic info about an artist image fetch.
-    Shows cache state, Lidarr availability, MusicBrainz relations, and Wikidata URL.
+    Shows cache state, library availability, MusicBrainz relations, and Wikidata URL.
     """
     from infrastructure.validators import validate_mbid
 
@@ -342,7 +342,7 @@ async def debug_artist_cover(
         )
     elif debug_info["library"]["has_image_url"]:
         debug_info["recommendation"] = (
-            "Lidarr has an image URL - fetch should succeed from Lidarr."
+            "Library has an image URL - fetch should succeed from the library."
         )
     elif debug_info["musicbrainz"]["has_wikidata_relation"]:
         debug_info["recommendation"] = (

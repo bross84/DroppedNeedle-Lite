@@ -32,6 +32,9 @@ from services.native.library_management_publisher import LibraryManagementPublis
 logger = logging.getLogger(__name__)
 
 RECOVERY_LEASE_SECONDS = 60.0
+# See the matching constant/comment on LibraryManagementPublisher._finish_critical_task:
+# bounds how long we wait for a critical task, never cancels the task itself.
+_CRITICAL_TASK_TIMEOUT_SECONDS = 300
 RECOVERY_BATCH_SIZE = 100
 STARTUP_RECOVERY_MAX_BUNDLES = 500
 
@@ -98,11 +101,24 @@ class LibraryManagementRecoveryService:
         task: asyncio.Task[RecoveryDisposition],
     ) -> tuple[RecoveryDisposition, bool]:
         cancelled = False
+        deadline = time.monotonic() + _CRITICAL_TASK_TIMEOUT_SECONDS
         while not task.done():
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                logger.error(
+                    "Critical task did not finish within %ss; giving up waiting "
+                    "(the task itself keeps running, unshielded from here on)",
+                    _CRITICAL_TASK_TIMEOUT_SECONDS,
+                )
+                raise TimeoutError(
+                    f"Critical task exceeded the {_CRITICAL_TASK_TIMEOUT_SECONDS}s completion deadline"
+                )
             try:
-                await asyncio.shield(task)
+                await asyncio.wait_for(asyncio.shield(task), timeout=remaining)
             except asyncio.CancelledError:
                 cancelled = True
+            except TimeoutError:
+                continue
         return task.result(), cancelled
 
     async def recover_startup(

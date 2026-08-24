@@ -400,6 +400,35 @@ async def test_recovery_defers_repeated_cancellation_until_commit_is_durable() -
 
 
 @pytest.mark.asyncio
+async def test_recovery_stops_waiting_on_a_critical_task_that_never_completes(
+    monkeypatch,
+) -> None:
+    """A critical task that hangs forever must not hang the waiter forever too -
+    the deadline lets this raise instead of spinning uncancellably (regression
+    test for the bug found via a 90s forced pytest-timeout surviving intact)."""
+    import services.native.library_management_recovery_service as recovery_module
+
+    monkeypatch.setattr(recovery_module, "_CRITICAL_TASK_TIMEOUT_SECONDS", 0.05)
+
+    never_finishes = asyncio.Event()
+    critical_task = asyncio.create_task(never_finishes.wait())
+
+    start = asyncio.get_event_loop().time()
+    with pytest.raises(TimeoutError):
+        # The outer wait_for is a safety net so a regression bails at 5s instead of
+        # hanging the suite forever - the elapsed-time assertion below is what
+        # actually proves the real (patched, 0.05s) deadline fired, not this one.
+        await asyncio.wait_for(
+            LibraryManagementRecoveryService._finish_critical_task(critical_task),
+            timeout=5,
+        )
+    elapsed = asyncio.get_event_loop().time() - start
+
+    assert elapsed < 1.0, "hit the outer safety-net timeout, not the real deadline"
+    critical_task.cancel()
+
+
+@pytest.mark.asyncio
 async def test_recovery_finishes_same_path_after_backup_before_journal_transition(
     tmp_path: Path,
 ) -> None:

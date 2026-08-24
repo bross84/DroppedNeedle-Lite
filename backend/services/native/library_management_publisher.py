@@ -84,6 +84,12 @@ from services.native.recycle_bin import recycle
 from services.preferences_service import PreferencesService
 
 logger = logging.getLogger(__name__)
+# A critical task (durable write/rollback) must never be abandoned mid-flight, so
+# cancellation is deferred until it finishes - but if the task itself hangs (stuck
+# disk/DB call), that deferral must not become permanent and uncancellable. This
+# ceiling only bounds how long we WAIT for it (via wait_for around a shielded
+# future); it never cancels the critical task itself.
+_CRITICAL_TASK_TIMEOUT_SECONDS = 300
 _JOURNAL_NAMESPACE = uuid.UUID("c646c2dd-f0cc-4c9d-8b2c-feb0a8a660c9")
 _SNAPSHOT_NAMESPACE = uuid.UUID("77d7be20-4ff2-475a-941f-e0a575806d78")
 _BASELINE_NAMESPACE = uuid.UUID("bf48a4f8-5968-41f6-9c82-f95a976a8f21")
@@ -324,11 +330,24 @@ class LibraryManagementPublisher:
         task: asyncio.Task[ResultT],
     ) -> tuple[ResultT, bool]:
         cancelled = False
+        deadline = time.monotonic() + _CRITICAL_TASK_TIMEOUT_SECONDS
         while not task.done():
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                logger.error(
+                    "Critical task did not finish within %ss; giving up waiting "
+                    "(the task itself keeps running, unshielded from here on)",
+                    _CRITICAL_TASK_TIMEOUT_SECONDS,
+                )
+                raise TimeoutError(
+                    f"Critical task exceeded the {_CRITICAL_TASK_TIMEOUT_SECONDS}s completion deadline"
+                )
             try:
-                await asyncio.shield(task)
+                await asyncio.wait_for(asyncio.shield(task), timeout=remaining)
             except asyncio.CancelledError:
                 cancelled = True
+            except TimeoutError:
+                continue
         return task.result(), cancelled
 
     async def publish_import_bundle(

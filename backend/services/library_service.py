@@ -166,7 +166,7 @@ class LibraryService:
             )
             if isinstance(results[0], BaseException):
                 logger.warning(
-                    "Lidarr library mbids fetch failed, degrading: %s", results[0]
+                    "Library repository mbids fetch failed, degrading: %s", results[0]
                 )
             if isinstance(results[1], BaseException):
                 logger.warning(
@@ -352,7 +352,7 @@ class LibraryService:
     ) -> SyncLibraryResponse:
         if not self._library_repo.is_configured():
             raise ExternalServiceError(
-                "Lidarr is not configured. Set a Lidarr API key in Settings to sync your library."
+                "Library repository is not configured."
             )
 
         try:

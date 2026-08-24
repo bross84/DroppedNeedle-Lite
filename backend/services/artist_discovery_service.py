@@ -445,7 +445,7 @@ class ArtistDiscoveryService:
                         )
                     except Exception as e:  # noqa: BLE001
                         logger.warning(
-                            "Failed to load Lidarr album MBIDs for %s: %s(%s)",
+                            "Failed to load library album MBIDs for %s: %s(%s)",
                             artist_mbid[:8],
                             type(e).__name__,
                             e,
@@ -548,7 +548,7 @@ class ArtistDiscoveryService:
             )
         except Exception as e:  # noqa: BLE001
             logger.warning(
-                "Fallback Lidarr album MBID load failed for %s: %s(%s)",
+                "Fallback library album MBID load failed for %s: %s(%s)",
                 artist_mbid[:8],
                 type(e).__name__,
                 e,
