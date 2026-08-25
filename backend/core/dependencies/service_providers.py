@@ -1907,6 +1907,7 @@ def _build_home_charts_service(
     genre_artwork_service=None,
     genre_index=None,
     prewarm_service=None,
+    navidrome_service=None,
 ) -> "HomeChartsService":
     from services.home_charts_service import HomeChartsService
 
@@ -1927,6 +1928,7 @@ def _build_home_charts_service(
         client_factory=get_per_user_client_factory(),
         listening_prefs_store=get_user_listening_prefs_store(),
         genre_artwork_service=genre_artwork_service,
+        navidrome_service=navidrome_service,
     )
 
 
@@ -1942,6 +1944,7 @@ def get_target_home_charts_service() -> "HomeChartsService":
         get_genre_artwork_service(),
         get_target_genre_index(),
         get_target_genre_cover_prewarm_service(),
+        get_target_navidrome_library_service(),
     )
 
 
