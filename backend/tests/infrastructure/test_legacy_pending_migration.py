@@ -1,4 +1,5 @@
 import asyncio
+import shutil
 import sqlite3
 import threading
 from pathlib import Path
