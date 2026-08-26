@@ -75,6 +75,38 @@ class TestGetAlbums:
         assert result == []
 
 
+class TestGetLibraryByGenre:
+    @pytest.mark.asyncio
+    async def test_requests_albums_by_genre_and_dedupes_artists(self):
+        service, repo = _make_service()
+        repo.get_album_list = AsyncMock(
+            return_value=[
+                SubsonicAlbum(id="a1", name="Album One", artist="Band", artistId="art-1"),
+                SubsonicAlbum(id="a2", name="Album Two", artist="Band", artistId="art-1"),
+                SubsonicAlbum(id="a3", name="Album Three", artist="Other Band", artistId="art-2"),
+            ]
+        )
+        albums, artists = await service.get_library_by_genre("Punk", limit=50)
+
+        repo.get_album_list.assert_awaited_once_with(
+            type="byGenre", genre="Punk", size=50, offset=0, music_folder_ids=None
+        )
+        assert [a.navidrome_id for a in albums] == ["a1", "a2", "a3"]
+        assert {a.navidrome_id for a in artists} == {"art-1", "art-2"}
+        by_id = {a.navidrome_id: a for a in artists}
+        assert by_id["art-1"].album_count == 2
+        assert by_id["art-1"].name == "Band"
+        assert by_id["art-2"].album_count == 1
+
+    @pytest.mark.asyncio
+    async def test_no_albums_returns_empty(self):
+        service, repo = _make_service()
+        repo.get_album_list = AsyncMock(return_value=[])
+        albums, artists = await service.get_library_by_genre("Ambient")
+        assert albums == []
+        assert artists == []
+
+
 class TestGetAlbumDetail:
     @pytest.mark.asyncio
     async def test_maps_tracks(self):

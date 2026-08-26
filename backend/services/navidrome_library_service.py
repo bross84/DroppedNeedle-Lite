@@ -5,6 +5,7 @@ import logging
 import time
 import unicodedata
 import re
+from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
 from api.v1.schemas.navidrome import (
@@ -599,6 +600,49 @@ class NavidromeLibraryService:
                 }
             )
         return candidates
+
+    async def get_library_by_genre(
+        self,
+        genre: str,
+        limit: int = 50,
+        music_folder_ids: tuple[str, ...] | None = None,
+    ) -> tuple[list[NavidromeAlbumSummary], list[NavidromeArtistSummary]]:
+        """Albums/artists actually owned (in Navidrome) tagged with this genre.
+
+        Distinct artists are derived from the album list since Subsonic has
+        no native "artists by genre" call.
+        """
+        albums_raw = await self._navidrome.get_album_list(
+            type="byGenre",
+            genre=genre,
+            size=limit,
+            offset=0,
+            music_folder_ids=music_folder_ids,
+        )
+        album_summaries = list(
+            await asyncio.gather(*(self._album_to_summary(a) for a in albums_raw))
+        )
+
+        album_counts: dict[str, int] = {}
+        artist_names: dict[str, str] = {}
+        for album in albums_raw:
+            key = album.artistId or album.artist
+            if not key:
+                continue
+            album_counts[key] = album_counts.get(key, 0) + 1
+            artist_names.setdefault(key, album.artist)
+        artist_placeholders = [
+            SimpleNamespace(
+                id=artist_id, name=artist_names[artist_id], albumCount=count, musicBrainzId=None
+            )
+            for artist_id, count in album_counts.items()
+        ]
+        artist_summaries = list(
+            await asyncio.gather(
+                *(self._build_artist_summary(a) for a in artist_placeholders)
+            )
+        )
+        return album_summaries, artist_summaries
 
     async def get_music_folders(self) -> list[NavidromeMusicFolder]:
         folders = await self._navidrome.get_music_folders()

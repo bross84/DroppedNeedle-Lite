@@ -36,6 +36,7 @@ from .integration_helpers import HomeIntegrationHelpers, resolve_source_value
 if TYPE_CHECKING:
     from services.genre_cover_prewarm_service import GenreCoverPrewarmService
     from services.home.genre_artwork_service import GenreArtworkService
+    from services.navidrome_library_service import NavidromeLibraryService
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,7 @@ class HomeChartsService:
         client_factory: PerUserClientFactory | None = None,
         listening_prefs_store: UserListeningPrefsStore | None = None,
         genre_artwork_service: "GenreArtworkService | None" = None,
+        navidrome_service: "NavidromeLibraryService | None" = None,
     ):
         self._lb_repo = listenbrainz_repo
         self._library_repo = library_repo
@@ -64,6 +66,7 @@ class HomeChartsService:
         self._client_factory = client_factory
         self._prefs_store = listening_prefs_store
         self._genre_artwork = genre_artwork_service
+        self._navidrome = navidrome_service
         self._transformers = HomeDataTransformers()
 
         self._helpers: HomeIntegrationHelpers | None = None
@@ -141,7 +144,45 @@ class HomeChartsService:
         album_offset: int = 0,
     ) -> GenreDetailResponse:
         library_section = None
-        if self._genre_index:
+        if self._navidrome is not None:
+            # Reads through Navidrome directly rather than the native genre
+            # index, which lives on a catalog mirror that stays empty for
+            # anyone (like the default setup) who never runs DroppedNeedle's
+            # own scanner/importer against their music.
+            nav_albums, nav_artists = await self._navidrome.get_library_by_genre(
+                genre, limit=50
+            )
+            lib_artists = [
+                HomeArtist(
+                    mbid=a.musicbrainz_id,
+                    local_id=a.navidrome_id,
+                    name=a.name,
+                    image_url=a.image_url,
+                    listen_count=a.album_count,
+                    in_library=True,
+                )
+                for a in nav_artists
+            ]
+            lib_albums = [
+                HomeAlbum(
+                    mbid=a.musicbrainz_id,
+                    local_id=a.navidrome_id,
+                    name=a.name,
+                    artist_name=a.artist_name,
+                    artist_mbid=a.artist_musicbrainz_id,
+                    image_url=a.image_url,
+                    release_date=str(a.year) if a.year else None,
+                    in_library=True,
+                )
+                for a in nav_albums
+            ]
+            library_section = GenreLibrarySection(
+                artists=lib_artists,
+                albums=lib_albums,
+                artist_count=len(lib_artists),
+                album_count=len(lib_albums),
+            )
+        elif self._genre_index:
             lib_artists_data = await self._genre_index.get_artists_by_genre(
                 genre, limit=50
             )
