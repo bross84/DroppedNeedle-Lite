@@ -14,6 +14,7 @@ from services.native.bounded_legacy_catalog_migrator import (
 )
 from services.native.legacy_pending_migration_service import (
     LegacyPendingMigrationService,
+    pending_run_id,
 )
 from services.native.library_policy_resolver import LibraryPolicyResolver
 from tests.infrastructure.test_legacy_catalog_importer import (
@@ -233,15 +234,31 @@ async def test_pending_service_gates_scheduling(
     assert len(runs) == 1
     assert runs[0].startswith("legacy-pending-")
 
+    # NEW-MIG-01: mark the launched run completed for ITS input revision.
+    # Repeated schedules with unchanged pending input stay idempotently skipped.
+    source_revision = await store.get_bounded_legacy_source_revision()
     with sqlite3.connect(database) as connection:
         connection.execute(
             "INSERT INTO library_migration_runs "
             "(id, source_revision, root_revision, state, report_json, "
-            "started_at, updated_at) VALUES (?, '', '', 'completed', '', 100, 100)",
-            (runs[0],),
+            "started_at, updated_at) VALUES (?, ?, '', 'completed', '', 100, 100)",
+            (runs[0], source_revision),
         )
 
     assert await service.schedule() is False
+
+    # A new legacy row arrives under the SAME policy revision: the pending
+    # input revision changes, so the completed policy-only gate must not
+    # suppress the next schedule.
+    with sqlite3.connect(database) as connection:
+        _insert_legacy_library_file(
+            connection,
+            file_id="99999999-9999-4999-8999-000000000004",
+            path=historical_root / "Compilation" / "04.flac",
+            title="Late Arrival",
+            track_number=4,
+            release_group_mbid=None,
+        )
 
     service = LegacyPendingMigrationService(
         store, lambda: _resolver(("root", historical_root))
@@ -250,6 +267,10 @@ async def test_pending_service_gates_scheduling(
     assert await service.schedule() is True
     await asyncio.sleep(0)
     assert runs[-1] != runs[0]
+    assert runs[-1] == pending_run_id(
+        _resolver(("root", historical_root)).policy_revision,
+        await store.get_bounded_legacy_source_revision(),
+    )
 
 
 @pytest.mark.asyncio
