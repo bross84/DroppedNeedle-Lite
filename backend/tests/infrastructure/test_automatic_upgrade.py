@@ -14,8 +14,10 @@ from urllib.error import HTTPError
 from urllib.request import urlopen
 
 import pytest
+from unittest.mock import AsyncMock, MagicMock
 
 import maintenance.automatic_upgrade as automatic_upgrade
+
 from core.config import Settings
 from maintenance.automatic_upgrade import (
     AutomaticUpgradeError,
