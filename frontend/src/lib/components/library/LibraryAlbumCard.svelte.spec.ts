@@ -24,7 +24,8 @@ const baseAlbum: LibraryAlbumSummary = {
 	sort_name: null,
 	original_release_date: null,
 	contribution_id: null,
-	contribution_state: null
+	contribution_state: null,
+	image_url: null
 };
 
 function renderComponent(overrides: Partial<LibraryAlbumSummary> = {}) {
@@ -66,14 +67,14 @@ describe('LibraryAlbumCard.svelte', () => {
 			.toHaveAttribute('href', '/album/b1392450-e666-3926-a536-22c65f834433');
 	});
 
-	it('marks local-only albums and keeps their local route', async () => {
+	it('renders local-only albums (no resolved MusicBrainz id) as non-clickable', async () => {
 		renderComponent({
 			musicbrainz_release_group_id: null,
 			album_identity_state: 'local_only'
 		});
 		await expect
 			.element(page.getByRole('link', { name: 'Open OK Computer' }))
-			.toHaveAttribute('href', '/album/local-album-1');
+			.not.toBeInTheDocument();
 		await expect.element(page.getByText('Local-only', { exact: true })).toBeVisible();
 	});
 

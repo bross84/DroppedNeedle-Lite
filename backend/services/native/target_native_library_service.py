@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import PurePosixPath
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from api.v1.schemas.library_target import (
     ActiveEditionConversionSummary,
@@ -26,10 +26,32 @@ from services.native.library_policy_resolver import LibraryPolicyResolver
 from services.native.identification_revisions import album_input_revisions
 from models.library_work import ScanScope
 
+if TYPE_CHECKING:
+    from services.navidrome_library_service import NavidromeLibraryService
+
+# Native-store sort keywords that have a reasonably faithful Navidrome/Subsonic
+# "album list type" equivalent. "oldest" has no Subsonic list type at all (there's
+# no "oldest first" browse order), so it falls back to "newest" rather than being
+# silently wrong in a different way - a known, accepted gap for the Navidrome
+# fallback path (see the Navidrome-pivot plan's Phase 1 scope notes).
+_ALBUM_SORT_TO_NAVIDROME_TYPE = {
+    "recent": "newest",
+    "newest": "newest",
+    "oldest": "newest",
+    "name": "alphabeticalByName",
+    "artist": "alphabeticalByArtist",
+    "random": "random",
+}
+
 
 class TargetNativeLibraryService:
-    def __init__(self, store: NativeLibraryStore) -> None:
+    def __init__(
+        self,
+        store: NativeLibraryStore,
+        navidrome_service: "NavidromeLibraryService | None" = None,
+    ) -> None:
         self._store = store
+        self._navidrome = navidrome_service
 
     async def canonical_id(self, kind: str, identifier: str) -> str | None:
         return await self._store.resolve_canonical_target_id(kind, identifier)
@@ -50,7 +72,19 @@ class TargetNativeLibraryService:
             search=search,
             file_format=file_format,
         )
-        return [self._album(row) for row in rows], total
+        if total or self._navidrome is None:
+            return [self._album(row) for row in rows], total
+        # Native scan store is empty (nobody ran DroppedNeedle's own scanner) -
+        # read the real, owned catalog straight from Navidrome instead. No
+        # server-side "format" filter exists on Navidrome's side, so that
+        # criterion is dropped for this path rather than pretending to honor it.
+        albums = await self._navidrome.get_albums(
+            type=_ALBUM_SORT_TO_NAVIDROME_TYPE.get(sort, "newest"),
+            size=limit,
+            offset=offset,
+        )
+        nav_total = await self._navidrome_album_total(len(albums), offset, limit)
+        return [self._album_from_navidrome(a) for a in albums], nav_total
 
     async def artists(
         self,
@@ -70,7 +104,15 @@ class TargetNativeLibraryService:
             sort_order=sort_order,
             scope=scope,
         )
-        return [self._artist(row) for row in rows], total
+        if total or self._navidrome is None or scope != "album":
+            # "contributors" scope has no Navidrome/Subsonic equivalent (it would
+            # require scanning every track for guest-artist credits) - leave it
+            # native-only, which returns an empty result when the store is empty.
+            return [self._artist(row) for row in rows], total
+        artists, nav_total = await self._navidrome.browse_artists(
+            size=limit, offset=offset, search=search or ""
+        )
+        return [self._artist_from_navidrome(a) for a in artists], nav_total
 
     async def artist_scope_counts(self) -> tuple[int, int]:
         return await self._store.target_artist_scope_counts()
@@ -257,10 +299,17 @@ class TargetNativeLibraryService:
         return self._track(row) if row is not None else None
 
     async def recently_added(self, limit: int) -> list[TargetNativeAlbum]:
-        rows, _ = await self._store.list_target_albums(
+        rows, total = await self._store.list_target_albums(
             limit=limit, offset=0, sort="recent"
         )
-        return [self._album(row) for row in rows]
+        if total or self._navidrome is None:
+            return [self._album(row) for row in rows]
+        # Subsonic's "recent" list type means recently *played*, not recently
+        # *added* - "newest" is the correct type for this. (Home's own
+        # recently-added tile has the same recent/newest mislabeling; that's a
+        # separate, pre-existing bug not fixed here.)
+        albums = await self._navidrome.get_albums(type="newest", size=limit, offset=0)
+        return [self._album_from_navidrome(a) for a in albums]
 
     async def resolve_tracks(
         self, items: list[TrackResolveItem]
@@ -368,15 +417,26 @@ class TargetNativeLibraryService:
 
     async def stats(self) -> TargetNativeStatsResponse:
         row = await self._store.get_target_library_stats()
+        if (row["total_albums"] or row["total_artists"]) or self._navidrome is None:
+            return TargetNativeStatsResponse(
+                total_albums=row["total_albums"],
+                total_artists=row["total_artists"],
+                total_tracks=row["total_tracks"],
+                total_size_bytes=row["total_size_bytes"],
+                format_breakdown=row["format_breakdown"],
+                review_count=row["unmatched_count"],
+                local_only_count=row["local_only_count"],
+                last_scan_at=row["last_scan_at"],
+            )
+        # Native scan store is empty - report real counts from Navidrome instead.
+        # Subsonic doesn't expose byte size / format breakdown / review counts /
+        # last-scan time for a bulk stats call, so those stay at their defaults;
+        # the dashboard already renders them null/empty-safe.
+        nav_stats = await self._navidrome.get_stats()
         return TargetNativeStatsResponse(
-            total_albums=row["total_albums"],
-            total_artists=row["total_artists"],
-            total_tracks=row["total_tracks"],
-            total_size_bytes=row["total_size_bytes"],
-            format_breakdown=row["format_breakdown"],
-            review_count=row["unmatched_count"],
-            local_only_count=row["local_only_count"],
-            last_scan_at=row["last_scan_at"],
+            total_albums=nav_stats.total_albums,
+            total_artists=nav_stats.total_artists,
+            total_tracks=nav_stats.total_tracks,
         )
 
     async def provider_ids(self) -> TargetNativeProviderIdsResponse:
@@ -454,6 +514,53 @@ class TargetNativeLibraryService:
             and track["release_track_position"] is not None
         }
         return len(release_track_ids)
+
+    async def _navidrome_album_total(
+        self, page_len: int, offset: int, limit: int
+    ) -> int:
+        """Same full-page-vs-partial-page total heuristic already used by the
+        `/navidrome/albums` route: a full page means there's likely more, so ask
+        Navidrome's stats for the real total; a partial page means we just saw
+        the end of the list."""
+        if page_len < limit:
+            return offset + page_len
+        assert self._navidrome is not None
+        try:
+            stats = await self._navidrome.get_stats()
+            return stats.total_albums if stats.total_albums >= offset + page_len else offset + page_len
+        except Exception:  # noqa: BLE001
+            return offset + page_len
+
+    @staticmethod
+    def _album_from_navidrome(album: Any) -> TargetNativeAlbum:
+        return TargetNativeAlbum(
+            id=album.navidrome_id,
+            title=album.name,
+            artist_name=album.artist_name,
+            artist_id=album.artist_musicbrainz_id or "",
+            musicbrainz_release_group_id=album.musicbrainz_id,
+            musicbrainz_artist_id=album.artist_musicbrainz_id,
+            album_identity_state=(
+                "release_group_linked" if album.musicbrainz_id else "local_only"
+            ),
+            track_count=album.track_count,
+            year=album.year,
+            cover_available=bool(album.image_url),
+            image_url=album.image_url,
+        )
+
+    @staticmethod
+    def _artist_from_navidrome(artist: Any) -> TargetNativeArtist:
+        return TargetNativeArtist(
+            id=artist.navidrome_id,
+            name=artist.name,
+            musicbrainz_artist_id=artist.musicbrainz_id,
+            artist_identity_state=(
+                "musicbrainz_linked" if artist.musicbrainz_id else "local_only"
+            ),
+            album_count=artist.album_count,
+            image_url=artist.image_url,
+        )
 
     @staticmethod
     def _album(row: dict[str, Any]) -> TargetNativeAlbum:

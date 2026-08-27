@@ -1260,6 +1260,7 @@ export interface LibraryAlbumSummary {
 	original_release_date: string | null;
 	contribution_id: string | null;
 	contribution_state: ContributionState | null;
+	image_url?: string | null;
 }
 
 export interface LibraryAlbumDetail extends LibraryAlbumSummary {
@@ -1584,6 +1585,7 @@ export interface LibraryArtistSummary {
 	library_relationship: LibraryArtistRelationship;
 	date_added: number | null;
 	row_revision: number;
+	image_url?: string | null;
 }
 
 export interface NativeArtistsResponse {

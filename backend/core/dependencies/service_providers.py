@@ -170,13 +170,23 @@ def get_target_library_ownership_service() -> "LibraryOwnershipService":
     return LibraryOwnershipService(get_native_library_store())
 
 
-@singleton
-def get_target_native_library_service() -> "TargetNativeLibraryService":
+def _build_target_native_library_service(
+    store: "NativeLibraryStore",
+    navidrome_service: "NavidromeLibraryService | None" = None,
+) -> "TargetNativeLibraryService":
     from services.native.target_native_library_service import TargetNativeLibraryService
 
+    return TargetNativeLibraryService(store, navidrome_service=navidrome_service)
+
+
+@singleton
+def get_target_native_library_service() -> "TargetNativeLibraryService":
     from .cache_providers import get_native_library_store
 
-    return TargetNativeLibraryService(get_native_library_store())
+    return _build_target_native_library_service(
+        get_native_library_store(),
+        navidrome_service=get_target_navidrome_library_service(),
+    )
 
 
 @singleton

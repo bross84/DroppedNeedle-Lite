@@ -6,7 +6,7 @@
 	import LocalIdentityBadge from '$lib/components/library/LocalIdentityBadge.svelte';
 	import { getLibraryArtistsInfiniteQuery } from '$lib/queries/library/LibraryQueries.svelte';
 	import type { ArtistSort, LibraryArtistScope, LibraryArtistSummary } from '$lib/types';
-	import { artistHref } from '$lib/utils/entityRoutes';
+	import { artistHrefOrNull } from '$lib/utils/entityRoutes';
 	import { ChevronLeft, Disc3, Mic, Search, UsersRound, X } from 'lucide-svelte';
 
 	const SEARCH_DEBOUNCE_MS = 300;
@@ -223,48 +223,59 @@
 			{total}
 			{total === 1 ? 'artist' : 'artists'} in this view
 		</p>
+		{#snippet artistCardBody(artist: LibraryArtistSummary)}
+			<figure class="relative aspect-square overflow-hidden p-3">
+				<ArtistImage
+					mbid={artist.id}
+					source="local"
+					remoteUrl={artist.image_url}
+					alt={artist.name}
+					size="full"
+					requestSize={250}
+					className="h-full w-full transition-transform duration-300 group-hover:scale-105"
+				/>
+				{#if artist.artist_identity_state === 'local_only'}
+					<LocalIdentityBadge
+						state={artist.artist_identity_state}
+						subject="artist"
+						compact
+						className="absolute left-3 top-3 z-10"
+					/>
+				{/if}
+			</figure>
+			<div class="card-body gap-1 p-3 pt-0 text-center">
+				<h2 class="truncate font-semibold">{artist.name}</h2>
+				<p class="text-xs text-base-content/55">
+					{#if browse.scope === 'album'}
+						{artist.album_count}
+						{artist.album_count === 1 ? 'release' : 'releases'} ·
+						{artist.track_count}
+						{artist.track_count === 1 ? 'track' : 'tracks'}
+					{:else}
+						{artist.appearance_release_count}
+						{artist.appearance_release_count === 1 ? 'release' : 'releases'} ·
+						{artist.appearance_track_count}
+						{artist.appearance_track_count === 1 ? 'appearance' : 'appearances'}
+					{/if}
+				</p>
+			</div>
+		{/snippet}
 		<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
 			{#each artists as artist (artist.id)}
-				<a
-					href={artistHref(artist.musicbrainz_artist_id ?? artist.id)}
-					class="card group overflow-hidden border border-base-content/8 bg-base-100 shadow-sm transition-[transform,box-shadow,border-color] hover:-translate-y-1 hover:border-primary/25 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-					aria-label={`Open ${artist.name}`}
-				>
-					<figure class="relative aspect-square overflow-hidden p-3">
-						<ArtistImage
-							mbid={artist.id}
-							source="local"
-							alt={artist.name}
-							size="full"
-							requestSize={250}
-							className="h-full w-full transition-transform duration-300 group-hover:scale-105"
-						/>
-						{#if artist.artist_identity_state === 'local_only'}
-							<LocalIdentityBadge
-								state={artist.artist_identity_state}
-								subject="artist"
-								compact
-								className="absolute left-3 top-3 z-10"
-							/>
-						{/if}
-					</figure>
-					<div class="card-body gap-1 p-3 pt-0 text-center">
-						<h2 class="truncate font-semibold">{artist.name}</h2>
-						<p class="text-xs text-base-content/55">
-							{#if browse.scope === 'album'}
-								{artist.album_count}
-								{artist.album_count === 1 ? 'release' : 'releases'} ·
-								{artist.track_count}
-								{artist.track_count === 1 ? 'track' : 'tracks'}
-							{:else}
-								{artist.appearance_release_count}
-								{artist.appearance_release_count === 1 ? 'release' : 'releases'} ·
-								{artist.appearance_track_count}
-								{artist.appearance_track_count === 1 ? 'appearance' : 'appearances'}
-							{/if}
-						</p>
+				{@const href = artistHrefOrNull(artist.musicbrainz_artist_id)}
+				{#if href}
+					<a
+						{href}
+						class="card group overflow-hidden border border-base-content/8 bg-base-100 shadow-sm transition-[transform,box-shadow,border-color] hover:-translate-y-1 hover:border-primary/25 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+						aria-label={`Open ${artist.name}`}
+					>
+						{@render artistCardBody(artist)}
+					</a>
+				{:else}
+					<div class="card overflow-hidden border border-base-content/8 bg-base-100 shadow-sm">
+						{@render artistCardBody(artist)}
 					</div>
-				</a>
+				{/if}
 			{/each}
 		</div>
 		{#if artistsQuery.hasNextPage}

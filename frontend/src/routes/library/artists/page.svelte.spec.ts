@@ -64,7 +64,7 @@ import ArtistsPage from './+page.svelte';
 
 beforeEach(() => vi.clearAllMocks());
 
-it('uses MusicBrainz routes for linked artists and local routes for local-only artists', async () => {
+it('uses MusicBrainz routes for linked artists and renders local-only artists as non-clickable', async () => {
 	render(ArtistsPage);
 
 	await expect
@@ -72,7 +72,7 @@ it('uses MusicBrainz routes for linked artists and local routes for local-only a
 		.toHaveAttribute('href', '/artist/provider-artist-id');
 	await expect
 		.element(page.getByRole('link', { name: 'Open Local Artist' }))
-		.toHaveAttribute('href', '/artist/local-only-artist');
+		.not.toBeInTheDocument();
 	await expect.element(page.getByText('Local-only', { exact: true })).toBeVisible();
 	await expect
 		.element(page.getByText('MusicBrainz linked', { exact: true }))

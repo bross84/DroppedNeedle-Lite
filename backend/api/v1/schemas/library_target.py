@@ -19,6 +19,7 @@ class TargetNativeArtist(AppStruct):
     )
     date_added: float | None = None
     row_revision: int = 1
+    image_url: str | None = None
 
 
 class TargetNativeAlbum(AppStruct):
@@ -44,6 +45,7 @@ class TargetNativeAlbum(AppStruct):
     original_release_date: str | None = None
     contribution_id: str | None = None
     contribution_state: str | None = None
+    image_url: str | None = None
 
 
 class ActiveEditionConversionSummary(AppStruct):
