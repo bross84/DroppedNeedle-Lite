@@ -31,7 +31,7 @@ whether to implement that too or drop the test with a note (see PR #27 for the p
 see the [full audit](https://claude.ai/code/artifact/68f0e4e0-9d0d-410d-8b94-b8a04c65aec7) for
 the original reasoning behind every verdict below.
 
-**Ported so far**: 4 commits, [PR #27](https://github.com/bross84/DroppedNeedle-Lite/pull/27).
+**Ported so far**: 3 commits, [PR #27](https://github.com/bross84/DroppedNeedle-Lite/pull/27). (A 4th, `6708e076`, was attempted alongside these but conflicted and was aborted — see its entry below, not checked off.)
 
 ---
 
@@ -73,7 +73,7 @@ the original reasoning behind every verdict below.
 
 ## Identification & matching
 
-- [x] `6708e076` — Pace open breakers with durable retry deadlines — **ported, PR #27** (pulled in as a prerequisite for the batching fix below)
+- [ ] `6708e076` — Pace open breakers with durable retry deadlines (attempted as a prerequisite for `2020b79b` below; conflicted in `artist_identity_reconciliation_service.py`/`identity_repair_service.py`/`library_contribution_verification_worker.py` — aborted, not landed, needs an actual read of that reconciliation logic before retrying)
 - [ ] `ead52008` — Accept nullable MusicBrainz contribution fields
 - [ ] `45e4ffd5` — Enforce provider proof before artist retirement
 - [ ] `58ed7321` — Classify unmappable provider payloads honestly
@@ -148,7 +148,7 @@ The container's boot-time `automatic_upgrade.py` system — real data-safety fix
 ## MusicBrainz, ListenBrainz & external APIs
 
 - [ ] `2020b79b` — Harden MusicBrainz outages, restore artist pages (stale-cache fallback + real pagination fix — attempted, hit a cascading conflict in `artist_identity_reconciliation_service.py`, paused rather than guess at unfamiliar logic)
-- [ ] `814dbf45` — Harden ListenBrainz rate limiting (measured the real limit is 30 req/10s; matches the 429s seen live this session — not yet attempted beyond its prerequisite `6708e076`, above)
+- [ ] `814dbf45` — Harden ListenBrainz rate limiting (measured the real limit is 30 req/10s; matches the 429s seen live this session — not yet attempted at all)
 - [ ] `42e0c7cc` — Classify degraded empty precache results
 
 ## Performance passes
