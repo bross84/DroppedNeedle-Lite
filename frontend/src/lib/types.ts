@@ -708,6 +708,9 @@ export type NavidromeTrackInfo = {
 	duration_seconds: number;
 	album_name: string;
 	artist_name: string;
+	album_id?: string;
+	artist_id?: string;
+	musicbrainz_recording_id?: string | null;
 	codec?: string | null;
 	bitrate?: number | null;
 	image_url?: string | null;
@@ -1228,6 +1231,9 @@ export interface TargetNativeTrack {
 	cover_available: boolean;
 	current_tier: string | null;
 	below_cutoff: boolean;
+	image_url?: string | null;
+	source?: 'local' | 'navidrome';
+	stream_url?: string | null;
 }
 
 export type NativeTrackListItem = TargetNativeTrack;

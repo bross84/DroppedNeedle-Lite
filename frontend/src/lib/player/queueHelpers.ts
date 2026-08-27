@@ -253,21 +253,29 @@ export function buildDiscoveryQueueFromNavidrome(tracks: NavidromeTrackInfo[]): 
 }
 
 export function buildDiscoveryQueueFromLocal(tracks: NativeTrackListItem[]): QueueItem[] {
-	return tracks.map((t) => ({
-		trackSourceId: t.id,
-		trackName: t.title,
-		artistName: t.artist_name,
-		trackNumber: t.track_number,
-		discNumber: normalizeDiscNumber(t.disc_number),
-		albumId: t.album_id,
-		albumName: t.album_title,
-		coverUrl: getCoverUrl(null, t.album_id),
-		coverRemoteUrl: null,
-		sourceType: 'local' as const,
-		artistId: t.artist_id,
-		streamUrl: API.stream.local(t.id),
-		format: (t.format ?? '').toLowerCase(),
-		availableSources: ['local'] as SourceType[],
-		duration: t.duration_seconds ?? undefined
-	}));
+	// Most rows are genuinely native-scan tracks, but the native-empty fallback
+	// (TargetNativeLibraryService.tracks() reading straight from Navidrome, see
+	// the Navidrome-pivot plan's Phase 2) can hand back `source: 'navidrome'`
+	// rows here too - route each track's stream/cover/source fields correctly
+	// per-row rather than assuming the whole page is one or the other.
+	return tracks.map((t) => {
+		const source = t.source ?? 'local';
+		return {
+			trackSourceId: t.id,
+			trackName: t.title,
+			artistName: t.artist_name,
+			trackNumber: t.track_number,
+			discNumber: normalizeDiscNumber(t.disc_number),
+			albumId: t.album_id,
+			albumName: t.album_title,
+			coverUrl: source === 'navidrome' ? (t.image_url ?? null) : getCoverUrl(null, t.album_id),
+			coverRemoteUrl: null,
+			sourceType: source,
+			artistId: t.artist_id,
+			streamUrl: t.stream_url ?? API.stream.local(t.id),
+			format: (t.format ?? '').toLowerCase(),
+			availableSources: [source] as SourceType[],
+			duration: t.duration_seconds ?? undefined
+		};
+	});
 }

@@ -131,7 +131,7 @@
 		return (
 			playerStore.isPlaying &&
 			playerStore.currentQueueItem?.trackSourceId === track.id &&
-			playerStore.currentQueueItem?.sourceType === 'local'
+			playerStore.currentQueueItem?.sourceType === (track.source ?? 'local')
 		);
 	}
 
@@ -275,6 +275,7 @@
 							mbid={track.album_id}
 							source="local"
 							available={track.cover_available}
+							customUrl={track.image_url}
 							alt={track.album_title}
 							size="full"
 							requestSize={250}

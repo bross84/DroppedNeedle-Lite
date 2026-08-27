@@ -13,6 +13,9 @@ class NavidromeTrackInfo(AppStruct):
     disc_number: int = 1
     album_name: str = ""
     artist_name: str = ""
+    album_id: str = ""
+    artist_id: str = ""
+    musicbrainz_recording_id: str | None = None
     codec: str | None = None
     bitrate: int | None = None
     image_url: str | None = None
