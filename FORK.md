@@ -20,11 +20,22 @@ Forked from upstream commit `abe79f3`.
 | **Follow auto-download** | Following an artist now subscribes you to its release feed, nothing more. This also removed the per-artist admin approval system it required. |
 | **Lidarr Import** | Existed to bulk-import artists as followed-with-auto-download, and was built entirely on the approval-batch machinery above. |
 | **Jellyfin** | The inbound Jellyfin playback source, library browsing, and Jellyfin login/user import. Not used as a playback source here. |
+| **Plex** | The inbound Plex playback source and library browsing, Plex login, and the admin bulk-user-import feature (which only ever supported Plex). Not used as a playback source here either - Navidrome fills that role. |
 
 Deliberately kept, despite sharing vocabulary with the above: the inbound
-Navidrome and Plex playback sources; Plex login and user import; the Wanted
-watcher's own "download automatically when a verified copy appears"; and the
-weekly-mix auto-request grant.
+Navidrome playback source; the Wanted watcher's own "download automatically
+when a verified copy appears"; and the weekly-mix auto-request grant.
+
+## Where this is heading
+
+Beyond removals, this fork is actively rewiring its Library browsing pages to
+read from a connected Navidrome server instead of DroppedNeedle's own scanned
+catalog, for anyone who already runs Navidrome as their real library manager
+and doesn't need a second one. See the main
+[README](README.md#where-this-fork-is-headed) for current status. The
+native scanning/Library Management engine that drives tagging, organizing,
+and importing finished downloads isn't being removed - it's just no longer
+required for browsing your library inside the app.
 
 ## Support
 

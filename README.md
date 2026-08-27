@@ -11,8 +11,11 @@
 
 > **This is a personal fork of [DroppedNeedle](https://github.com/DroppedNeedle/DroppedNeedle).**
 > It trims the upstream app to a smaller surface: **Plugins**, **Connect Apps** (the
-> OpenSubsonic/Jellyfin server), the **background upgrade scan**, **follow auto-download**
-> with its approval system, and **Lidarr Import** have all been removed. Everything else
+> OpenSubsonic/Jellyfin server), **Jellyfin and Plex** as playback/login sources, the
+> **background upgrade scan**, **follow auto-download** with its approval system, and
+> **Lidarr Import** have all been removed. It's also in the middle of moving Library
+> browsing off its own scanned catalog and onto a connected Navidrome server directly -
+> see [Where this fork is headed](#where-this-fork-is-headed) below. Everything else
 > tracks upstream. For the full-featured application, use upstream - it is actively
 > maintained and this fork is not a replacement for it.
 >
@@ -20,7 +23,17 @@
 >
 > See [FORK.md](FORK.md) for what was removed and why.
 
-DroppedNeedle-Lite is a self-hosted music request and discovery app with a **built-in native library and download engine** (no Lidarr required). Search the full MusicBrainz catalogue, request whole albums or single tracks, and let the engine index your library while it drives downloads through your own slskd or Usenet/SABnzbd. Its optional Library Management system can write tags and organize files after an administrator previews and enables it. Stream from Navidrome, Plex, or your local files, get recommendations from your listening history, and scrobble to ListenBrainz and Last.fm. It all runs as a single Docker container, configured from the web UI.
+DroppedNeedle-Lite is a self-hosted music request and discovery app with a **built-in native library and download engine** (no Lidarr required). Search the full MusicBrainz catalogue, request whole albums or single tracks, and let the engine index your library while it drives downloads through your own slskd or Usenet/SABnzbd. Its optional Library Management system can write tags and organize files after an administrator previews and enables it. Stream from Navidrome or your local files, get recommendations from your listening history, and scrobble to ListenBrainz and Last.fm. It all runs as a single Docker container, configured from the web UI.
+
+---
+
+## Where this fork is headed
+
+This fork's Library pages used to work only against DroppedNeedle's own scanned catalog - the tables its native scanner fills in as it walks your music folders. That's a fine setup if you want DroppedNeedle to be your library manager, but it's redundant if you already run Navidrome (or another server) for that and just want DroppedNeedle for discovery, requests, and downloads on top of it.
+
+So this fork is progressively rewiring its Library pages to read straight from a connected Navidrome server whenever the native catalog has nothing in it, instead of showing an empty page. **Done so far:** the Library hub (stats, Albums, Artists, Recently Added) and the Tracks list both fall back to live Navidrome data - real names, real cover art, and correct playback - when you've never run a native scan. **Still ahead:** the same treatment for the global search's "in your library" matching, richer MusicBrainz cross-linking for Navidrome-sourced items, and a look at whether the separate `/library/navidrome` browsing pages are still worth keeping once the main Library pages do the same job.
+
+The native scanning/Library Management engine itself isn't going anywhere - it's still what drives tagging, organizing, and importing finished downloads, and it's still there if you want DroppedNeedle to manage files directly. It's just no longer a requirement for browsing your library inside the app. A few things are intentionally not equivalent on the Navidrome-sourced path yet: sort options on Albums/Tracks are more limited (Navidrome has no server-side "oldest first" or by-format browse), and per-library storage-size stats aren't available through it. Neither blocks day-to-day use.
 
 ---
 
@@ -417,7 +430,7 @@ slskd and Usenet can be enabled side by side - the source priority control decid
 
 ## Recommended Stack
 
-DroppedNeedle brings its own library and download engine; you supply the download client. For playback, connect Navidrome, Plex, or mount your music folder directly into the container.
+DroppedNeedle brings its own library and download engine; you supply the download client. For playback, connect Navidrome or mount your music folder directly into the container.
 
 | Service | Role |
 |-|-|
@@ -445,13 +458,9 @@ The first account you create at first-run setup is always an admin. After that, 
 
 You sign in with a username and password. Usernames are case-insensitive, and you can change yours later from your profile. Email is optional everywhere; add one if you want it for account linking, but it is never used to sign in.
 
-You can also sign in through Plex, or any OIDC-compatible provider (Authelia, Keycloak, Authentik, and so on); see [Setting Up OIDC](#setting-up-oidc) below. If one of those is your only login, you can add a password from your profile and then sign in by username as well.
+You can also sign in through any OIDC-compatible provider (Authelia, Keycloak, Authentik, and so on); see [Setting Up OIDC](#setting-up-oidc) below. If that's your only login, you can add a password from your profile and then sign in by username as well.
 
 Every login method is switched on or off from the web UI. No environment variables are needed.
-
-### Importing users
-
-Instead of creating accounts by hand, an admin can bring in existing users from Plex. Open Settings > Users, click Import, and select the accounts to add; this includes your Home and managed users as well as your shared friends. No passwords are set during import. Each person signs in with their own Plex login, and DroppedNeedle links that login to the account the import created for them. Imported users start with the User role, and re-running an import skips anyone already added.
 
 ### Sessions
 
@@ -484,7 +493,6 @@ A global storage cap and per-user quotas keep the library from filling the disk.
 DroppedNeedle has a full audio player that supports multiple playback sources per track:
 
 - Navidrome, streaming via the Subsonic API.
-- Plex Media Server, with direct-play audio streaming and native Plex scrobbling. Supports multi-library setups.
 - Local files, served directly from a mounted music directory.
 - YouTube, for previewing albums you haven't downloaded yet. Links can be auto-generated or set manually.
 
@@ -514,9 +522,9 @@ Follow an artist to watch for new releases, and optionally auto-download them th
 
 ### Library
 
-Browse your native library by artist or album with search, filtering, sorting, and pagination. View recently added albums and library statistics. Resolve unmatched files from the manual-review queue, preview tag and organization changes through Library Management, rescan albums, and remove albums directly from the UI. Explicit removal deletes the selected files, updates the catalog, and refreshes album and artist statistics.
+Browse your library by artist, album, or track with search, filtering, sorting, and pagination. View recently added albums and library statistics. If you've never run a native scan, these pages read live from a connected Navidrome server instead of coming up empty - see [Where this fork is headed](#where-this-fork-is-headed). If you do run the native scanner, you additionally get a manual-review queue for unmatched files, tag/organization previews through Library Management, per-album rescan, and direct removal from the UI (which deletes the selected files, updates the catalog, and refreshes statistics).
 
-Navidrome, Plex, and local file sources each get their own library view with play, shuffle, and queue actions.
+Navidrome and local file sources each also get their own dedicated library view with play, shuffle, and queue actions.
 
 ### Free Music
 
@@ -544,7 +552,7 @@ Every track you play can be scrobbled to your own ListenBrainz and Last.fm accou
 
 ### Playlists
 
-Create playlists from any mix of Navidrome, Plex, local, YouTube, and imported Spotify tracks. Reorder by dragging, set custom cover art, and play everything through the same player.
+Create playlists from any mix of Navidrome, local, YouTube, and imported Spotify tracks. Reorder by dragging, set custom cover art, and play everything through the same player.
 
 Import playlists from Spotify. Track metadata and album art are pulled on import, and the playlist stays live with periodic SSE refreshes so new tracks you add on Spotify appear automatically.
 
@@ -568,8 +576,7 @@ Set a display name and avatar, change your username/email/password, link your ow
 | [Cover Art Archive](https://coverartarchive.org/) | Album artwork |
 | [TheAudioDB](https://www.theaudiodb.com/) | Artist and album images (fanart, banners, logos, CD art) |
 | [Wikidata](https://www.wikidata.org/) | Artist descriptions and external links |
-| [Navidrome](https://www.navidrome.org/) | Audio streaming via Subsonic API |
-| [Plex](https://www.plex.tv/) | Audio streaming and library browsing via Plex Media Server |
+| [Navidrome](https://www.navidrome.org/) | Audio streaming, and increasingly the source of truth for library browsing - see [Where this fork is headed](#where-this-fork-is-headed) |
 | [ListenBrainz](https://listenbrainz.org/) | Listening history, discovery, scrobbling, weekly playlists |
 | [Last.fm](https://www.last.fm/) | Scrobbling and listen tracking |
 | YouTube | Album playback when no local copy exists |
@@ -622,7 +629,6 @@ is not a way to override permissions supplied by a download client.
 | Library Management profiles, root assignments, automatic triggers, previews, recovery, and history | Library Management |
 | slskd URL and API key, SABnzbd/Usenet URL and API key, Newznab indexers, quality tiers, verification, wanted watcher | Settings > Download Client |
 | Navidrome URL and credentials | Settings > Navidrome |
-| Plex URL, token (OAuth or manual), music libraries, scrobble toggle | Settings > Plex |
 | Local files directory path | Settings > Local Files |
 | Last.fm app key + shared secret (admin; one app for the whole instance) | Settings > Last.fm |
 | YouTube API key | Settings > YouTube |
@@ -632,7 +638,7 @@ is not a way to override permissions supplied by a download client.
 | Home page layout preferences | Settings > Preferences |
 | AudioDB settings and cache TTLs | Settings > Advanced |
 | HSTS header and HIBP password breach checking | Settings > Security |
-| User accounts, roles, and user import (Plex) | Settings > Users |
+| User accounts and roles | Settings > Users |
 
 ### Setting Up Last.fm
 
@@ -684,14 +690,6 @@ volumes:
 ### Navidrome
 
 Connect your Navidrome instance under Settings > Navidrome.
-
-### Plex
-
-Connect Plex under Settings > Plex. You can sign in with Plex OAuth or paste in a token yourself. Once you're connected, choose the music libraries you want to include. If you pick more than one, DroppedNeedle merges them into a single library view.
-
-Tracks play directly from Plex with no server-side transcoding. The DroppedNeedle backend proxies the stream so your Plex token never reaches the browser.
-
-Plex scrobbling is on by default. Turn it off in Settings > Plex or from the library page if you'd rather rely on Last.fm and ListenBrainz instead.
 
 ### YouTube
 
