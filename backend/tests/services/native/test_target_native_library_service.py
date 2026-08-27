@@ -6,6 +6,7 @@ from api.v1.schemas.navidrome import (
     NavidromeAlbumSummary,
     NavidromeArtistSummary,
     NavidromeLibraryStats,
+    NavidromeTrackInfo,
 )
 from services.native.target_native_library_service import TargetNativeLibraryService
 
@@ -14,11 +15,13 @@ def _store(
     *,
     albums: tuple[list[dict], int] = ([], 0),
     artists: tuple[list[dict], int] = ([], 0),
+    tracks: tuple[list[dict], int] = ([], 0),
     stats: dict | None = None,
 ) -> AsyncMock:
     store = AsyncMock()
     store.list_target_albums = AsyncMock(return_value=albums)
     store.list_target_artists = AsyncMock(return_value=artists)
+    store.list_target_tracks = AsyncMock(return_value=tracks)
     store.get_target_library_stats = AsyncMock(
         return_value=stats
         or {
@@ -190,6 +193,70 @@ async def test_stats_stays_native_when_populated() -> None:
     navidrome.get_stats.assert_not_called()
     assert stats.total_albums == 5
     assert stats.total_size_bytes == 1000
+
+
+@pytest.mark.asyncio
+async def test_tracks_falls_back_to_navidrome_when_native_store_empty() -> None:
+    navidrome = AsyncMock()
+    navidrome.browse_tracks = AsyncMock(
+        return_value=(
+            [
+                NavidromeTrackInfo(
+                    navidrome_id="song-1",
+                    title="Owned Track",
+                    track_number=3,
+                    duration_seconds=210.0,
+                    disc_number=1,
+                    album_name="Owned Album",
+                    artist_name="Owned Artist",
+                    album_id="nd-1",
+                    artist_id="nd-a1",
+                    musicbrainz_recording_id=None,
+                    codec="flac",
+                    bitrate=900,
+                    image_url="/api/v1/navidrome/cover/nd-1",
+                )
+            ],
+            1,
+        )
+    )
+    service = TargetNativeLibraryService(_store(), navidrome_service=navidrome)
+
+    items, total = await service.tracks(limit=50, offset=0, sort="recent", search=None)
+
+    navidrome.browse_tracks.assert_awaited_once_with(size=50, offset=0, search="")
+    assert total == 1
+    track = items[0]
+    assert track.id == "song-1"
+    assert track.title == "Owned Track"
+    assert track.album_id == "nd-1"
+    assert track.artist_id == "nd-a1"
+    assert track.source == "navidrome"
+    assert track.stream_url == "/api/v1/stream/navidrome/song-1"
+    assert track.image_url == "/api/v1/navidrome/cover/nd-1"
+    assert track.format == "FLAC"
+
+
+@pytest.mark.asyncio
+async def test_tracks_stays_native_when_store_is_populated() -> None:
+    navidrome = AsyncMock()
+    row = {
+        "id": "native-track-1",
+        "track_title": "Native Track",
+        "release_group_mbid": "rg-1",
+        "album_title": "Native Album",
+        "artist_mbid": "a-1",
+        "artist_name": "Native Artist",
+    }
+    store = _store(tracks=([row], 1))
+    service = TargetNativeLibraryService(store, navidrome_service=navidrome)
+
+    items, total = await service.tracks(limit=50, offset=0, sort="recent", search=None)
+
+    navidrome.browse_tracks.assert_not_called()
+    assert total == 1
+    assert items[0].source == "local"
+    assert items[0].title == "Native Track"
 
 
 @pytest.mark.asyncio

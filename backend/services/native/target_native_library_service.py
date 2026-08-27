@@ -167,7 +167,18 @@ class TargetNativeLibraryService:
         rows, total = await self._store.list_target_tracks(
             limit=limit, offset=offset, sort=sort, search=search
         )
-        return [self._track(row) for row in rows], total
+        if total or self._navidrome is None:
+            return [self._track(row) for row in rows], total
+        # Native scan store is empty - fall back to Navidrome. Subsonic's only
+        # bulk-browse primitive is a free-text search (no server-side sort by
+        # title/artist/album/random), so `sort` can't be honored here; results
+        # come back in Navidrome's own relevance/insertion order regardless of
+        # what was requested - a known, accepted gap (see the Navidrome-pivot
+        # plan's Phase 2 scope notes).
+        tracks, nav_total = await self._navidrome.browse_tracks(
+            size=limit, offset=offset, search=search or ""
+        )
+        return [self._track_from_navidrome(t) for t in tracks], nav_total
 
     async def album_tracks(self, album_id: str) -> list[TargetNativeTrack]:
         return [
@@ -560,6 +571,29 @@ class TargetNativeLibraryService:
             ),
             album_count=artist.album_count,
             image_url=artist.image_url,
+        )
+
+    @staticmethod
+    def _track_from_navidrome(track: Any) -> TargetNativeTrack:
+        return TargetNativeTrack(
+            id=track.navidrome_id,
+            title=track.title,
+            album_id=track.album_id,
+            album_title=track.album_name,
+            artist_id=track.artist_id,
+            artist_name=track.artist_name,
+            album_artist_id=track.artist_id,
+            album_artist_name=track.artist_name,
+            musicbrainz_recording_id=track.musicbrainz_recording_id,
+            disc_number=track.disc_number,
+            track_number=track.track_number,
+            duration_seconds=track.duration_seconds,
+            format=(track.codec or "").upper(),
+            bit_rate=track.bitrate,
+            cover_available=bool(track.image_url),
+            image_url=track.image_url,
+            source="navidrome",
+            stream_url=f"/api/v1/stream/navidrome/{track.navidrome_id}",
         )
 
     @staticmethod

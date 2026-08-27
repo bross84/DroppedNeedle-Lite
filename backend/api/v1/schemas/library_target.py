@@ -160,6 +160,9 @@ class TargetNativeTrack(AppStruct):
     cover_available: bool = False
     current_tier: str | None = None
     below_cutoff: bool = False
+    image_url: str | None = None
+    source: Literal["local", "navidrome"] = "local"
+    stream_url: str | None = None
 
 
 class TargetNativeAlbumsResponse(AppStruct):

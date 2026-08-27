@@ -264,6 +264,24 @@ describe('buildDiscoveryQueueFromLocal', () => {
 		expect(item.coverUrl).toBe('/cover/local-album-9');
 		expect(item.discNumber).toBe(1);
 	});
+
+	it('routes a Navidrome-fallback row (the native-empty pivot path) to its own stream/cover/source', () => {
+		expect.assertions(4);
+		const [item] = buildDiscoveryQueueFromLocal([
+			{
+				...nativeTrack,
+				id: 'nd-song-1',
+				album_id: 'nd-album-1',
+				source: 'navidrome',
+				image_url: '/api/v1/navidrome/cover/nd-album-1',
+				stream_url: '/api/v1/stream/navidrome/nd-song-1'
+			}
+		]);
+		expect(item.sourceType).toBe('navidrome');
+		expect(item.streamUrl).toBe('/api/v1/stream/navidrome/nd-song-1');
+		expect(item.coverUrl).toBe('/api/v1/navidrome/cover/nd-album-1');
+		expect(item.availableSources).toEqual(['navidrome']);
+	});
 });
 
 describe('playlistTrackToQueueItem', () => {
