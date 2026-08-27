@@ -27,11 +27,22 @@ different, nearby upstream commit that hasn't landed here — if a newly-ported 
 something that doesn't exist in this fork yet, trace it to its real source commit before deciding
 whether to implement that too or drop the test with a note (see PR #27 for the pattern).
 
+**Hidden production prerequisites, not just test ones**: some "single commit" fixes silently
+depend on production code from an earlier, unported commit - not just test coverage. Symptom:
+a cherry-pick applies with only small/no conflicts, but tests then fail on an `AttributeError`
+or `NameError` for a method/helper that simply doesn't exist yet. When that happens, `git log
+--diff-filter=A -p <path>` or a loop over `git show <hash> -- <path>` across `main..upstream/main`
+finds which commit actually introduces it - pull that in too (with `-x`), even if it wasn't on
+your original list. PR #30 (the startup-migration trio) needed 3 extra prerequisite commits this
+way (`af25e793`, `e14ebb3e`, `8c8f0d90`) beyond the 3 originally planned.
+
 **Last triaged through**: `814dbf45` (upstream, 2026-08-26) — 107 commits reviewed in one pass,
 see the [full audit](https://claude.ai/code/artifact/68f0e4e0-9d0d-410d-8b94-b8a04c65aec7) for
 the original reasoning behind every verdict below.
 
-**Ported so far**: 4 commits, [PR #27](https://github.com/bross84/DroppedNeedle-Lite/pull/27).
+**Ported so far**: 9 commits — 3 in [PR #27](https://github.com/bross84/DroppedNeedle-Lite/pull/27),
+6 in the startup-migration data-safety PR (see below). (`6708e076` was attempted alongside PR #27
+but conflicted and was aborted - corrected here after that mistake shipped once, see PR #29.)
 
 ---
 
@@ -73,7 +84,7 @@ the original reasoning behind every verdict below.
 
 ## Identification & matching
 
-- [x] `6708e076` — Pace open breakers with durable retry deadlines — **ported, PR #27** (pulled in as a prerequisite for the batching fix below)
+- [ ] `6708e076` — Pace open breakers with durable retry deadlines (attempted as a prerequisite for `2020b79b` below; conflicted in `artist_identity_reconciliation_service.py`/`identity_repair_service.py`/`library_contribution_verification_worker.py` — aborted, not landed, needs an actual read of that reconciliation logic before retrying)
 - [ ] `ead52008` — Accept nullable MusicBrainz contribution fields
 - [ ] `45e4ffd5` — Enforce provider proof before artist retirement
 - [ ] `58ed7321` — Classify unmappable provider payloads honestly
@@ -134,13 +145,13 @@ expect real merge conflicts here, not clean applies.
 
 The container's boot-time `automatic_upgrade.py` system — real data-safety fixes live here.
 
-- [ ] `af25e793` — Bound legacy path filesystem probes
-- [ ] `e14ebb3e` — Key pending migration runs on pending input revision
-- [ ] `8c8f0d90` — Project pending legacy paths through verified remap
+- [x] `af25e793` — Bound legacy path filesystem probes — **ported, PR #30** (pulled in as a prerequisite for `1ff14d85`'s `reconciler.aclose()` call - see that entry)
+- [x] `e14ebb3e` — Key pending migration runs on pending input revision — **ported, PR #30** (pulled in as a prerequisite for `351f698b`'s `pending_run_id()` helper)
+- [x] `8c8f0d90` — Project pending legacy paths through verified remap — **ported, PR #30** (pulled in because a "moved root" restoration test needed the path-projector wiring this commit adds)
 - [ ] `e103cd28` — Test only: pending-gate pre-characterization
-- [ ] `351f698b` — Pending-gate captured policy revision check
-- [ ] `d0ea96f1` — Promote-gate `quick_check` and WAL/SHM quarantine-not-delete
-- [ ] `1ff14d85` — Evidence completeness on migration failure
+- [x] `351f698b` — Pending-gate captured policy revision check — **ported, PR #30**
+- [x] `d0ea96f1` — Promote-gate `quick_check` and WAL/SHM quarantine-not-delete — **ported, PR #30**
+- [x] `1ff14d85` — Evidence completeness on migration failure — **ported, PR #30**
 - [ ] `7b4108e1` — Reconciler progress observability
 - [ ] `cead25a6` — Ops documentation at code sites
 - [ ] `a15298ee` — Bound startup identity backfills and WAL checkpoint pressure (large — new subsystem, review on its own)
@@ -148,7 +159,7 @@ The container's boot-time `automatic_upgrade.py` system — real data-safety fix
 ## MusicBrainz, ListenBrainz & external APIs
 
 - [ ] `2020b79b` — Harden MusicBrainz outages, restore artist pages (stale-cache fallback + real pagination fix — attempted, hit a cascading conflict in `artist_identity_reconciliation_service.py`, paused rather than guess at unfamiliar logic)
-- [ ] `814dbf45` — Harden ListenBrainz rate limiting (measured the real limit is 30 req/10s; matches the 429s seen live this session — not yet attempted beyond its prerequisite `6708e076`, above)
+- [ ] `814dbf45` — Harden ListenBrainz rate limiting (measured the real limit is 30 req/10s; matches the 429s seen live this session. Attempted once - its own conflicts were small, but it imports `record_provider_call`/`record_rate_limit_headers` from `infrastructure/observability/provider_counters.py`, a module that doesn't exist in this fork at all; that module is introduced by `f0ff088e` in Performance passes below, a large 2,882-line foundational commit that itself touches `retry.py` extensively - the same file `6708e076` above also conflicts on. Paused rather than pull in `f0ff088e` blind.)
 - [ ] `42e0c7cc` — Classify degraded empty precache results
 
 ## Performance passes
