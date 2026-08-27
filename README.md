@@ -21,7 +21,9 @@
 >
 > Issues and support for the original belong on [upstream's tracker](https://github.com/DroppedNeedle/DroppedNeedle/issues), not here.
 >
-> See [FORK.md](FORK.md) for what was removed and why.
+> See [FORK.md](FORK.md) for what was removed and why, and
+> [UPSTREAM_SYNC.md](UPSTREAM_SYNC.md) for what's been reviewed from upstream since and what's
+> still worth pulling in.
 
 DroppedNeedle-Lite is a self-hosted music request and discovery app with a **built-in native library and download engine** (no Lidarr required). Search the full MusicBrainz catalogue, request whole albums or single tracks, and let the engine index your library while it drives downloads through your own slskd or Usenet/SABnzbd. Its optional Library Management system can write tags and organize files after an administrator previews and enables it. Stream from Navidrome or your local files, get recommendations from your listening history, and scrobble to ListenBrainz and Last.fm. It all runs as a single Docker container, configured from the web UI.
 

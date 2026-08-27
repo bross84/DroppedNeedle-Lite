@@ -37,6 +37,10 @@ native scanning/Library Management engine that drives tagging, organizing,
 and importing finished downloads isn't being removed - it's just no longer
 required for browsing your library inside the app.
 
+Separately, upstream keeps shipping fast, and this fork doesn't track it commit-for-commit -
+see [UPSTREAM_SYNC.md](UPSTREAM_SYNC.md) for the running ledger of what's been reviewed from
+upstream, what's been pulled in, and what's intentionally been left out.
+
 ## Support
 
 - **Questions about the application** → upstream's
