@@ -41,8 +41,9 @@ see the [full audit](https://claude.ai/code/artifact/68f0e4e0-9d0d-410d-8b94-b8a
 the original reasoning behind every verdict below.
 
 **Ported so far**: 9 commits — 3 in [PR #27](https://github.com/bross84/DroppedNeedle-Lite/pull/27),
-6 in the startup-migration data-safety PR (see below). (`6708e076` was attempted alongside PR #27
-but conflicted and was aborted - corrected here after that mistake shipped once, see PR #29.)
+6 in [PR #30](https://github.com/bross84/DroppedNeedle-Lite/pull/30) (startup-migration data
+safety). (`6708e076` was attempted alongside PR #27 but conflicted and was aborted — see its
+entry below, not checked off.)
 
 ---
 
@@ -159,7 +160,7 @@ The container's boot-time `automatic_upgrade.py` system — real data-safety fix
 ## MusicBrainz, ListenBrainz & external APIs
 
 - [ ] `2020b79b` — Harden MusicBrainz outages, restore artist pages (stale-cache fallback + real pagination fix — attempted, hit a cascading conflict in `artist_identity_reconciliation_service.py`, paused rather than guess at unfamiliar logic)
-- [ ] `814dbf45` — Harden ListenBrainz rate limiting (measured the real limit is 30 req/10s; matches the 429s seen live this session. Attempted once - its own conflicts were small, but it imports `record_provider_call`/`record_rate_limit_headers` from `infrastructure/observability/provider_counters.py`, a module that doesn't exist in this fork at all; that module is introduced by `f0ff088e` in Performance passes below, a large 2,882-line foundational commit that itself touches `retry.py` extensively - the same file `6708e076` above also conflicts on. Paused rather than pull in `f0ff088e` blind.)
+- [ ] `814dbf45` — Harden ListenBrainz rate limiting (measured the real limit is 30 req/10s. Attempted once - its own conflicts were small, but it imports `record_provider_call`/`record_rate_limit_headers` from `infrastructure/observability/provider_counters.py`, a module that doesn't exist in this fork at all; that module is introduced by `f0ff088e` in Performance passes below, a large 2,882-line foundational commit that itself touches `retry.py` extensively - the same file `6708e076` above also conflicts on. Paused rather than pull in `f0ff088e` blind.)
 - [ ] `42e0c7cc` — Classify degraded empty precache results
 
 ## Performance passes
