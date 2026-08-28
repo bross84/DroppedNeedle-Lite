@@ -227,6 +227,46 @@ class TestSearch:
         assert result.tracks[0].title == "Come Together"
 
 
+class TestSearchAlbums:
+    @pytest.mark.asyncio
+    async def test_maps_and_asks_repo_for_offset_plus_size(self):
+        service, repo = _make_service()
+        repo.search = AsyncMock(return_value=SubsonicSearchResult(
+            album=[_album(id="al1", name="OK Computer", artist="Radiohead")],
+        ))
+        albums, total = await service.search_albums("radiohead", size=24, offset=0)
+        assert total == 1
+        assert albums[0].name == "OK Computer"
+        repo.search.assert_awaited_once_with(
+            "radiohead",
+            artist_count=0,
+            album_count=24,
+            song_count=0,
+            music_folder_ids=None,
+        )
+
+    @pytest.mark.asyncio
+    async def test_drops_unknown_albums_and_slices_page(self):
+        service, repo = _make_service()
+        repo.search = AsyncMock(return_value=SubsonicSearchResult(
+            album=[
+                _album(id="a1", name="Unknown"),
+                _album(id="a2", name="Real One"),
+                _album(id="a3", name="Real Two"),
+            ],
+        ))
+        albums, total = await service.search_albums("x", size=1, offset=1)
+        assert total == 2
+        assert [a.name for a in albums] == ["Real Two"]
+
+    @pytest.mark.asyncio
+    async def test_blank_query_short_circuits(self):
+        service, repo = _make_service()
+        albums, total = await service.search_albums("   ")
+        assert (albums, total) == ([], 0)
+        repo.search.assert_not_called()
+
+
 class TestGetRecent:
     @pytest.mark.asyncio
     async def test_delegates_to_repo(self):
