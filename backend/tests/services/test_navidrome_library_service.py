@@ -589,6 +589,101 @@ class TestWarmMbidCacheLifecycle:
         assert service._mbid_to_navidrome_id.get("mbid-disk") == "nd-1"
 
 
+def _make_service_with_tags() -> tuple[NavidromeLibraryService, MagicMock, MagicMock, MagicMock]:
+    """Service wired like a Navidrome-only install: empty native catalog, a
+    MusicBrainz repo available for release->release-group resolution."""
+    service, repo, cache = _make_service_with_cache()
+    mb = MagicMock()
+    mb.get_release_group_id_from_release = AsyncMock(return_value=None)
+    service._mb_repo = mb
+    return service, repo, cache, mb
+
+
+class TestSeedMbidsFromNavidromeTags:
+    @pytest.mark.asyncio
+    async def test_seeds_album_release_group_from_release_tag(self):
+        service, repo, cache, mb = _make_service_with_tags()
+        repo.get_album_list = AsyncMock(return_value=[
+            _album(id="nd-1", name="Age of Winters", artist="The Sword", mbid="release-mbid"),
+        ])
+        mb.get_release_group_id_from_release = AsyncMock(return_value="rg-mbid")
+
+        await service.warm_mbid_cache()
+
+        key = f"{_normalize('Age of Winters')}:{_normalize('The Sword')}"
+        mb.get_release_group_id_from_release.assert_awaited_once_with("release-mbid")
+        assert service._album_mbid_cache[key] == "rg-mbid"
+        assert service._mbid_to_navidrome_id["rg-mbid"] == "nd-1"
+        cache.save_navidrome_album_mbid_index.assert_awaited()
+
+    @pytest.mark.asyncio
+    async def test_seeds_artist_mbid_directly_from_tag(self):
+        service, repo, cache, mb = _make_service_with_tags()
+        repo.get_album_list = AsyncMock(return_value=[
+            _album(id="nd-1", name="Album", artist="The Sword"),
+        ])
+        repo.get_artists = AsyncMock(return_value=[
+            _artist(id="ar-1", name="The Sword", mbid="artist-mbid"),
+        ])
+
+        await service.warm_mbid_cache()
+
+        assert service._artist_mbid_cache[_normalize("The Sword")] == "artist-mbid"
+
+    @pytest.mark.asyncio
+    async def test_unresolved_album_is_not_cached_as_negative(self):
+        service, repo, cache, mb = _make_service_with_tags()
+        repo.get_album_list = AsyncMock(return_value=[
+            _album(id="nd-1", name="Obscure", artist="Nobody", mbid="release-mbid"),
+        ])
+        mb.get_release_group_id_from_release = AsyncMock(return_value=None)
+
+        await service.warm_mbid_cache()
+
+        key = f"{_normalize('Obscure')}:{_normalize('Nobody')}"
+        assert key not in service._album_mbid_cache
+
+    @pytest.mark.asyncio
+    async def test_tag_seeding_skipped_when_native_catalog_present(self):
+        service, repo, cache, mb = _make_service_with_tags()
+        cache.get_all_albums_for_matching = AsyncMock(return_value=[
+            ("Album", "Artist", "native-rg", "native-artist"),
+        ])
+        repo.get_album_list = AsyncMock(return_value=[
+            _album(id="nd-1", name="Album", artist="Artist", mbid="release-mbid"),
+        ])
+
+        await service.warm_mbid_cache()
+
+        mb.get_release_group_id_from_release.assert_not_called()
+        assert service._album_mbid_cache[f"{_normalize('Album')}:{_normalize('Artist')}"] == "native-rg"
+
+    @pytest.mark.asyncio
+    async def test_tag_seeding_noop_without_mb_repo(self):
+        service, repo, cache = _make_service_with_cache()
+        repo.get_album_list = AsyncMock(return_value=[
+            _album(id="nd-1", name="Album", artist="Artist", mbid="release-mbid"),
+        ])
+
+        await service.warm_mbid_cache()
+
+        assert f"{_normalize('Album')}:{_normalize('Artist')}" not in service._album_mbid_cache
+
+    @pytest.mark.asyncio
+    async def test_already_resolved_album_is_not_re_resolved(self):
+        service, repo, cache, mb = _make_service_with_tags()
+        key = f"{_normalize('Album')}:{_normalize('Artist')}"
+        service._album_mbid_cache[key] = "already-rg"
+        repo.get_album_list = AsyncMock(return_value=[
+            _album(id="nd-1", name="Album", artist="Artist", mbid="release-mbid"),
+        ])
+
+        await service.warm_mbid_cache()
+
+        mb.get_release_group_id_from_release.assert_not_called()
+        assert service._album_mbid_cache[key] == "already-rg"
+
+
 class TestHubFavoritesExpansion:
     @pytest.mark.asyncio
     async def test_hub_includes_favorite_artists_and_tracks(self):
