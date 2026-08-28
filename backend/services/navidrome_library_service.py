@@ -48,6 +48,7 @@ from services.per_user_client_factory import MediaClientResolution, PerUserClien
 
 if TYPE_CHECKING:
     from infrastructure.persistence import LibraryDB, MBIDStore
+    from repositories.protocols import MusicBrainzRepositoryProtocol
 
 logger = logging.getLogger(__name__)
 
@@ -91,12 +92,14 @@ class NavidromeLibraryService:
         library_db: 'LibraryDB | None' = None,
         mbid_store: 'MBIDStore | None' = None,
         client_factory: PerUserClientFactory | None = None,
+        musicbrainz_repo: 'MusicBrainzRepositoryProtocol | None' = None,
     ):
         self._navidrome = navidrome_repo
         self._preferences = preferences_service
         self._library_db = library_db
         self._mbid_store = mbid_store
         self._client_factory = client_factory
+        self._mb_repo = musicbrainz_repo
         self._album_mbid_cache: dict[str, str | tuple[None, float]] = {}
         self._artist_mbid_cache: dict[str, str | tuple[None, float]] = {}
         self._mbid_to_navidrome_id: dict[str, str] = {}
@@ -1233,7 +1236,14 @@ class NavidromeLibraryService:
                 logger.warning("Failed to load Navidrome MBID cache from disk", exc_info=True)
 
         if not self._library_album_index:
-            logger.warning("Native library data unavailable - MBID enrichment will be skipped")
+            if self._mb_repo is not None:
+                logger.info(
+                    "Native catalog empty - seeding Navidrome MBIDs from file tags"
+                )
+            else:
+                logger.warning(
+                    "Native library data unavailable - MBID enrichment will be skipped"
+                )
 
         try:
             all_albums: list[SubsonicAlbum] = []
@@ -1270,6 +1280,19 @@ class NavidromeLibraryService:
 
         resolved_albums = 0
         resolved_artists = 0
+
+        if not self._library_album_index and self._mb_repo is not None:
+            # Navidrome-only install: no native catalog to match against, but
+            # every file is MusicBrainz-tagged, so Navidrome hands us a release
+            # MBID per album and a direct artist MBID per artist. Resolve those
+            # to the release-group / artist MBIDs the app routes on and prime
+            # the same in-memory caches a native-library match would fill, so
+            # `_resolve_album_mbid` / `_resolve_artist_mbid` hit on the live
+            # request path with no MusicBrainz call.
+            resolved_albums += await self._seed_album_mbids_from_navidrome_tags(
+                all_albums
+            )
+            resolved_artists += await self._seed_artist_mbids_from_navidrome_tags()
 
         if self._library_album_index:
             for album in all_albums:
@@ -1340,6 +1363,78 @@ class NavidromeLibraryService:
             mbid = _cache_get_mbid(self._album_mbid_cache, cache_key)
             if mbid:
                 self._mbid_to_navidrome_id[mbid] = album.id
+
+    async def _seed_album_mbids_from_navidrome_tags(
+        self, albums: list[SubsonicAlbum]
+    ) -> int:
+        """Fill `_album_mbid_cache` from Navidrome's own MB tags when there is
+        no native catalog to match against.
+
+        Navidrome returns `musicBrainzId` per album from the file's
+        `MUSICBRAINZ_ALBUMID` tag - a *release* MBID. The app routes albums by
+        *release-group* MBID, so each release is resolved to its release group
+        (an immutable mapping the MusicBrainz repo caches for 24h). Albums that
+        don't resolve - MusicBrainz unreachable, or a tag that is already a
+        release-group MBID - are left for the next pass rather than cached as a
+        negative.
+        """
+        if self._mb_repo is None:
+            return 0
+        resolved = 0
+        for album in albums:
+            if not album.name or album.name == "Unknown" or not album.artist:
+                continue
+            release_mbid = (album.musicBrainzId or "").strip()
+            if not release_mbid:
+                continue
+            cache_key = f"{_normalize(album.name)}:{_normalize(album.artist)}"
+            if isinstance(self._album_mbid_cache.get(cache_key), str):
+                continue
+            # One lookup per unique release, resolved through the MusicBrainz
+            # repo's own 1 req/s priority queue + 24h cache - no extra throttle
+            # needed here, and unreachable-MB just returns None to retry later.
+            try:
+                rg_mbid = await self._mb_repo.get_release_group_id_from_release(
+                    release_mbid
+                )
+            except Exception:  # noqa: BLE001
+                rg_mbid = None
+            if rg_mbid:
+                self._album_mbid_cache[cache_key] = rg_mbid
+                self._mbid_to_navidrome_id[rg_mbid] = album.id
+                self._dirty = True
+                resolved += 1
+        if resolved:
+            logger.info("Seeded %d Navidrome album MBIDs from file tags", resolved)
+        return resolved
+
+    async def _seed_artist_mbids_from_navidrome_tags(self) -> int:
+        """Fill `_artist_mbid_cache` from Navidrome's per-artist `musicBrainzId`
+        (the file's `MUSICBRAINZ_ARTISTID` tag - already a usable artist MBID,
+        no release->group resolution needed). `_build_artist_summary` already
+        falls back to this tag live; seeding the cache also lets
+        `_resolve_artist_mbid` answer for album-summary artist links.
+        """
+        try:
+            artists = await self._navidrome.get_artists()
+        except Exception:  # noqa: BLE001
+            logger.warning("Failed to fetch Navidrome artists for MBID seeding")
+            return 0
+        resolved = 0
+        for artist in artists:
+            name = getattr(artist, "name", "")
+            mbid = (getattr(artist, "musicBrainzId", "") or "").strip()
+            if not name or not mbid:
+                continue
+            key = _normalize(name)
+            if isinstance(self._artist_mbid_cache.get(key), str):
+                continue
+            self._artist_mbid_cache[key] = mbid
+            self._dirty = True
+            resolved += 1
+        if resolved:
+            logger.info("Seeded %d Navidrome artist MBIDs from file tags", resolved)
+        return resolved
 
     async def get_top_songs(
         self,

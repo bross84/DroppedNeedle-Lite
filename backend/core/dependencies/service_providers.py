@@ -2363,6 +2363,7 @@ def get_navidrome_library_service() -> "NavidromeLibraryService":
         library_db,
         mbid_store,
         get_per_user_client_factory(),
+        musicbrainz_repo=get_musicbrainz_repository(),
     )
 
 
@@ -2376,6 +2377,7 @@ def get_target_navidrome_library_service() -> "NavidromeLibraryService":
         get_target_library_repository(),
         get_mbid_store(),
         get_per_user_client_factory(),
+        musicbrainz_repo=get_musicbrainz_repository(),
     )
 
 
