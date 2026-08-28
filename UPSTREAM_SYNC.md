@@ -36,14 +36,74 @@ finds which commit actually introduces it - pull that in too (with `-x`), even i
 your original list. PR #30 (the startup-migration trio) needed 3 extra prerequisite commits this
 way (`af25e793`, `e14ebb3e`, `8c8f0d90`) beyond the 3 originally planned.
 
-**Last triaged through**: `814dbf45` (upstream, 2026-08-26) — 107 commits reviewed in one pass,
-see the [full audit](https://claude.ai/code/artifact/68f0e4e0-9d0d-410d-8b94-b8a04c65aec7) for
-the original reasoning behind every verdict below.
+**Last triaged through**: `aa160ab` (upstream, 2026-08-28) — original 107-commit pass plus a
+delta of 16 non-dependabot commits triaged 2026-08-28 (see "New since 814dbf45" below).
+The [full audit](https://claude.ai/code/artifact/68f0e4e0-9d0d-410d-8b94-b8a04c65aec7) covers
+the reasoning behind the original verdicts.
 
 **Ported so far**: 9 commits — 3 in [PR #27](https://github.com/bross84/DroppedNeedle-Lite/pull/27),
 6 in [PR #30](https://github.com/bross84/DroppedNeedle-Lite/pull/30) (startup-migration data
 safety). (`6708e076` was attempted alongside PR #27 but conflicted and was aborted — see its
 entry below, not checked off.)
+
+## ⚠️ The MB / ListenBrainz resilience chain (highest priority, 2026-08-28)
+
+Live-verified this is the app's worst current UX problem: MusicBrainz's `/ws/2/` API is ~50%
+timing out from Brian's network (their API tier, not the website, not our code — Picard/Mp3tag
+fail identically). The `musicbrainz` circuit breaker then goes all-or-nothing — 5 failures →
+60s total blackout → pages blank. Fixing the *experience* (serve last-known/local data during
+an outage) is this chain:
+
+```
+f0ff088e  perf batch-0 foundation (2,882 lines: retry.py, all provider repos, cache svc,
+          new Settings→Diagnostics, provider_counters.py)   ← linchpin, both sub-chains need it
+   ├── 6708e076  pace open breakers w/ durable retry deadlines (12 files; conflicts in
+   │             artist_identity_reconciliation_service.py / identity_repair_service.py)
+   │      └── 2020b79b  MB outage: stale search-cache fallback + artist-page pagination
+   │             (22 files; ALSO rewrites frontend search/*+page.svelte — now conflicts
+   │              with our own PR #31)
+   │             ├── 8d440fb  serve library albums/artists from local rows when MB down
+   │             │            (13 files, 717 lines; serves from the *native catalog* →
+   │             │             EMPTY for Brian, needs Navidrome-fallback adaptation like
+   │             │             the pivot phases)
+   │             └── aa160ab  serve owned artist discography when MB down (6 files, 312 lines;
+   │                          same native-catalog caveat)
+   └── 814dbf45  harden ListenBrainz rate limiting (adds accepted_statuses / breaker headers)
+          └── 50ec89f  LB 404-as-absence for recommendation playlists (needs 814dbf45's
+                       accepted_statuses plumbing; bundled with native-engine-ci.yml removal)
+```
+
+**Assessment**: not a cherry-pick. ~35+ files, `f0ff088e` is a large foundational port, the
+"serve local when down" commits need the same Navidrome-fallback rework the pivot did, and
+`2020b79b` now collides with PR #31. Needs its own scoping pass + 2-3 focused sessions.
+**Recommended order**: (1) scope + port `f0ff088e`; (2) `6708e076` + `2020b79b` (reconcile
+against PR #31); (3) adapt `8d440fb`/`aa160ab` to fall back to Navidrome; (4) `814dbf45` +
+`50ec89f`. A cheap interim palliative while this is pending: widen the `musicbrainz` breaker in
+`repositories/musicbrainz_base.py` (currently `failure_threshold=5, timeout=60`) — lower value
+than the real fix but zero risk.
+
+## New since 814dbf45 (triaged 2026-08-28)
+
+- [ ] `aa160ab` / `8d440fb` — MB-outage local fallback — **part of the resilience chain above**
+- [ ] `50ec89f` — LB 404-as-absence — **resilience chain**; also deletes `native-engine-ci.yml`
+  (upstream folded it into `backend-ci`) — take the LB hunk, weigh the CI change separately
+- [ ] `e704599` — `fix(subsonic): support unbounded byYear ranges` — touches the kept Navidrome
+  client, small, likely a clean port
+- [ ] `697ae2d` — `fix(slskd): resolve Unicode download paths safely` — slskd is kept, port candidate
+- [ ] `d07dd03` / `a4d205f` / `820207c` — three `fix(discover)` commits (preview stations keep
+  playing / cached queue position / dedupe trending) — Discover is core, port candidates
+- [ ] `644a6bc` — `feat(proxy): support base path deployments` — only if Brian ever reverse-proxies
+  under a subpath; otherwise skip
+- [ ] `26b5fbd` — `feat(requests): secure exact-track approvals and attribution` — review (requests/
+  approvals area was partly trimmed in the fork)
+- [ ] `dc1e70a` — `fix(import): verify remix identity and clean names` — review (drop-import path)
+- [ ] `d609334` — `feat(acquisition): global quality order` — library-management feature, low
+  priority for a Navidrome-only user
+- [ ] `9c8bdc3` — `feat(naming): artist initial buckets` — library-management, low priority
+- [ ] `27166f5` — `fix(tests)` — bring along with whatever it supports
+- [ ] `7b029b3` / `8735bd3` — CI restructure (remove AI reviewer, dependabot config, toolchain) —
+  review as a group; the fork's CI diverged already
+- ~13 dependabot version bumps — handle via our own dependency updates, not tracked individually
 
 ---
 
