@@ -359,6 +359,35 @@ class NavidromeLibraryService:
         summaries = await asyncio.gather(*(self._build_artist_summary(a) for a in page))
         return list(summaries), total
 
+    async def search_albums(
+        self,
+        query: str,
+        size: int = 24,
+        offset: int = 0,
+        music_folder_ids: tuple[str, ...] | None = None,
+    ) -> tuple[list[NavidromeAlbumSummary], int]:
+        """Free-text album search against Navidrome (Subsonic ``search3``).
+
+        The raw client has no album offset, so - like ``browse_artists`` - we
+        ask for ``offset + size`` matches and slice the page out client-side.
+        ``search3`` returns matches in Navidrome's own relevance order; there is
+        no server-side sort, the same accepted gap the rest of the Navidrome
+        fallback path already has.
+        """
+        if not query.strip():
+            return [], 0
+        result = await self._navidrome.search(
+            query,
+            artist_count=0,
+            album_count=offset + size,
+            song_count=0,
+            music_folder_ids=music_folder_ids,
+        )
+        filtered = [a for a in result.album if a.name and a.name != "Unknown"]
+        page = filtered[offset : offset + size]
+        summaries = await asyncio.gather(*(self._album_to_summary(a) for a in page))
+        return list(summaries), len(filtered)
+
     async def browse_tracks(
         self,
         size: int = 48,

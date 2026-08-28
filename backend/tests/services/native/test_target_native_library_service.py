@@ -112,6 +112,40 @@ async def test_albums_stays_native_when_no_navidrome_service_wired() -> None:
 
 
 @pytest.mark.asyncio
+async def test_albums_search_routes_through_navidrome_text_search() -> None:
+    navidrome = AsyncMock()
+    navidrome.search_albums = AsyncMock(
+        return_value=(
+            [
+                NavidromeAlbumSummary(
+                    navidrome_id="nd-9",
+                    name="OK Computer",
+                    artist_name="Radiohead",
+                    year=1997,
+                    track_count=12,
+                    image_url="/api/v1/navidrome/cover/nd-9",
+                    musicbrainz_id=None,
+                    artist_musicbrainz_id=None,
+                )
+            ],
+            1,
+        )
+    )
+    navidrome.get_albums = AsyncMock()
+    service = TargetNativeLibraryService(_store(), navidrome_service=navidrome)
+
+    items, total = await service.albums(
+        limit=24, offset=0, sort="recent", search="radiohead", file_format=None
+    )
+
+    navidrome.search_albums.assert_awaited_once_with("radiohead", size=24, offset=0)
+    navidrome.get_albums.assert_not_called()
+    assert total == 1
+    assert items[0].id == "nd-9"
+    assert items[0].title == "OK Computer"
+
+
+@pytest.mark.asyncio
 async def test_artists_falls_back_to_navidrome_when_native_store_empty() -> None:
     navidrome = AsyncMock()
     navidrome.browse_artists = AsyncMock(

@@ -78,6 +78,16 @@ class TargetNativeLibraryService:
         # read the real, owned catalog straight from Navidrome instead. No
         # server-side "format" filter exists on Navidrome's side, so that
         # criterion is dropped for this path rather than pretending to honor it.
+        if search:
+            # A search term (global search's "in your library" section, the
+            # search-suggestions dropdown) needs a text match, not a browse
+            # order - route through Navidrome's free-text album search. `sort`
+            # can't be honored on this path (search3 has no server-side sort);
+            # results come back in Navidrome's own relevance order.
+            nav_albums, nav_total = await self._navidrome.search_albums(
+                search, size=limit, offset=offset
+            )
+            return [self._album_from_navidrome(a) for a in nav_albums], nav_total
         albums = await self._navidrome.get_albums(
             type=_ALBUM_SORT_TO_NAVIDROME_TYPE.get(sort, "newest"),
             size=limit,
